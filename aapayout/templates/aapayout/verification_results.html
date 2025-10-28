@@ -1,0 +1,283 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block page_title %}{% trans "Verification Results" %} - {{ loot_pool.fleet.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.verification-results {
+    min-height: 400px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 60px 0;
+}
+
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.result-success {
+    border-left: 4px solid #28a745;
+}
+
+.result-warning {
+    border-left: 4px solid #ffc107;
+}
+
+.result-error {
+    border-left: 4px solid #dc3545;
+}
+
+.payout-table-verified {
+    background-color: #d4edda;
+}
+
+.payout-table-pending {
+    background-color: #fff3cd;
+}
+</style>
+{% endblock %}
+
+{% block aapayout_content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>{% trans "Payment Verification Results" %}</h2>
+            <a href="{% url 'aapayout:payout_list' loot_pool.pk %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {% trans "Back to Payouts" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card verification-results">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-check"></i> {% trans "Verification Results" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if loading %}
+                    <!-- Loading state -->
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">{% trans "Loading..." %}</span>
+                        </div>
+                        <h4 class="mt-3">{% trans "Verification in progress..." %}</h4>
+                        <p class="text-muted">
+                            {% trans "Checking wallet journal for matching payments. This may take a moment." %}
+                        </p>
+                        <p class="small text-muted">
+                            {% trans "Task Status:" %} <strong>{{ task_status }}</strong>
+                        </p>
+
+                        <!-- Auto-refresh after 3 seconds -->
+                        <script>
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 3000);
+                        </script>
+                    </div>
+                {% elif task_status == "SUCCESS" %}
+                    <!-- Success state -->
+                    {% if success %}
+                        <div class="alert alert-success result-success">
+                            <h5>
+                                <i class="fas fa-check-circle"></i> {% trans "Verification Complete" %}
+                            </h5>
+                            <p class="mb-0">
+                                <strong>{{ verified_count }}</strong> {% trans "payout(s) verified" %} |
+                                <strong>{{ pending_count }}</strong> {% trans "still pending" %}
+                            </p>
+                        </div>
+
+                        {% if errors %}
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle"></i> {% trans "Notes:" %}</h6>
+                                <ul class="mb-0">
+                                    {% for error in errors %}
+                                        <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Summary cards -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card result-success">
+                                    <div class="card-body">
+                                        <h3 class="text-success">
+                                            <i class="fas fa-check-circle"></i> {{ verified_count }}
+                                        </h3>
+                                        <p class="mb-0">{% trans "Verified Payouts" %}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card result-warning">
+                                    <div class="card-body">
+                                        <h3 class="text-warning">
+                                            <i class="fas fa-clock"></i> {{ pending_count }}
+                                        </h3>
+                                        <p class="mb-0">{% trans "Still Pending" %}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Verified payouts list -->
+                        {% if verified_payouts %}
+                            <h5 class="mt-4">
+                                <i class="fas fa-check text-success"></i> {% trans "Verified Payouts" %}
+                            </h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>{% trans "Recipient" %}</th>
+                                            <th class="text-end">{% trans "Amount" %}</th>
+                                            <th>{% trans "Transaction ID" %}</th>
+                                            <th>{% trans "Verified At" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payout in verified_payouts %}
+                                            <tr class="payout-table-verified">
+                                                <td>
+                                                    <i class="fas fa-user"></i> {{ payout.recipient.name }}
+                                                    {% if payout.is_scout_payout %}
+                                                        <span class="badge bg-info">Scout</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>{{ payout.amount|floatformat:2|intcomma }}</strong> ISK
+                                                </td>
+                                                <td>
+                                                    <code>{{ payout.transaction_reference|default:"N/A" }}</code>
+                                                </td>
+                                                <td>
+                                                    <small>{{ payout.verified_at|date:"Y-m-d H:i" }}</small>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+
+                        <!-- Pending payouts list -->
+                        {% if pending_payouts %}
+                            <h5 class="mt-4">
+                                <i class="fas fa-clock text-warning"></i> {% trans "Still Pending" %}
+                            </h5>
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                {% trans "These payouts could not be matched to your wallet journal. You can:" %}
+                                <ul class="mb-0">
+                                    <li>{% trans "Check if payments were actually sent" %}</li>
+                                    <li>{% trans "Manually mark them as paid from the payout list" %}</li>
+                                    <li>{% trans "Run verification again with a longer time window" %}</li>
+                                </ul>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>{% trans "Recipient" %}</th>
+                                            <th class="text-end">{% trans "Amount" %}</th>
+                                            <th>{% trans "Actions" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for payout in pending_payouts %}
+                                            <tr class="payout-table-pending">
+                                                <td>
+                                                    <i class="fas fa-user"></i> {{ payout.recipient.name }}
+                                                    {% if payout.is_scout_payout %}
+                                                        <span class="badge bg-info">Scout</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-end">
+                                                    <strong>{{ payout.amount|floatformat:2|intcomma }}</strong> ISK
+                                                </td>
+                                                <td>
+                                                    <a href="{% url 'aapayout:payout_mark_paid' payout.pk %}"
+                                                       class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-hand-holding-usd"></i> {% trans "Mark Paid" %}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+
+                        <!-- Action buttons -->
+                        <div class="d-flex gap-2 mt-4">
+                            <a href="{% url 'aapayout:payout_list' loot_pool.pk %}"
+                               class="btn btn-primary">
+                                <i class="fas fa-list"></i> {% trans "View All Payouts" %}
+                            </a>
+                            {% if pending_count > 0 %}
+                                <a href="{% url 'aapayout:verify_payments' loot_pool.pk %}"
+                                   class="btn btn-secondary">
+                                    <i class="fas fa-redo"></i> {% trans "Run Verification Again" %}
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger result-error">
+                            <h5><i class="fas fa-times-circle"></i> {% trans "Verification Failed" %}</h5>
+                            <p>{{ errors.0|default:"Unknown error occurred during verification" }}</p>
+                        </div>
+
+                        <a href="{% url 'aapayout:verify_payments' loot_pool.pk %}"
+                           class="btn btn-primary">
+                            <i class="fas fa-redo"></i> {% trans "Try Again" %}
+                        </a>
+                    {% endif %}
+                {% elif task_status == "FAILURE" %}
+                    <!-- Error state -->
+                    <div class="alert alert-danger result-error">
+                        <h5><i class="fas fa-times-circle"></i> {% trans "Verification Failed" %}</h5>
+                        <p><strong>{% trans "Error:" %}</strong> {{ error|default:"Unknown error" }}</p>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>{% trans "Common issues:" %}</strong>
+                        <ul class="mb-0">
+                            <li>{% trans "ESI token expired or missing wallet journal scope" %}</li>
+                            <li>{% trans "ESI service temporarily unavailable" %}</li>
+                            <li>{% trans "Network connectivity issues" %}</li>
+                        </ul>
+                    </div>
+
+                    <a href="{% url 'aapayout:verify_payments' loot_pool.pk %}"
+                       class="btn btn-primary">
+                        <i class="fas fa-redo"></i> {% trans "Try Again" %}
+                    </a>
+                {% else %}
+                    <!-- Unknown state -->
+                    <div class="alert alert-warning">
+                        <p>{% trans "Task status:" %} <strong>{{ task_status }}</strong></p>
+                        <p class="mb-0">{% trans "Unexpected task state. Please try again." %}</p>
+                    </div>
+
+                    <a href="{% url 'aapayout:verify_payments' loot_pool.pk %}"
+                       class="btn btn-primary">
+                        <i class="fas fa-redo"></i> {% trans "Try Again" %}
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

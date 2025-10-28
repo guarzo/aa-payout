@@ -1,0 +1,173 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Fleet Payout Dashboard" %}</h2>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <h5 class="card-title">{% translate "Pending Payouts" %}</h5>
+                    <p class="card-text display-6">{{ pending_payouts|length }}</p>
+                    <p class="text-muted">{{ total_pending|floatformat:2|intcomma }} ISK</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-success">
+                <div class="card-body">
+                    <h5 class="card-title">{% translate "Recent Fleets" %}</h5>
+                    <p class="card-text display-6">{{ recent_fleets|length }}</p>
+                    <a href="{% url 'aapayout:fleet_list' %}" class="btn btn-sm btn-success">{% translate "View All" %}</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-body">
+                    <h5 class="card-title">{% translate "Quick Actions" %}</h5>
+                    {% if perms.aapayout.create_fleet %}
+                        <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> {% translate "New Fleet" %}
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Payouts Table -->
+    {% if pending_payouts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Your Pending Payouts" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Fleet" %}</th>
+                                    <th>{% translate "Loot Pool" %}</th>
+                                    <th class="text-end">{% translate "Amount" %}</th>
+                                    <th>{% translate "Status" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payout in pending_payouts %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
+                                            {{ payout.loot_pool.fleet.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'aapayout:loot_detail' payout.loot_pool.pk %}">
+                                            {{ payout.loot_pool.name }}
+                                        </a>
+                                    </td>
+                                    <td class="text-end">{{ payout.amount|floatformat:2|intcomma }} ISK</td>
+                                    <td>
+                                        <span class="badge bg-warning">{{ payout.get_status_display }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Fleets -->
+    {% if recent_fleets %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Your Recent Fleets" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Fleet Name" %}</th>
+                                    <th>{% translate "Location" %}</th>
+                                    <th>{% translate "Fleet Time" %}</th>
+                                    <th>{% translate "Status" %}</th>
+                                    <th>{% translate "Participants" %}</th>
+                                    <th class="text-end">{% translate "Total Value" %}</th>
+                                    <th>{% translate "Actions" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fleet in recent_fleets %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' fleet.pk %}">
+                                            {{ fleet.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ fleet.location }}</td>
+                                    <td>{{ fleet.fleet_time|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        {% if fleet.status == 'draft' %}
+                                            <span class="badge bg-secondary">{{ fleet.get_status_display }}</span>
+                                        {% elif fleet.status == 'active' %}
+                                            <span class="badge bg-primary">{{ fleet.get_status_display }}</span>
+                                        {% elif fleet.status == 'completed' %}
+                                            <span class="badge bg-success">{{ fleet.get_status_display }}</span>
+                                        {% elif fleet.status == 'paid' %}
+                                            <span class="badge bg-info">{{ fleet.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ fleet.get_participant_count }}</td>
+                                    <td class="text-end">{{ fleet.get_total_loot_value|floatformat:2|intcomma }} ISK</td>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-sm btn-info">
+                                            {% translate "View" %}
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not pending_payouts and not recent_fleets %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h4>{% translate "Welcome to Fleet Payouts!" %}</h4>
+                <p>{% translate "You don't have any pending payouts or fleets yet." %}</p>
+                {% if perms.aapayout.create_fleet %}
+                <p>
+                    <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> {% translate "Create Your First Fleet" %}
+                    </a>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

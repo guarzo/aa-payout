@@ -1,0 +1,121 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>{% translate "Import Fleet from ESI" %}</h2>
+                <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> {% translate "Back to Fleet" %}
+                </a>
+            </div>
+
+            <!-- Instructions Card -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-info-circle"></i> {% translate "How to Import Your Fleet" %}</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">
+                            <strong>{% translate "Be in the fleet" %}:</strong>
+                            {% translate "You must be in the EVE Online fleet you want to import." %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>{% translate "Get the Fleet ID" %}:</strong>
+                            {% translate "Open your fleet window in EVE. The fleet ID is usually shown in the fleet MOTD or can be found by right-clicking the fleet boss and selecting 'Show Fleet Details'." %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>{% translate "Authorize ESI access" %}:</strong>
+                            {% translate "If you haven't already, you'll need to add your character with the required ESI scopes." %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>{% translate "Paste Fleet ID below" %}:</strong>
+                            {% translate "Enter the ESI fleet ID and click Import." %}
+                        </li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Import Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Fleet Import" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="esi_fleet_id" class="form-label">
+                                <strong>{% translate "ESI Fleet ID" %}</strong>
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control form-control-lg"
+                                id="esi_fleet_id"
+                                name="esi_fleet_id"
+                                placeholder="e.g., 123456789"
+                                required
+                                pattern="[0-9]+"
+                                title="{% translate 'Fleet ID must be a number' %}"
+                            >
+                            <small class="form-text text-muted">
+                                {% translate "Enter the numeric fleet ID from EVE Online" %}
+                            </small>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-download"></i> {% translate "Import Fleet Composition" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Recent Imports -->
+            {% if recent_imports %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>{% translate "Recent Imports" %}</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>{% translate "Date" %}</th>
+                                <th>{% translate "ESI Fleet ID" %}</th>
+                                <th>{% translate "Characters Found" %}</th>
+                                <th>{% translate "Added" %}</th>
+                                <th>{% translate "Unique Players" %}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for import_record in recent_imports %}
+                            <tr>
+                                <td>{{ import_record.imported_at|date:"Y-m-d H:i" }}</td>
+                                <td><code>{{ import_record.esi_fleet_id }}</code></td>
+                                <td>{{ import_record.characters_found }}</td>
+                                <td>{{ import_record.characters_added }}</td>
+                                <td><strong>{{ import_record.unique_players }}</strong></td>
+                                <td>
+                                    <a href="{% url 'aapayout:fleet_import_results' import_record.pk %}"
+                                       class="btn btn-sm btn-outline-primary">
+                                        {% translate "View Details" %}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,418 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block details %}
+<div class="container-fluid express-mode">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Express Mode Payment Interface" %}</h2>
+            <p class="text-muted">
+                {% translate "Fleet" %}: <a href="{% url 'aapayout:fleet_detail' loot_pool.fleet.pk %}">{{ loot_pool.fleet.name }}</a>
+                | {% translate "Loot Pool" %}: {{ loot_pool.name }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Progress Header -->
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <h5>{% translate "Progress" %}</h5>
+                            <h2 class="mb-0">
+                                <span id="completed-count">0</span> / {{ total_pending }}
+                            </h2>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>{% translate "Total Amount" %}</h6>
+                            <h4 class="mb-0 text-primary">{{ total_amount|floatformat:2|intcomma }} ISK</h4>
+                        </div>
+                        <div class="col-md-4">
+                            <h6>{% translate "Estimated Time" %}</h6>
+                            <h4 class="mb-0" id="time-estimate">~{{ estimated_time_minutes }} min</h4>
+                            <small class="text-muted" id="time-remaining"></small>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 30px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated"
+                             id="progress-bar"
+                             role="progressbar"
+                             style="width: 0%"
+                             aria-valuenow="0"
+                             aria-valuemin="0"
+                             aria-valuemax="{{ total_pending }}">
+                            0%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Payout Card -->
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card border-success shadow-lg" id="current-payout-card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">{% translate "Current Payout" %}</h4>
+                </div>
+                <div class="card-body text-center" id="payout-display">
+                    <h2 id="recipient-name" class="mb-3"></h2>
+                    <h1 id="payout-amount" class="display-3 text-primary mb-4"></h1>
+                    <div class="btn-group btn-group-lg mb-4" role="group">
+                        <button type="button"
+                                class="btn btn-primary"
+                                id="btn-open-window"
+                                title="Keyboard: O">
+                            <i class="fas fa-external-link-alt"></i> {% translate "Open Window" %} <kbd>O</kbd>
+                        </button>
+                        <button type="button"
+                                class="btn btn-info"
+                                id="btn-copy-amount"
+                                title="Keyboard: C">
+                            <i class="fas fa-copy"></i> {% translate "Copy Amount" %} <kbd>C</kbd>
+                        </button>
+                        <button type="button"
+                                class="btn btn-success"
+                                id="btn-mark-paid"
+                                title="Keyboard: M">
+                            <i class="fas fa-check"></i> {% translate "Mark Paid" %} <kbd>M</kbd>
+                        </button>
+                    </div>
+                    <div class="alert alert-info">
+                        <strong>{% translate "Workflow" %}:</strong>
+                        <ol class="text-start mb-0">
+                            <li>Press <kbd>O</kbd> to open character window in EVE</li>
+                            <li>Press <kbd>C</kbd> to copy ISK amount to clipboard</li>
+                            <li>Send ISK in EVE client (paste amount)</li>
+                            <li>Press <kbd>M</kbd> to mark as paid and move to next</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Completed Message (hidden initially) -->
+            <div class="card border-success shadow-lg d-none" id="completed-card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">{% translate "All Payments Complete!" %}</h4>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+                    <h2 class="mt-4">{% translate "Excellent work!" %}</h2>
+                    <p class="lead">
+                        {% translate "You've successfully paid out" %} <strong id="final-count"></strong> {% translate "participants" %}<br>
+                        {% translate "Total amount" %}: <strong id="final-amount"></strong> ISK
+                    </p>
+                    <p class="text-muted">
+                        {% translate "Time taken" %}: <strong id="final-time"></strong>
+                    </p>
+                    <a href="{% url 'aapayout:payout_list' loot_pool.pk %}" class="btn btn-primary btn-lg mt-3">
+                        <i class="fas fa-list"></i> {% translate "View Payout List" %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Reference -->
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card border-secondary">
+                <div class="card-header">
+                    <h5>{% translate "Keyboard Shortcuts" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4"><kbd>O</kbd></dt>
+                                <dd class="col-sm-8">{% translate "Open character window in EVE" %}</dd>
+
+                                <dt class="col-sm-4"><kbd>C</kbd></dt>
+                                <dd class="col-sm-8">{% translate "Copy ISK amount to clipboard" %}</dd>
+
+                                <dt class="col-sm-4"><kbd>M</kbd></dt>
+                                <dd class="col-sm-8">{% translate "Mark current payout as paid" %}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4"><kbd>Space</kbd></dt>
+                                <dd class="col-sm-8">{% translate "Skip to next payout" %}</dd>
+
+                                <dt class="col-sm-4"><kbd>Esc</kbd></dt>
+                                <dd class="col-sm-8">{% translate "Exit Express Mode" %}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pass data to JavaScript -->
+<script id="payouts-data" type="application/json">
+{{ pending_payouts|safe }}
+</script>
+
+<script>
+// Express Mode JavaScript
+(function() {
+    'use strict';
+
+    // Initialize payouts data
+    const payoutsData = [
+        {% for payout in pending_payouts %}
+        {
+            id: {{ payout.id }},
+            recipient_id: {{ payout.recipient.id }},
+            recipient_name: "{{ payout.recipient.name|escapejs }}",
+            amount: {{ payout.amount }},
+            is_scout: {% if payout.is_scout_payout %}true{% else %}false{% endif %}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    let currentIndex = 0;
+    let completedCount = 0;
+    let startTime = Date.now();
+
+    // Format ISK amount
+    function formatISK(amount) {
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount) + ' ISK';
+    }
+
+    // Update display with current payout
+    function displayCurrentPayout() {
+        if (currentIndex >= payoutsData.length) {
+            showCompletedScreen();
+            return;
+        }
+
+        const payout = payoutsData[currentIndex];
+
+        // Update display
+        document.getElementById('recipient-name').textContent = payout.recipient_name;
+        document.getElementById('payout-amount').textContent = formatISK(payout.amount);
+
+        // Enable buttons
+        document.getElementById('btn-open-window').disabled = false;
+        document.getElementById('btn-copy-amount').disabled = false;
+        document.getElementById('btn-mark-paid').disabled = false;
+    }
+
+    // Show completed screen
+    function showCompletedScreen() {
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        const minutes = Math.floor(elapsedSeconds / 60);
+        const seconds = elapsedSeconds % 60;
+        const timeStr = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+
+        document.getElementById('current-payout-card').classList.add('d-none');
+        document.getElementById('completed-card').classList.remove('d-none');
+        document.getElementById('final-count').textContent = completedCount;
+        document.getElementById('final-amount').textContent = formatISK(
+            payoutsData.reduce((sum, p) => sum + p.amount, 0)
+        );
+        document.getElementById('final-time').textContent = timeStr;
+    }
+
+    // Update progress
+    function updateProgress() {
+        const percentage = (completedCount / payoutsData.length) * 100;
+        const progressBar = document.getElementById('progress-bar');
+        progressBar.style.width = percentage + '%';
+        progressBar.textContent = Math.round(percentage) + '%';
+        progressBar.setAttribute('aria-valuenow', completedCount);
+
+        document.getElementById('completed-count').textContent = completedCount;
+
+        // Update time remaining
+        if (completedCount > 0) {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const avgTime = elapsed / completedCount;
+            const remaining = (payoutsData.length - completedCount) * avgTime;
+            const minutes = Math.floor(remaining / 60);
+            const seconds = Math.floor(remaining % 60);
+            document.getElementById('time-remaining').textContent =
+                `~${minutes}m ${seconds}s remaining`;
+        }
+    }
+
+    // Open character window
+    function openWindow() {
+        const payout = payoutsData[currentIndex];
+        const btn = document.getElementById('btn-open-window');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening...';
+
+        fetch(`/payout/api/payouts/${payout.id}/open-window/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check"></i> Opened!';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+            } else {
+                alert(`Failed to open window: ${data.error}`);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-external-link-alt"></i> Open Window <kbd>O</kbd>';
+            }
+        })
+        .catch(error => {
+            alert(`Error: ${error}`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-external-link-alt"></i> Open Window <kbd>O</kbd>';
+        });
+    }
+
+    // Copy amount to clipboard
+    function copyAmount() {
+        const payout = payoutsData[currentIndex];
+        const amountText = payout.amount.toFixed(2);
+
+        navigator.clipboard.writeText(amountText).then(() => {
+            const btn = document.getElementById('btn-copy-amount');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.classList.remove('btn-info');
+            btn.classList.add('btn-success');
+
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-info');
+            }, 2000);
+        }).catch(err => {
+            alert('Failed to copy to clipboard: ' + err);
+        });
+    }
+
+    // Mark payout as paid
+    function markPaid() {
+        const payout = payoutsData[currentIndex];
+        const btn = document.getElementById('btn-mark-paid');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        fetch(`/payout/api/payouts/${payout.id}/mark-paid-express/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                completedCount++;
+                currentIndex++;
+                updateProgress();
+                displayCurrentPayout();
+            } else {
+                alert(`Failed to mark as paid: ${data.error}`);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Mark Paid <kbd>M</kbd>';
+            }
+        })
+        .catch(error => {
+            alert(`Error: ${error}`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> Mark Paid <kbd>M</kbd>';
+        });
+    }
+
+    // Skip to next
+    function skipToNext() {
+        if (confirm('Skip this payout without marking as paid?')) {
+            currentIndex++;
+            displayCurrentPayout();
+        }
+    }
+
+    // Event listeners
+    document.getElementById('btn-open-window').addEventListener('click', openWindow);
+    document.getElementById('btn-copy-amount').addEventListener('click', copyAmount);
+    document.getElementById('btn-mark-paid').addEventListener('click', markPaid);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Don't trigger if typing in input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        switch(e.key.toLowerCase()) {
+            case 'o':
+                e.preventDefault();
+                if (!document.getElementById('btn-open-window').disabled) {
+                    openWindow();
+                }
+                break;
+            case 'c':
+                e.preventDefault();
+                if (!document.getElementById('btn-copy-amount').disabled) {
+                    copyAmount();
+                }
+                break;
+            case 'm':
+                e.preventDefault();
+                if (!document.getElementById('btn-mark-paid').disabled) {
+                    markPaid();
+                }
+                break;
+            case ' ':
+                e.preventDefault();
+                skipToNext();
+                break;
+            case 'escape':
+                if (confirm('Exit Express Mode?')) {
+                    window.location.href = '{% url "aapayout:payout_list" loot_pool.pk %}';
+                }
+                break;
+        }
+    });
+
+    // Initialize
+    displayCurrentPayout();
+})();
+</script>
+
+<style>
+.express-mode {
+    font-size: 1.1rem;
+}
+
+.express-mode kbd {
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+    margin-left: 0.3rem;
+}
+
+#current-payout-card {
+    min-height: 400px;
+}
+
+#payout-amount {
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.express-mode .btn-group-lg > .btn {
+    min-width: 150px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>{% translate "ESI Fleet Import Results" %}</h2>
+                <div>
+                    <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> {% translate "Back to Fleet" %}
+                    </a>
+                </div>
+            </div>
+
+            <!-- Success Summary Card -->
+            <div class="card border-success mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5><i class="fas fa-check-circle"></i> {% translate "Import Completed Successfully" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <h2 class="mb-0 text-primary">{{ esi_import.characters_found }}</h2>
+                                <small class="text-muted">{% translate "Characters Found" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <h2 class="mb-0 text-success">{{ esi_import.characters_added }}</h2>
+                                <small class="text-muted">{% translate "Added to Fleet" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <h2 class="mb-0 text-warning">{{ esi_import.characters_skipped }}</h2>
+                                <small class="text-muted">{% translate "Already in Fleet" %}</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 bg-light rounded">
+                                <h2 class="mb-0 text-info">{{ esi_import.unique_players }}</h2>
+                                <small class="text-muted">{% translate "Unique Players" %}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Details Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>{% translate "Import Details" %}</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 200px;">{% translate "Fleet" %}:</th>
+                            <td>
+                                <a href="{% url 'aapayout:fleet_detail' fleet.pk %}">{{ fleet.name }}</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>{% translate "ESI Fleet ID" %}:</th>
+                            <td><code>{{ esi_import.esi_fleet_id }}</code></td>
+                        </tr>
+                        <tr>
+                            <th>{% translate "Imported By" %}:</th>
+                            <td>{{ esi_import.imported_by.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>{% translate "Import Time" %}:</th>
+                            <td>{{ esi_import.imported_at|date:"Y-m-d H:i:s" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Character Deduplication Explanation -->
+            {% if esi_import.characters_found != esi_import.unique_players %}
+            <div class="card border-info mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5><i class="fas fa-users"></i> {% translate "Character Deduplication" %}</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        {% blocktranslate with total=esi_import.characters_found unique=esi_import.unique_players %}
+                        The import found {{ total }} characters in the ESI fleet, but identified {{ unique }} unique players.
+                        {% endblocktranslate %}
+                    </p>
+                    <p class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>{% translate "Why?" %}</strong>
+                        {% translate "Some players brought multiple characters (alts) to the fleet. The payout system automatically groups alts by main character to ensure each human player receives only one payout." %}
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Next Steps -->
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="fas fa-tasks"></i> {% translate "Next Steps" %}</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">
+                            <strong>{% translate "Review participants" %}:</strong>
+                            <a href="{% url 'aapayout:fleet_detail' fleet.pk %}#participants">
+                                {% translate "Check the participant list" %}
+                            </a>
+                            {% translate "to ensure all fleet members were imported correctly." %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>{% translate "Mark scouts" %}:</strong>
+                            {% translate "If any participants were scouts, mark them in the participant list to apply the scout bonus (+10% ISK)." %}
+                        </li>
+                        <li class="mb-2">
+                            <strong>{% translate "Add loot" %}:</strong>
+                            <a href="{% url 'aapayout:loot_create' fleet.pk %}">
+                                {% translate "Create a loot pool" %}
+                            </a>
+                            {% translate "and paste the fleet loot for valuation." %}
+                        </li>
+                        <li>
+                            <strong>{% translate "Calculate payouts" %}:</strong>
+                            {% translate "Once loot is valued and approved, the system will calculate payouts for all unique players." %}
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

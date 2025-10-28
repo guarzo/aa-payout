@@ -28,7 +28,7 @@ pip install aa-payout
 Or install directly from the repository:
 
 ```bash
-pip install git+https://github.com/yourusername/aa-payout.git
+pip install git+https://github.com/guarzo/aa-payout.git
 ```
 
 ### Step 2: Configure Alliance Auth
@@ -151,7 +151,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-For bugs, feature requests, or questions, please [open an issue](https://github.com/yourusername/aa-payout/issues) on GitHub.
+For bugs, feature requests, or questions, please [open an issue](https://github.com/guarzo/aa-payout/issues) on GitHub.
 
 ## License
 

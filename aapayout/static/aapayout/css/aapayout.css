@@ -1,0 +1,362 @@
+/**
+ * AA-Payout Stylesheet
+ * Custom styling for the Fleet Payout plugin
+ */
+
+/* ========================================
+   General Styles
+   ======================================== */
+
+.allianceauth-aapayout {
+    padding: 20px 0;
+}
+
+/* ========================================
+   Cards and Panels
+   ======================================== */
+
+.card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: 600;
+}
+
+/* Status badges */
+.badge {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.625rem;
+}
+
+/* ========================================
+   Tables
+   ======================================== */
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.table tfoot {
+    font-weight: 600;
+    border-top: 2px solid #dee2e6;
+}
+
+/* Monetary values */
+.table td.text-end,
+.table th.text-end {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ========================================
+   Forms
+   ======================================== */
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Loot text area styling */
+.font-monospace {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+}
+
+textarea.font-monospace {
+    line-height: 1.5;
+}
+
+/* ========================================
+   Character Autocomplete
+   ======================================== */
+
+#character-suggestions {
+    max-width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#character-suggestions .list-group-item {
+    cursor: pointer;
+}
+
+#character-suggestions .list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+/* ========================================
+   ISK Formatting
+   ======================================== */
+
+.isk-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.isk-large {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+/* ========================================
+   Status Badges
+   ======================================== */
+
+.badge.bg-draft {
+    background-color: #6c757d !important;
+}
+
+.badge.bg-valuing {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge.bg-valued {
+    background-color: #0dcaf0 !important;
+    color: #000 !important;
+}
+
+.badge.bg-approved {
+    background-color: #198754 !important;
+}
+
+.badge.bg-paid {
+    background-color: #0d6efd !important;
+}
+
+/* ========================================
+   Dashboard
+   ======================================== */
+
+.dashboard-summary .card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.dashboard-summary .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ========================================
+   Fleet Detail
+   ======================================== */
+
+.fleet-participants .participant-active {
+    background-color: #d1e7dd;
+}
+
+.fleet-participants .participant-left {
+    background-color: #f8d7da;
+    opacity: 0.7;
+}
+
+/* ========================================
+   Loot Pool Detail
+   ======================================== */
+
+.loot-item-manual-override {
+    background-color: #fff3cd;
+}
+
+.loot-item-table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* ========================================
+   Payout Management
+   ======================================== */
+
+.payout-pending {
+    border-left: 4px solid #ffc107;
+}
+
+.payout-paid {
+    border-left: 4px solid #198754;
+}
+
+.payout-failed {
+    border-left: 4px solid #dc3545;
+}
+
+/* ========================================
+   Buttons
+   ======================================== */
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn .fas,
+.btn .fa {
+    margin-right: 0.25rem;
+}
+
+/* ========================================
+   Loading States
+   ======================================== */
+
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: "";
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spinner-border 0.75s linear infinite;
+    margin-left: 0.5rem;
+}
+
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ========================================
+   Alerts and Messages
+   ======================================== */
+
+.alert {
+    border-radius: 0.375rem;
+}
+
+.alert i {
+    margin-right: 0.5rem;
+}
+
+/* ========================================
+   Raw Loot Text Display
+   ======================================== */
+
+pre.loot-raw-text {
+    background-color: #2d2d2d;
+    color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* ========================================
+   Pagination
+   ======================================== */
+
+.pagination {
+    margin-top: 1.5rem;
+}
+
+.pagination .page-link {
+    color: #0d6efd;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* ========================================
+   Responsive Adjustments
+   ======================================== */
+
+@media (max-width: 768px) {
+    .card-body {
+        padding: 1rem;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.125rem 0.25rem;
+        font-size: 0.75rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    .display-6 {
+        font-size: 2rem;
+    }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+    .btn,
+    .pagination,
+    .card-header .dropdown,
+    .no-print {
+        display: none !important;
+    }
+
+    .card {
+        box-shadow: none;
+        border: 1px solid #dee2e6;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+}
+
+/* ========================================
+   Utilities
+   ======================================== */
+
+.text-monospace {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.text-nowrap {
+    white-space: nowrap;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Small helper for right-aligned numeric columns */
+.numeric-column {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Highlight current user's payouts */
+.highlight-self {
+    background-color: #cfe2ff;
+}
