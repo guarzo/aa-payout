@@ -54,7 +54,7 @@ def dashboard(request):
     pending_payouts = []
     if main_character:
         pending_payouts = Payout.objects.filter(
-            recipient__character_id=main_character.character_id,
+            recipient__id=main_character.character_id,
             status=constants.PAYOUT_STATUS_PENDING,
         ).select_related("loot_pool", "loot_pool__fleet")[:10]
 

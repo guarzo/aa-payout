@@ -16,5 +16,5 @@ __pycache__
 alliance_auth.sqlite3
 
 # Claude Code settings
-.claude/
+.claude
 plans
