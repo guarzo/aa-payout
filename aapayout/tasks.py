@@ -36,34 +36,47 @@ def appraise_loot_pool(loot_pool_id: int):
         Dict with results or error information
     """
     try:
-        logger.info(f"Starting appraisal for loot pool {loot_pool_id}")
+        logger.info(f"[Task] Starting appraisal for loot pool {loot_pool_id}")
 
         # Get loot pool
         loot_pool = LootPool.objects.get(id=loot_pool_id)
+        logger.info(f"[Task] Found loot pool {loot_pool_id}: '{loot_pool.name}'")
+        logger.info(f"[Task] Current status: {loot_pool.status}")
 
         # Update status to valuing
         loot_pool.status = constants.LOOT_STATUS_VALUING
         loot_pool.save()
+        logger.info(f"[Task] Updated status to VALUING for loot pool {loot_pool_id}")
 
         # Get raw loot text
         loot_text = loot_pool.raw_loot_text
+        logger.info(f"[Task] Raw loot text length: {len(loot_text) if loot_text else 0} chars")
 
         if not loot_text or not loot_text.strip():
-            raise ValueError("Loot pool has no loot text to appraise")
+            error_msg = "Loot pool has no loot text to appraise"
+            logger.error(f"[Task] {error_msg} for loot pool {loot_pool_id}")
+            raise ValueError(error_msg)
+
+        # Log first 200 chars of loot text for debugging
+        logger.debug(f"[Task] Loot text preview: {loot_text[:200]}")
 
         # Call Janice API
-        logger.info(f"Calling Janice API for loot pool {loot_pool_id}")
+        logger.info(f"[Task] Calling Janice API for loot pool {loot_pool_id}")
         appraisal_data = JaniceService.appraise(loot_text)
+        logger.info(f"[Task] Janice API returned {len(appraisal_data.get('items', []))} items")
 
         # Create LootItem records
+        logger.info(f"[Task] Creating loot items from appraisal data")
         items_created = create_loot_items_from_appraisal(loot_pool, appraisal_data)
+        logger.info(f"[Task] Created {items_created} loot items")
 
         # Update valued_at timestamp
         loot_pool.valued_at = timezone.now()
         loot_pool.save()
+        logger.info(f"[Task] Updated valued_at timestamp")
 
         logger.info(
-            f"Successfully appraised loot pool {loot_pool_id}: "
+            f"[Task] Successfully appraised loot pool {loot_pool_id}: "
             f"{items_created} items, "
             f"total value {loot_pool.total_value:,.2f} ISK"
         )
@@ -77,34 +90,36 @@ def appraise_loot_pool(loot_pool_id: int):
 
     except LootPool.DoesNotExist:
         error_msg = f"Loot pool {loot_pool_id} does not exist"
-        logger.error(error_msg)
+        logger.error(f"[Task] {error_msg}")
         return {"success": False, "error": error_msg}
 
     except JaniceAPIError as e:
         error_msg = f"Janice API error for loot pool {loot_pool_id}: {str(e)}"
-        logger.error(error_msg)
+        logger.error(f"[Task] {error_msg}")
 
         # Update loot pool status back to draft on API error
         try:
             loot_pool = LootPool.objects.get(id=loot_pool_id)
+            logger.info(f"[Task] Reverting loot pool {loot_pool_id} status to DRAFT due to API error")
             loot_pool.status = constants.LOOT_STATUS_DRAFT
             loot_pool.save()
-        except Exception:
-            pass
+        except Exception as revert_error:
+            logger.error(f"[Task] Failed to revert status for loot pool {loot_pool_id}: {revert_error}")
 
         return {"success": False, "error": str(e)}
 
     except Exception as e:
         error_msg = f"Unexpected error appraising loot pool {loot_pool_id}: {str(e)}"
-        logger.exception(error_msg)
+        logger.exception(f"[Task] {error_msg}")
 
         # Update loot pool status back to draft on unexpected error
         try:
             loot_pool = LootPool.objects.get(id=loot_pool_id)
+            logger.info(f"[Task] Reverting loot pool {loot_pool_id} status to DRAFT due to unexpected error")
             loot_pool.status = constants.LOOT_STATUS_DRAFT
             loot_pool.save()
-        except Exception:
-            pass
+        except Exception as revert_error:
+            logger.error(f"[Task] Failed to revert status for loot pool {loot_pool_id}: {revert_error}")
 
         return {"success": False, "error": str(e)}
 

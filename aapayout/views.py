@@ -319,6 +319,9 @@ def participant_remove(request, pk):
 @permission_required("aapayout.basic_access")
 def loot_create(request, fleet_id):
     """Create a loot pool for a fleet"""
+    # AA Payout
+    from aapayout import app_settings
+
     fleet = get_object_or_404(Fleet, pk=fleet_id)
 
     # Check permissions
@@ -326,19 +329,46 @@ def loot_create(request, fleet_id):
         messages.error(request, "You don't have permission to edit this fleet")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
+    # Warn if Janice API key is not configured
+    if not app_settings.AAPAYOUT_JANICE_API_KEY:
+        messages.warning(
+            request,
+            "Janice API key is not configured. Loot valuation will not work. "
+            "Please contact your administrator to set AAPAYOUT_JANICE_API_KEY in settings.",
+        )
+
     if request.method == "POST":
         form = LootPoolCreateForm(request.POST)
         if form.is_valid():
             loot_pool = form.save(commit=False)
             loot_pool.fleet = fleet
             loot_pool.status = constants.LOOT_STATUS_DRAFT
+
+            logger.info(f"Creating loot pool '{loot_pool.name}' for fleet {fleet.id}")
+            logger.info(f"Raw loot text length: {len(loot_pool.raw_loot_text) if loot_pool.raw_loot_text else 0} chars")
+
             loot_pool.save()
+            logger.info(f"Loot pool {loot_pool.id} saved to database")
 
-            # Trigger async appraisal
-            appraise_loot_pool.delay(loot_pool.id)
+            # Trigger appraisal (async if Celery is available, sync otherwise)
+            try:
+                # Try async first
+                logger.info(f"Triggering async appraisal task for loot pool {loot_pool.id}")
+                task = appraise_loot_pool.delay(loot_pool.id)
+                logger.info(f"Celery task {task.id} queued for loot pool {loot_pool.id}")
+                messages.success(request, "Loot pool created! Valuation in progress, this may take a few moments...")
+            except Exception as e:
+                # If Celery isn't available, run synchronously
+                logger.warning(f"Celery not available, running appraisal synchronously: {e}")
+                result = appraise_loot_pool(loot_pool.id)
+                if result.get("success"):
+                    messages.success(request, "Loot pool created and valued successfully!")
+                else:
+                    messages.error(request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}")
 
-            messages.success(request, "Loot pool created! Valuation in progress, this may take a few moments...")
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+        else:
+            logger.warning(f"Loot pool form validation failed for fleet {fleet.id}: {form.errors}")
     else:
         form = LootPoolCreateForm()
 
@@ -911,21 +941,6 @@ def fleet_import(request, pk):
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
-        form_data = request.POST
-
-        # Get ESI fleet ID from form
-        esi_fleet_id = form_data.get("esi_fleet_id")
-
-        if not esi_fleet_id:
-            messages.error(request, "Please provide an ESI fleet ID.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
-
-        try:
-            esi_fleet_id = int(esi_fleet_id)
-        except ValueError:
-            messages.error(request, "Invalid ESI fleet ID. Must be a number.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
-
         # Get user's ESI token with required scope
         try:
             token = (
@@ -949,6 +964,26 @@ def fleet_import(request, pk):
             logger.error(f"Failed to get ESI token for user {request.user.id}: {e}")
             messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
             return redirect("aapayout:fleet_import", pk=fleet.pk)
+
+        # Get FC's main character ID
+        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+        if not fc_character:
+            messages.error(request, "You don't have a main character set.")
+            return redirect("aapayout:fleet_import", pk=fleet.pk)
+
+        # Get the fleet ID the FC is currently in
+        logger.info(f"Checking if character {fc_character.character_id} is in a fleet")
+        esi_fleet_id = esi_fleet_service.get_character_fleet_id(fc_character.character_id, token)
+
+        if not esi_fleet_id:
+            messages.error(
+                request,
+                "You are not currently in a fleet in EVE Online. "
+                "Please join a fleet and try again.",
+            )
+            return redirect("aapayout:fleet_import", pk=fleet.pk)
+
+        logger.info(f"FC is in fleet {esi_fleet_id}, importing members")
 
         # Import fleet composition from ESI
         member_data, error = esi_fleet_service.import_fleet_composition(esi_fleet_id, token)

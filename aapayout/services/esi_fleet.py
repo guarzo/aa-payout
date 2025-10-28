@@ -25,6 +25,35 @@ class ESIFleetService:
     """Service for interacting with ESI Fleet endpoints"""
 
     @staticmethod
+    def get_character_fleet_id(character_id: int, token: Token) -> Optional[int]:
+        """
+        Get the fleet ID that a character is currently in
+
+        Args:
+            character_id: EVE character ID
+            token: ESI token with esi-fleets.read_fleet.v1 scope
+
+        Returns:
+            Fleet ID if character is in a fleet, None otherwise
+        """
+        try:
+            result = esi.client.Fleets.get_characters_character_id_fleet(
+                character_id=character_id, token=token.valid_access_token()
+            ).results()
+
+            fleet_id = result.get('fleet_id')
+            if fleet_id:
+                logger.info(f"Character {character_id} is in fleet {fleet_id}")
+            else:
+                logger.info(f"Character {character_id} is not in a fleet")
+
+            return fleet_id
+
+        except Exception as e:
+            logger.warning(f"Character {character_id} is not in a fleet or error occurred: {e}")
+            return None
+
+    @staticmethod
     def get_fleet_info(fleet_id: int, token: Token) -> Optional[Dict]:
         """
         Get fleet information from ESI

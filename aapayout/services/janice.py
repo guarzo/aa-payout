@@ -71,9 +71,12 @@ class JaniceService:
 
         try:
             logger.info(
-                f"Calling Janice API for {len(loot_text.splitlines())} items "
-                f"(market: {app_settings.AAPAYOUT_JANICE_MARKET})"
+                f"[Janice] Calling Janice API for {len(loot_text.splitlines())} lines "
+                f"(market: {app_settings.AAPAYOUT_JANICE_MARKET}, "
+                f"price_type: {app_settings.AAPAYOUT_JANICE_PRICE_TYPE})"
             )
+            logger.debug(f"[Janice] API URL: {url}")
+            logger.debug(f"[Janice] Loot text preview: {loot_text[:200]}")
 
             response = requests.post(
                 url,
@@ -83,26 +86,35 @@ class JaniceService:
                 timeout=app_settings.AAPAYOUT_JANICE_TIMEOUT,
             )
 
+            logger.info(f"[Janice] API response status: {response.status_code}")
+
             # Check for errors
             if response.status_code == 401:
+                logger.error("[Janice] Invalid API key (401 Unauthorized)")
                 raise JaniceAPIError("Invalid Janice API key")
             elif response.status_code == 429:
+                logger.error("[Janice] Rate limit exceeded (429)")
                 raise JaniceAPIError("Janice API rate limit exceeded")
             elif response.status_code >= 500:
+                logger.error(f"[Janice] Server error: {response.status_code}")
                 raise JaniceAPIError(f"Janice API server error: {response.status_code}")
 
             response.raise_for_status()
 
             # Parse response
             items_data = response.json()
+            logger.info(f"[Janice] Received response with {len(items_data) if isinstance(items_data, list) else 0} items")
 
             if not isinstance(items_data, list):
+                logger.error(f"[Janice] Unexpected response format: {type(items_data)}")
                 raise JaniceAPIError("Unexpected API response format")
 
             # Process response
             price_key = f"{app_settings.AAPAYOUT_JANICE_PRICE_TYPE}Price"
             processed_items = []
             total_value = Decimal("0.00")
+
+            logger.info(f"[Janice] Processing {len(items_data)} items using price key: {price_key}")
 
             for item in items_data:
                 try:
@@ -125,7 +137,7 @@ class JaniceService:
                     total_value += item_total_value
 
                 except (KeyError, ValueError, TypeError) as e:
-                    logger.warning(f"Failed to process item in response: {e}")
+                    logger.warning(f"[Janice] Failed to process item in response: {e}, item data: {item}")
                     continue
 
             # Build result with metadata
@@ -143,20 +155,21 @@ class JaniceService:
             # Cache for configured hours
             cache_seconds = app_settings.AAPAYOUT_JANICE_CACHE_HOURS * 3600
             cache.set(cache_key, result, cache_seconds)
+            logger.debug(f"[Janice] Cached result for {cache_seconds} seconds")
 
             logger.info(
-                f"Successfully appraised {len(processed_items)} items " f"(total value: {total_value:,.2f} ISK)"
+                f"[Janice] Successfully appraised {len(processed_items)} items " f"(total value: {total_value:,.2f} ISK)"
             )
 
             return result
 
         except requests.exceptions.Timeout:
-            logger.error("Janice API request timed out")
+            logger.error(f"[Janice] API request timed out after {app_settings.AAPAYOUT_JANICE_TIMEOUT} seconds")
             raise JaniceAPIError(
                 f"Janice API request timed out after " f"{app_settings.AAPAYOUT_JANICE_TIMEOUT} seconds"
             )
-        except requests.exceptions.ConnectionError:
-            logger.error("Failed to connect to Janice API")
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"[Janice] Failed to connect to Janice API: {e}")
             raise JaniceAPIError("Failed to connect to Janice API. Please try again later.")
         except requests.exceptions.RequestException as e:
             logger.error(f"Janice API request failed: {str(e)}")
