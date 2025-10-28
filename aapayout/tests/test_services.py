@@ -2,13 +2,16 @@
 Tests for AA-Payout services (Janice API)
 """
 
+# Standard Library
 from unittest.mock import Mock, patch
 
+# Django
 from django.core.cache import cache
 from django.test import TestCase
 
+# AA Payout
 from aapayout import app_settings
-from aapayout.services.janice import JaniceService, JaniceAPIError
+from aapayout.services.janice import JaniceAPIError, JaniceService
 
 
 class JaniceServiceTest(TestCase):
@@ -121,6 +124,7 @@ class JaniceServiceTest(TestCase):
     @patch("aapayout.services.janice.requests.post")
     def test_appraise_timeout(self, mock_post):
         """Test handling timeout"""
+        # Third Party
         import requests
 
         # Mock timeout

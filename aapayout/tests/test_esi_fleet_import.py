@@ -4,18 +4,21 @@ Tests for ESI Fleet Import
 Phase 2: Week 3-4 - ESI Fleet Import
 """
 
-from datetime import datetime
-from decimal import Decimal
+# Standard Library
 from unittest.mock import MagicMock, patch
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+# Alliance Auth (External Libs)
+from eveuniverse.models import EveEntity
+
+# AA Payout
 from aapayout import constants
 from aapayout.models import ESIFleetImport, Fleet, FleetParticipant
 from aapayout.services.esi_fleet import esi_fleet_service
-from eveuniverse.models import EveEntity
 
 
 class ESIFleetServiceTests(TestCase):
@@ -25,6 +28,7 @@ class ESIFleetServiceTests(TestCase):
     def setUpTestData(cls):
         """Set up test data"""
         # Create test entities using get_or_create_esi with mock
+        # Standard Library
         from unittest.mock import patch
 
         with patch("eveuniverse.models.esi"):
@@ -169,10 +173,7 @@ class ESIFleetImportModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
-        cls.user = User.objects.create_user(
-            username="testuser",
-            password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -210,7 +211,7 @@ class ESIFleetImportModelTests(TestCase):
 
         str_repr = str(esi_import)
         self.assertIn("Test Fleet", str_repr)
-        self.assertIn(esi_import.imported_at.strftime('%Y-%m-%d'), str_repr)
+        self.assertIn(esi_import.imported_at.strftime("%Y-%m-%d"), str_repr)
 
 
 class ESIFleetImportIntegrationTests(TestCase):
@@ -219,10 +220,7 @@ class ESIFleetImportIntegrationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
-        cls.user = User.objects.create_user(
-            username="fc_user",
-            password="testpass"
-        )
+        cls.user = User.objects.create_user(username="fc_user", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Integration Test Fleet",
@@ -233,6 +231,7 @@ class ESIFleetImportIntegrationTests(TestCase):
         )
 
         # Create test characters using mock
+        # Standard Library
         from unittest.mock import patch
 
         with patch("eveuniverse.models.esi"):
@@ -252,8 +251,6 @@ class ESIFleetImportIntegrationTests(TestCase):
     @patch("aapayout.services.esi_fleet.esi_fleet_service.import_fleet_composition")
     def test_full_import_workflow(self, mock_import):
         """Test complete import workflow from ESI to participants"""
-        from aapayout.helpers import get_main_character_for_participant
-
         # Mock ESI import response
         mock_import.return_value = (
             [
@@ -273,7 +270,7 @@ class ESIFleetImportIntegrationTests(TestCase):
                     "join_time": timezone.now(),
                 },
             ],
-            None  # No error
+            None,  # No error
         )
 
         # Simulate import process (from view logic)

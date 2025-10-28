@@ -17,7 +17,9 @@ from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 
 INSTALLED_APPS = [
-    "allianceauth",  # needs to be on top of this list to support favicons in Django admin (see https://gitlab.com/allianceauth/allianceauth/-/issues/1301)
+    # needs to be on top of this list to support favicons in Django admin
+    # (see https://gitlab.com/allianceauth/allianceauth/-/issues/1301)
+    "allianceauth",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

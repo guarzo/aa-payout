@@ -2,12 +2,14 @@
 Forms for AA-Payout
 """
 
+# Django
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
+# AA Payout
 from aapayout import app_settings, constants
-from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool, Payout
+from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool
 
 
 class FleetCreateForm(forms.ModelForm):
@@ -17,27 +19,37 @@ class FleetCreateForm(forms.ModelForm):
         model = Fleet
         fields = ["name", "doctrine", "location", "fleet_time", "notes"]
         widgets = {
-            "name": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "e.g., Wormhole Gank Fleet",
-            }),
-            "doctrine": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "e.g., Stealth Bombers (optional)",
-            }),
-            "location": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "e.g., J123456",
-            }),
-            "fleet_time": forms.DateTimeInput(attrs={
-                "class": "form-control",
-                "type": "datetime-local",
-            }),
-            "notes": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 3,
-                "placeholder": "Additional notes about the fleet (optional)",
-            }),
+            "name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Wormhole Gank Fleet",
+                }
+            ),
+            "doctrine": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Stealth Bombers (optional)",
+                }
+            ),
+            "location": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., J123456",
+                }
+            ),
+            "fleet_time": forms.DateTimeInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "datetime-local",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Additional notes about the fleet (optional)",
+                }
+            ),
         }
         help_texts = {
             "fleet_time": "Date and time of the fleet operation",
@@ -60,14 +72,18 @@ class FleetEditForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"class": "form-control"}),
             "doctrine": forms.TextInput(attrs={"class": "form-control"}),
             "location": forms.TextInput(attrs={"class": "form-control"}),
-            "fleet_time": forms.DateTimeInput(attrs={
-                "class": "form-control",
-                "type": "datetime-local",
-            }),
-            "notes": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 3,
-            }),
+            "fleet_time": forms.DateTimeInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "datetime-local",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                }
+            ),
         }
 
 
@@ -76,11 +92,13 @@ class ParticipantAddForm(forms.ModelForm):
 
     character_name = forms.CharField(
         max_length=200,
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "Start typing character name...",
-            "autocomplete": "off",
-        }),
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Start typing character name...",
+                "autocomplete": "off",
+            }
+        ),
         help_text="Type to search for characters in the database",
     )
 
@@ -89,14 +107,18 @@ class ParticipantAddForm(forms.ModelForm):
         fields = ["role", "joined_at", "notes"]
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
-            "joined_at": forms.DateTimeInput(attrs={
-                "class": "form-control",
-                "type": "datetime-local",
-            }),
-            "notes": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 2,
-            }),
+            "joined_at": forms.DateTimeInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "datetime-local",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 2,
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
@@ -114,18 +136,24 @@ class ParticipantEditForm(forms.ModelForm):
         fields = ["role", "joined_at", "left_at", "notes"]
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
-            "joined_at": forms.DateTimeInput(attrs={
-                "class": "form-control",
-                "type": "datetime-local",
-            }),
-            "left_at": forms.DateTimeInput(attrs={
-                "class": "form-control",
-                "type": "datetime-local",
-            }),
-            "notes": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 2,
-            }),
+            "joined_at": forms.DateTimeInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "datetime-local",
+                }
+            ),
+            "left_at": forms.DateTimeInput(
+                attrs={
+                    "class": "form-control",
+                    "type": "datetime-local",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 2,
+                }
+            ),
         }
 
     def clean(self):
@@ -146,22 +174,31 @@ class LootPoolCreateForm(forms.ModelForm):
         model = LootPool
         fields = ["name", "raw_loot_text", "pricing_method", "corp_share_percentage"]
         widgets = {
-            "name": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "e.g., Main Wreck Loot",
-            }),
-            "raw_loot_text": forms.Textarea(attrs={
-                "class": "form-control font-monospace",
-                "rows": 10,
-                "placeholder": "Paste loot from EVE client here...\n\nExample:\nCompressed Arkonor\t1000\nCompressed Bistot\t500",
-            }),
+            "name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "e.g., Main Wreck Loot",
+                }
+            ),
+            "raw_loot_text": forms.Textarea(
+                attrs={
+                    "class": "form-control font-monospace",
+                    "rows": 10,
+                    "placeholder": (
+                        "Paste loot from EVE client here...\n\n"
+                        "Example:\nCompressed Arkonor\t1000\nCompressed Bistot\t500"
+                    ),
+                }
+            ),
             "pricing_method": forms.Select(attrs={"class": "form-select"}),
-            "corp_share_percentage": forms.NumberInput(attrs={
-                "class": "form-control",
-                "min": "0",
-                "max": "100",
-                "step": "0.01",
-            }),
+            "corp_share_percentage": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": "0",
+                    "max": "100",
+                    "step": "0.01",
+                }
+            ),
         }
         help_texts = {
             "raw_loot_text": "Paste items directly from EVE client inventory",
@@ -194,16 +231,20 @@ class LootItemEditForm(forms.ModelForm):
         model = LootItem
         fields = ["unit_price", "notes"]
         widgets = {
-            "unit_price": forms.NumberInput(attrs={
-                "class": "form-control",
-                "min": "0",
-                "step": "0.01",
-            }),
-            "notes": forms.Textarea(attrs={
-                "class": "form-control",
-                "rows": 2,
-                "placeholder": "Reason for manual override (optional)",
-            }),
+            "unit_price": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": "0",
+                    "step": "0.01",
+                }
+            ),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 2,
+                    "placeholder": "Reason for manual override (optional)",
+                }
+            ),
         }
         help_texts = {
             "unit_price": "Price per unit in ISK",
@@ -224,10 +265,12 @@ class LootPoolApproveForm(forms.Form):
         min_value=0,
         max_value=100,
         decimal_places=2,
-        widget=forms.NumberInput(attrs={
-            "class": "form-control",
-            "step": "0.01",
-        }),
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "step": "0.01",
+            }
+        ),
         help_text="Percentage of loot value that goes to the corporation",
     )
 
@@ -258,20 +301,24 @@ class PayoutMarkPaidForm(forms.Form):
     transaction_reference = forms.CharField(
         max_length=200,
         required=False,
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "Contract ID, transaction reference, etc. (optional)",
-        }),
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Contract ID, transaction reference, etc. (optional)",
+            }
+        ),
         help_text="Any reference to help track this payment",
     )
 
     notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={
-            "class": "form-control",
-            "rows": 2,
-            "placeholder": "Additional notes (optional)",
-        }),
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 2,
+                "placeholder": "Additional notes (optional)",
+            }
+        ),
     )
 
 
@@ -292,20 +339,24 @@ class BulkPayoutMarkPaidForm(forms.Form):
     transaction_reference = forms.CharField(
         max_length=200,
         required=False,
-        widget=forms.TextInput(attrs={
-            "class": "form-control",
-            "placeholder": "Bulk payment reference (optional)",
-        }),
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Bulk payment reference (optional)",
+            }
+        ),
         help_text="Reference for all selected payments",
     )
 
     notes = forms.CharField(
         required=False,
-        widget=forms.Textarea(attrs={
-            "class": "form-control",
-            "rows": 2,
-            "placeholder": "Notes for all selected payments (optional)",
-        }),
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 2,
+                "placeholder": "Notes for all selected payments (optional)",
+            }
+        ),
     )
 
     def clean_payout_ids(self):

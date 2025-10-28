@@ -2,14 +2,17 @@
 Helper functions for AA-Payout
 """
 
+# Standard Library
 import logging
-from decimal import Decimal, ROUND_DOWN
+from decimal import ROUND_DOWN, Decimal
 from typing import Dict, List
 
+# Django
 from django.db import transaction
 
+# AA Payout
 from aapayout import app_settings, constants
-from aapayout.models import Fleet, LootItem, LootPool, Payout
+from aapayout.models import LootItem, LootPool, Payout
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +65,7 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     user_groups = deduplicate_participants(participants)
 
     # Count eligible players (not excluded)
-    eligible_players = [
-        group for group in user_groups.values() if not group["excluded"]
-    ]
+    eligible_players = [group for group in user_groups.values() if not group["excluded"]]
     player_count = len(eligible_players)
 
     if player_count == 0:
@@ -81,15 +82,11 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     participant_pool = total_value - corp_share_amount
 
     # Calculate base share per eligible player (even split)
-    base_share = (participant_pool / player_count).quantize(
-        Decimal("0.01"), rounding=ROUND_DOWN
-    )
+    base_share = (participant_pool / player_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
     # Phase 2 Week 5: Calculate scout bonus (+10% of base share)
     scout_bonus_percentage = Decimal(str(app_settings.AAPAYOUT_SCOUT_BONUS_PERCENTAGE))
-    scout_bonus = (base_share * scout_bonus_percentage / Decimal("100")).quantize(
-        Decimal("0.01"), rounding=ROUND_DOWN
-    )
+    scout_bonus = (base_share * scout_bonus_percentage / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
     # Build payout list and calculate actual total distributed
     payouts = []
@@ -99,9 +96,7 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     for user_data in user_groups.values():
         # Skip excluded players
         if user_data["excluded"]:
-            logger.info(
-                f"Skipping excluded player {user_data['main_character'].name}"
-            )
+            logger.info(f"Skipping excluded player {user_data['main_character'].name}")
             continue
 
         # Calculate payout amount (base share + scout bonus if applicable)
@@ -113,18 +108,18 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
 
         # Check minimum payout
         if payout_amount >= app_settings.AAPAYOUT_MINIMUM_PAYOUT:
-            share_pct = (payout_amount / total_value * Decimal("100")).quantize(
-                Decimal("0.01")
+            share_pct = (payout_amount / total_value * Decimal("100")).quantize(Decimal("0.01"))
+            payouts.append(
+                {
+                    "character": user_data["main_character"],
+                    "amount": payout_amount,
+                    "base_share": base_share,
+                    "scout_bonus": scout_bonus if user_data["is_scout"] else Decimal("0.00"),
+                    "share_percentage": share_pct,
+                    "is_scout": user_data["is_scout"],
+                    "alt_characters": [p.character for p in user_data["participants"]],
+                }
             )
-            payouts.append({
-                "character": user_data["main_character"],
-                "amount": payout_amount,
-                "base_share": base_share,
-                "scout_bonus": scout_bonus if user_data["is_scout"] else Decimal("0.00"),
-                "share_percentage": share_pct,
-                "is_scout": user_data["is_scout"],
-                "alt_characters": [p.character for p in user_data["participants"]],
-            })
             total_distributed += payout_amount
         else:
             logger.info(
@@ -220,6 +215,7 @@ def search_characters(query: str, limit: int = 20):
     Returns:
         QuerySet of EveEntity objects
     """
+    # Alliance Auth (External Libs)
     from eveuniverse.models import EveEntity
 
     if not query or len(query) < 2:
@@ -229,7 +225,9 @@ def search_characters(query: str, limit: int = 20):
     return EveEntity.objects.filter(
         name__icontains=query,
         category_id=1,  # Characters only
-    ).order_by("name")[:limit]
+    ).order_by(
+        "name"
+    )[:limit]
 
 
 def get_main_character(user):
@@ -242,8 +240,6 @@ def get_main_character(user):
     Returns:
         EveCharacter instance or None
     """
-    from allianceauth.eveonline.models import EveCharacter
-
     try:
         # Get main character via Alliance Auth's profile system
         if hasattr(user, "profile") and user.profile.main_character:
@@ -267,8 +263,11 @@ def get_main_character_for_participant(participant):
     Returns:
         EveEntity: Main character (EveEntity instance)
     """
+    # Alliance Auth
     from allianceauth.authentication.models import OwnershipRecord
     from allianceauth.eveonline.models import EveCharacter
+
+    # Alliance Auth (External Libs)
     from eveuniverse.models import EveEntity
 
     # If main_character is already set, use it
@@ -277,15 +276,11 @@ def get_main_character_for_participant(participant):
 
     try:
         # Try to get the EveCharacter for this entity
-        eve_character = EveCharacter.objects.filter(
-            character_id=participant.character.id
-        ).first()
+        eve_character = EveCharacter.objects.filter(character_id=participant.character.id).first()
 
         if eve_character:
             # Get the user who owns this character via OwnershipRecord
-            ownership = OwnershipRecord.objects.filter(
-                character=eve_character
-            ).first()
+            ownership = OwnershipRecord.objects.filter(character=eve_character).first()
 
             if ownership and ownership.user:
                 # Get the user's main character
@@ -293,20 +288,14 @@ def get_main_character_for_participant(participant):
 
                 if main_character:
                     # Convert EveCharacter to EveEntity
-                    main_entity = EveEntity.objects.get_or_create_esi(
-                        id=main_character.character_id
-                    )[0]
+                    main_entity = EveEntity.objects.get_or_create_esi(id=main_character.character_id)[0]
                     return main_entity
 
     except Exception as e:
-        logger.warning(
-            f"Failed to get main character for participant {participant.id}: {e}"
-        )
+        logger.warning(f"Failed to get main character for participant {participant.id}: {e}")
 
     # Fallback: return the participant's character itself
-    logger.debug(
-        f"Using participant character as main for {participant.character.name}"
-    )
+    logger.debug(f"Using participant character as main for {participant.character.name}")
     return participant.character
 
 
@@ -363,10 +352,7 @@ def deduplicate_participants(participants):
         if participant.excluded_from_payout:
             user_groups[main_char.id]["excluded"] = True
 
-    logger.info(
-        f"Deduplicated {len(participants)} participants into "
-        f"{len(user_groups)} unique players"
-    )
+    logger.info(f"Deduplicated {len(participants)} participants into " f"{len(user_groups)} unique players")
 
     return user_groups
 

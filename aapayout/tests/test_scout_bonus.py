@@ -4,17 +4,21 @@ Tests for Scout Bonus Calculations
 Phase 2: Week 5 - Scout Bonus Calculation
 """
 
+# Standard Library
 from decimal import Decimal
-from unittest.mock import patch
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+# Alliance Auth (External Libs)
+from eveuniverse.models import EveEntity
+
+# AA Payout
 from aapayout import app_settings, constants
 from aapayout.helpers import calculate_payouts, create_payouts
 from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
-from eveuniverse.models import EveEntity
 
 
 class ScoutBonusCalculationTests(TestCase):
@@ -23,10 +27,7 @@ class ScoutBonusCalculationTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
-        cls.user = User.objects.create_user(
-            username="testuser",
-            password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -353,9 +354,7 @@ class ScoutBonusCalculationTests(TestCase):
 
         # Verify using configured percentage
         scout_bonus_pct = Decimal(str(app_settings.AAPAYOUT_SCOUT_BONUS_PERCENTAGE))
-        calculated_bonus = (expected_base * scout_bonus_pct / Decimal("100")).quantize(
-            Decimal("0.01")
-        )
+        calculated_bonus = (expected_base * scout_bonus_pct / Decimal("100")).quantize(Decimal("0.01"))
         self.assertEqual(calculated_bonus, expected_bonus)
 
     def test_excluded_participants_no_scout_bonus(self):

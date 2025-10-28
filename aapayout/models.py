@@ -8,9 +8,11 @@ from django.db import models
 from django.urls import reverse
 from django.utils import timezone
 
+# Alliance Auth (External Libs)
 # EVE Universe
 from eveuniverse.models import EveEntity
 
+# AA Payout
 # AA-Payout
 from aapayout import constants
 
@@ -44,9 +46,7 @@ class Fleet(models.Model):
         related_name="commanded_fleets",
         help_text="Fleet commander",
     )
-    doctrine = models.CharField(
-        max_length=100, blank=True, help_text="Fleet doctrine (optional)"
-    )
+    doctrine = models.CharField(max_length=100, blank=True, help_text="Fleet doctrine (optional)")
     location = models.CharField(max_length=200, help_text="Primary operation location")
     fleet_time = models.DateTimeField(help_text="Fleet operation time")
     status = models.CharField(
@@ -75,17 +75,11 @@ class Fleet(models.Model):
 
     def can_edit(self, user):
         """Check if user can edit this fleet"""
-        return (
-            self.fleet_commander == user
-            or user.has_perm("aapayout.manage_all_fleets")
-        )
+        return self.fleet_commander == user or user.has_perm("aapayout.manage_all_fleets")
 
     def can_delete(self, user):
         """Check if user can delete this fleet"""
-        return (
-            self.fleet_commander == user
-            or user.has_perm("aapayout.manage_all_fleets")
-        )
+        return self.fleet_commander == user or user.has_perm("aapayout.manage_all_fleets")
 
     def get_total_loot_value(self):
         """Calculate total loot value from all loot pools"""
@@ -99,9 +93,7 @@ class Fleet(models.Model):
 class FleetParticipant(models.Model):
     """Represents a participant in a fleet"""
 
-    fleet = models.ForeignKey(
-        Fleet, on_delete=models.CASCADE, related_name="participants"
-    )
+    fleet = models.ForeignKey(Fleet, on_delete=models.CASCADE, related_name="participants")
     character = models.ForeignKey(
         EveEntity,
         on_delete=models.CASCADE,
@@ -113,23 +105,15 @@ class FleetParticipant(models.Model):
         default=constants.ROLE_REGULAR,
         help_text="Participant role",
     )
-    joined_at = models.DateTimeField(
-        default=timezone.now, help_text="Time joined fleet"
-    )
-    left_at = models.DateTimeField(
-        null=True, blank=True, help_text="Time left fleet (if applicable)"
-    )
+    joined_at = models.DateTimeField(default=timezone.now, help_text="Time joined fleet")
+    left_at = models.DateTimeField(null=True, blank=True, help_text="Time left fleet (if applicable)")
     notes = models.TextField(blank=True, help_text="Additional notes")
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Phase 2: Character Deduplication & Scout Bonus
-    is_scout = models.BooleanField(
-        default=False,
-        help_text="If checked, this participant receives +10% scout bonus"
-    )
+    is_scout = models.BooleanField(default=False, help_text="If checked, this participant receives +10% scout bonus")
     excluded_from_payout = models.BooleanField(
-        default=False,
-        help_text="If checked, this participant will not receive a payout"
+        default=False, help_text="If checked, this participant will not receive a payout"
     )
     main_character = models.ForeignKey(
         EveEntity,
@@ -137,7 +121,7 @@ class FleetParticipant(models.Model):
         null=True,
         blank=True,
         related_name="alt_participants",
-        help_text="Main character for this participant (from Alliance Auth)"
+        help_text="Main character for this participant (from Alliance Auth)",
     )
 
     class Meta:
@@ -161,15 +145,9 @@ class FleetParticipant(models.Model):
 class LootPool(models.Model):
     """Represents a pool of loot from a fleet operation"""
 
-    fleet = models.ForeignKey(
-        Fleet, on_delete=models.CASCADE, related_name="loot_pools"
-    )
-    name = models.CharField(
-        max_length=200, default="Fleet Loot", help_text="Loot pool name"
-    )
-    raw_loot_text = models.TextField(
-        help_text="Raw loot paste from EVE client", blank=True
-    )
+    fleet = models.ForeignKey(Fleet, on_delete=models.CASCADE, related_name="loot_pools")
+    name = models.CharField(max_length=200, default="Fleet Loot", help_text="Loot pool name")
+    raw_loot_text = models.TextField(help_text="Raw loot paste from EVE client", blank=True)
     status = models.CharField(
         max_length=20,
         choices=constants.LOOT_STATUS_CHOICES,
@@ -206,12 +184,8 @@ class LootPool(models.Model):
         default=0,
         help_text="Total participant share amount in ISK",
     )
-    janice_appraisal_code = models.CharField(
-        max_length=50, blank=True, help_text="Janice appraisal code for linking"
-    )
-    valued_at = models.DateTimeField(
-        null=True, blank=True, help_text="Time when loot was valued"
-    )
+    janice_appraisal_code = models.CharField(max_length=50, blank=True, help_text="Janice appraisal code for linking")
+    valued_at = models.DateTimeField(null=True, blank=True, help_text="Time when loot was valued")
     approved_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -220,9 +194,7 @@ class LootPool(models.Model):
         related_name="approved_loot_pools",
         help_text="User who approved this loot pool",
     )
-    approved_at = models.DateTimeField(
-        null=True, blank=True, help_text="Time when loot pool was approved"
-    )
+    approved_at = models.DateTimeField(null=True, blank=True, help_text="Time when loot pool was approved")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -238,9 +210,7 @@ class LootPool(models.Model):
         self.total_value = total
 
         # Calculate corp share
-        self.corp_share_amount = (
-            total * self.corp_share_percentage / 100
-        )
+        self.corp_share_amount = total * self.corp_share_percentage / 100
 
         # Calculate participant share
         self.participant_share_amount = total - self.corp_share_amount
@@ -253,39 +223,26 @@ class LootPool(models.Model):
 
     def can_approve(self, user):
         """Check if user can approve this loot pool"""
-        return (
-            user.has_perm("aapayout.approve_payouts")
-            or self.fleet.fleet_commander == user
-        )
+        return user.has_perm("aapayout.approve_payouts") or self.fleet.fleet_commander == user
 
 
 class LootItem(models.Model):
     """Represents an individual item in a loot pool"""
 
-    loot_pool = models.ForeignKey(
-        LootPool, on_delete=models.CASCADE, related_name="items"
-    )
+    loot_pool = models.ForeignKey(LootPool, on_delete=models.CASCADE, related_name="items")
     type_id = models.IntegerField(help_text="EVE type ID")
     name = models.CharField(max_length=200, help_text="Item name")
     quantity = models.IntegerField(help_text="Item quantity")
-    unit_price = models.DecimalField(
-        max_digits=20, decimal_places=2, help_text="Price per unit in ISK"
-    )
-    total_value = models.DecimalField(
-        max_digits=20, decimal_places=2, help_text="Total value (quantity * unit_price)"
-    )
+    unit_price = models.DecimalField(max_digits=20, decimal_places=2, help_text="Price per unit in ISK")
+    total_value = models.DecimalField(max_digits=20, decimal_places=2, help_text="Total value (quantity * unit_price)")
     price_source = models.CharField(
         max_length=20,
         choices=constants.PRICE_SOURCE_CHOICES,
         default=constants.PRICE_SOURCE_JANICE,
         help_text="Source of price data",
     )
-    price_fetched_at = models.DateTimeField(
-        default=timezone.now, help_text="Time when price was fetched"
-    )
-    manual_override = models.BooleanField(
-        default=False, help_text="Whether price was manually overridden"
-    )
+    price_fetched_at = models.DateTimeField(default=timezone.now, help_text="Time when price was fetched")
+    manual_override = models.BooleanField(default=False, help_text="Whether price was manually overridden")
     notes = models.TextField(blank=True, help_text="Additional notes")
 
     class Meta:
@@ -303,15 +260,9 @@ class LootItem(models.Model):
 class Payout(models.Model):
     """Represents a payout to a fleet participant"""
 
-    loot_pool = models.ForeignKey(
-        LootPool, on_delete=models.CASCADE, related_name="payouts"
-    )
-    recipient = models.ForeignKey(
-        EveEntity, on_delete=models.CASCADE, help_text="Payment recipient character"
-    )
-    amount = models.DecimalField(
-        max_digits=20, decimal_places=2, help_text="Payout amount in ISK"
-    )
+    loot_pool = models.ForeignKey(LootPool, on_delete=models.CASCADE, related_name="payouts")
+    recipient = models.ForeignKey(EveEntity, on_delete=models.CASCADE, help_text="Payment recipient character")
+    amount = models.DecimalField(max_digits=20, decimal_places=2, help_text="Payout amount in ISK")
     status = models.CharField(
         max_length=20,
         choices=constants.PAYOUT_STATUS_CHOICES,
@@ -324,9 +275,7 @@ class Payout(models.Model):
         default=constants.PAYMENT_METHOD_MANUAL,
         help_text="Payment method",
     )
-    transaction_reference = models.CharField(
-        max_length=200, blank=True, help_text="Transaction reference or note"
-    )
+    transaction_reference = models.CharField(max_length=200, blank=True, help_text="Transaction reference or note")
     paid_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -335,26 +284,14 @@ class Payout(models.Model):
         related_name="payouts_made",
         help_text="User who marked this as paid",
     )
-    paid_at = models.DateTimeField(
-        null=True, blank=True, help_text="Time when marked as paid"
-    )
+    paid_at = models.DateTimeField(null=True, blank=True, help_text="Time when marked as paid")
     notes = models.TextField(blank=True, help_text="Additional notes")
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Phase 2: Scout Bonus & Payment Verification
-    is_scout_payout = models.BooleanField(
-        default=False,
-        help_text="Whether this payout includes scout bonus"
-    )
-    verified = models.BooleanField(
-        default=False,
-        help_text="Whether this payout was verified via ESI wallet journal"
-    )
-    verified_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When this payout was verified"
-    )
+    is_scout_payout = models.BooleanField(default=False, help_text="Whether this payout includes scout bonus")
+    verified = models.BooleanField(default=False, help_text="Whether this payout was verified via ESI wallet journal")
+    verified_at = models.DateTimeField(null=True, blank=True, help_text="When this payout was verified")
 
     class Meta:
         ordering = ["-created_at"]
@@ -379,10 +316,7 @@ class Payout(models.Model):
 
     def can_mark_paid(self, user):
         """Check if user can mark this payout as paid"""
-        return (
-            user.has_perm("aapayout.approve_payouts")
-            or self.loot_pool.fleet.fleet_commander == user
-        )
+        return user.has_perm("aapayout.approve_payouts") or self.loot_pool.fleet.fleet_commander == user
 
 
 class ESIFleetImport(models.Model):
@@ -394,9 +328,7 @@ class ESIFleetImport(models.Model):
         related_name="esi_imports",
         help_text="Fleet this import belongs to",
     )
-    esi_fleet_id = models.BigIntegerField(
-        help_text="ESI Fleet ID from EVE client"
-    )
+    esi_fleet_id = models.BigIntegerField(help_text="ESI Fleet ID from EVE client")
 
     # Import metadata
     imported_by = models.ForeignKey(
