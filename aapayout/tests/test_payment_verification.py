@@ -211,15 +211,15 @@ class TestESIWalletService(TestCase):
 
         self.assertIsNone(match)
 
-    @patch("aapayout.services.esi_wallet.esi.client.Wallet.get_characters_character_id_wallet_journal")
-    def test_get_wallet_journal_success(self, mock_wallet_api):
+    @patch("aapayout.services.esi_wallet.esi")
+    def test_get_wallet_journal_success(self, mock_esi):
         """Test successful wallet journal retrieval"""
         # Mock ESI response
         mock_result = MagicMock()
         mock_result.results.return_value = [
             {"id": 123456789, "date": timezone.now().isoformat(), "ref_type": "player_donation", "amount": -45000000.00}
         ]
-        mock_wallet_api.return_value = mock_result
+        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.return_value = mock_result
 
         # Mock token
         mock_token = MagicMock()
@@ -233,8 +233,8 @@ class TestESIWalletService(TestCase):
         self.assertEqual(len(journal), 1)
         self.assertEqual(journal[0]["id"], 123456789)
 
-    @patch("aapayout.services.esi_wallet.esi.client.Wallet.get_characters_character_id_wallet_journal")
-    def test_get_wallet_journal_pagination(self, mock_wallet_api):
+    @patch("aapayout.services.esi_wallet.esi")
+    def test_get_wallet_journal_pagination(self, mock_esi):
         """Test wallet journal pagination"""
         # Mock ESI response with multiple pages
         mock_result1 = MagicMock()
@@ -246,7 +246,7 @@ class TestESIWalletService(TestCase):
         mock_result3 = MagicMock()
         mock_result3.results.return_value = []  # Empty page ends pagination
 
-        mock_wallet_api.side_effect = [mock_result1, mock_result2, mock_result3]
+        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = [mock_result1, mock_result2, mock_result3]
 
         # Mock token
         mock_token = MagicMock()
