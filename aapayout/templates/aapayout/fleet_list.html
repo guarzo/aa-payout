@@ -67,7 +67,7 @@
                                             <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-info" title="{% translate 'View' %}">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            {% if fleet.can_edit request.user %}
+                                            {% if fleet.fleet_commander == request.user or perms.aapayout.manage_all_fleets %}
                                                 <a href="{% url 'aapayout:fleet_edit' fleet.pk %}" class="btn btn-warning" title="{% translate 'Edit' %}">
                                                     <i class="fas fa-edit"></i>
                                                 </a>

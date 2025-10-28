@@ -14,7 +14,7 @@
             </p>
         </div>
         <div class="col-md-4 text-end">
-            {% if fleet.can_edit request.user %}
+            {% if can_edit %}
                 <a href="{% url 'aapayout:fleet_edit' fleet.pk %}" class="btn btn-warning">
                     <i class="fas fa-edit"></i> {% translate "Edit Fleet" %}
                 </a>
@@ -112,7 +112,7 @@
                     {% else %}
                         <p class="text-muted">{% translate "No loot pools yet" %}</p>
                     {% endif %}
-                    {% if fleet.can_edit request.user %}
+                    {% if can_edit %}
                     <div class="mt-3">
                         <a href="{% url 'aapayout:loot_create' fleet.pk %}" class="btn btn-sm btn-primary">
                             <i class="fas fa-plus"></i> {% translate "Add Loot Pool" %}
@@ -130,7 +130,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5>{% translate "Fleet Participants" %}</h5>
-                    {% if fleet.can_edit request.user %}
+                    {% if can_edit %}
                         <div>
                             <a href="{% url 'aapayout:fleet_import' fleet.pk %}" class="btn btn-sm btn-success me-2">
                                 <i class="fas fa-download"></i> {% translate "Import from ESI" %}
@@ -152,7 +152,7 @@
                                     <th>{% translate "Role" %}</th>
                                     <th>{% translate "Joined At" %}</th>
                                     <th>{% translate "Status" %}</th>
-                                    {% if fleet.can_edit request.user %}
+                                    {% if can_edit %}
                                         <th class="text-center">
                                             <i class="fas fa-binoculars" title="{% translate 'Scout' %}"></i>
                                             {% translate "Scout" %}
@@ -191,7 +191,7 @@
                                             <span class="badge bg-secondary">{% translate "Left" %}</span>
                                         {% endif %}
                                     </td>
-                                    {% if fleet.can_edit request.user %}
+                                    {% if can_edit %}
                                     <td class="text-center">
                                         <input type="checkbox" class="form-check-input scout-checkbox"
                                                data-participant-id="{{ participant.pk }}"
@@ -221,7 +221,7 @@
                     </div>
                     {% else %}
                     <p class="text-muted">{% translate "No participants added yet" %}</p>
-                    {% if fleet.can_edit request.user %}
+                    {% if can_edit %}
                     <a href="{% url 'aapayout:participant_add' fleet.pk %}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> {% translate "Add First Participant" %}
                     </a>
