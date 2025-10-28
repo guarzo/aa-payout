@@ -44,6 +44,17 @@ LOGGING = False
 NOTIFICATIONS_REFRESH_TIME = 30
 NOTIFICATIONS_MAX_PER_USER = 50
 
+# Use fakeredis for development (no Redis server required)
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "REDIS_CLIENT_CLASS": "fakeredis.FakeRedis",
+        },
+    }
+}
+
 
 # if os.environ.get("USE_MYSQL", True) is True:
 #     DATABASES["default"] = {
@@ -62,6 +73,7 @@ NOTIFICATIONS_MAX_PER_USER = 50
 
 # Add any additional apps to this list.
 INSTALLED_APPS += [
+    "eveuniverse",
     PACKAGE,
 ]
 
@@ -119,3 +131,8 @@ DEFAULT_FROM_EMAIL = ""
 #######################################
 # Add any custom settings below here. #
 #######################################
+
+# Disable Redis version check for development
+SILENCED_SYSTEM_CHECKS = [
+    "allianceauth.checks.A003",
+]

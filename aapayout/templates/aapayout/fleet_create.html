@@ -1,0 +1,134 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Create New Fleet" %}</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Fleet Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                            {% if form.name.help_text %}
+                                <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.doctrine.id_for_label }}" class="form-label">
+                                {{ form.doctrine.label }}
+                            </label>
+                            {{ form.doctrine }}
+                            {% if form.doctrine.errors %}
+                                <div class="text-danger">{{ form.doctrine.errors }}</div>
+                            {% endif %}
+                            {% if form.doctrine.help_text %}
+                                <small class="form-text text-muted">{{ form.doctrine.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">
+                                {{ form.location.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                                <div class="text-danger">{{ form.location.errors }}</div>
+                            {% endif %}
+                            {% if form.location.help_text %}
+                                <small class="form-text text-muted">{{ form.location.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.fleet_time.id_for_label }}" class="form-label">
+                                {{ form.fleet_time.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.fleet_time }}
+                            {% if form.fleet_time.errors %}
+                                <div class="text-danger">{{ form.fleet_time.errors }}</div>
+                            {% endif %}
+                            {% if form.fleet_time.help_text %}
+                                <small class="form-text text-muted">{{ form.fleet_time.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                            {% if form.notes.help_text %}
+                                <small class="form-text text-muted">{{ form.notes.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'aapayout:fleet_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> {% translate "Cancel" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {% translate "Create Fleet" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5>{% translate "Tips" %}</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{% translate "Creating a Fleet" %}</h6>
+                    <ul class="small">
+                        <li>{% translate "Provide a clear fleet name" %}</li>
+                        <li>{% translate "Specify the doctrine if applicable" %}</li>
+                        <li>{% translate "Include the location (system, region, etc.)" %}</li>
+                        <li>{% translate "Set the correct fleet time" %}</li>
+                    </ul>
+                    <hr>
+                    <h6>{% translate "Next Steps" %}</h6>
+                    <p class="small">
+                        {% translate "After creating the fleet, you can:" %}
+                    </p>
+                    <ul class="small">
+                        <li>{% translate "Add participants" %}</li>
+                        <li>{% translate "Create loot pools" %}</li>
+                        <li>{% translate "Generate payouts" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

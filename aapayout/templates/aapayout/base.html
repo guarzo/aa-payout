@@ -1,6 +1,7 @@
 {% extends 'allianceauth/base-bs5.html' %}
 
 {% load i18n %}
+{% load static %}
 
 {% block page_title %}
     {% translate "Fleet Payouts" %}
@@ -10,8 +11,16 @@
     {% translate "Fleet Payouts" %}
 {% endblock header_nav_brand %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'aapayout/css/aapayout.css' %}">
+{% endblock %}
+
 {% block content %}
     <div class="allianceauth-aapayout">
         {% block details %}{% endblock %}
     </div>
+{% endblock %}
+
+{% block extra_javascript %}
+    <script src="{% static 'aapayout/js/aapayout.js' %}"></script>
 {% endblock %}

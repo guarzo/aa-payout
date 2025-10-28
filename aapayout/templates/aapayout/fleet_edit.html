@@ -1,0 +1,116 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Edit Fleet" %}: {{ fleet.name }}</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Fleet Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">
+                                {{ form.name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.doctrine.id_for_label }}" class="form-label">
+                                {{ form.doctrine.label }}
+                            </label>
+                            {{ form.doctrine }}
+                            {% if form.doctrine.errors %}
+                                <div class="text-danger">{{ form.doctrine.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">
+                                {{ form.location.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                                <div class="text-danger">{{ form.location.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.fleet_time.id_for_label }}" class="form-label">
+                                {{ form.fleet_time.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.fleet_time }}
+                            {% if form.fleet_time.errors %}
+                                <div class="text-danger">{{ form.fleet_time.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> {% translate "Cancel" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {% translate "Save Changes" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5>{% translate "Editing Fleet" %}</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small">
+                        {% translate "You are editing the fleet information. Changes will be saved immediately." %}
+                    </p>
+                    <hr>
+                    <dl class="row small">
+                        <dt class="col-sm-4">{% translate "Status" %}:</dt>
+                        <dd class="col-sm-8">{{ fleet.get_status_display }}</dd>
+
+                        <dt class="col-sm-4">{% translate "Created" %}:</dt>
+                        <dd class="col-sm-8">{{ fleet.created_at|date:"Y-m-d H:i" }}</dd>
+
+                        <dt class="col-sm-4">{% translate "FC" %}:</dt>
+                        <dd class="col-sm-8">{{ fleet.fleet_commander.username }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

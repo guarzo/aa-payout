@@ -1,0 +1,153 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Edit Item Price" %}: {{ item.name }}</h2>
+            <p class="text-muted">
+                {% translate "Loot Pool" %}: <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}">{{ loot_pool.name }}</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Price Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label class="form-label">{% translate "Item Name" %}</label>
+                            <input type="text" class="form-control" value="{{ item.name }}" disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{% translate "Quantity" %}</label>
+                            <input type="text" class="form-control" value="{{ item.quantity|intcomma }}" disabled>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{% translate "Current Unit Price" %}</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" value="{{ item.unit_price|floatformat:2|intcomma }}" disabled>
+                                <span class="input-group-text">ISK</span>
+                            </div>
+                            <small class="text-muted">
+                                {% translate "Source" %}: {{ item.get_price_source_display }}
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">{% translate "Current Total Value" %}</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control fw-bold" value="{{ item.total_value|floatformat:2|intcomma }}" disabled>
+                                <span class="input-group-text">ISK</span>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label for="{{ form.unit_price.id_for_label }}" class="form-label">
+                                {{ form.unit_price.label }} <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                {{ form.unit_price }}
+                                <span class="input-group-text">ISK</span>
+                            </div>
+                            {% if form.unit_price.errors %}
+                                <div class="text-danger">{{ form.unit_price.errors }}</div>
+                            {% endif %}
+                            {% if form.unit_price.help_text %}
+                                <small class="form-text text-muted">{{ form.unit_price.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            {% translate "This will mark the item as manually overridden and recalculate the loot pool totals." %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> {% translate "Cancel" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {% translate "Save Price" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5>{% translate "Manual Override" %}</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{% translate "Why override prices?" %}</h6>
+                    <ul class="small">
+                        <li>{% translate "Special circumstances" %}</li>
+                        <li>{% translate "Market fluctuations" %}</li>
+                        <li>{% translate "Negotiated prices" %}</li>
+                        <li>{% translate "Incorrect API pricing" %}</li>
+                    </ul>
+                    <hr>
+                    <h6>{% translate "Important Notes" %}</h6>
+                    <ul class="small">
+                        <li>{% translate "Always document the reason in notes" %}</li>
+                        <li>{% translate "Total loot value will be recalculated" %}</li>
+                        <li>{% translate "Payouts will reflect the new price" %}</li>
+                        <li>{% translate "Item will be marked as manually overridden" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+// Auto-calculate and display new total value when unit price changes
+document.addEventListener('DOMContentLoaded', function() {
+    const unitPriceInput = document.getElementById('{{ form.unit_price.id_for_label }}');
+    const quantity = {{ item.quantity }};
+
+    if (unitPriceInput) {
+        unitPriceInput.addEventListener('input', function() {
+            const newUnitPrice = parseFloat(this.value) || 0;
+            const newTotalValue = newUnitPrice * quantity;
+
+            // You could display the new total in real-time here if desired
+            console.log('New total value:', newTotalValue);
+        });
+    }
+});
+</script>
+{% endblock %}

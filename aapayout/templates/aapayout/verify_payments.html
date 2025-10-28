@@ -1,0 +1,146 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block page_title %}{% trans "Verify Payments" %} - {{ loot_pool.fleet.name }}{% endblock %}
+
+{% block aapayout_content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>{% trans "Verify Payments via ESI" %}</h2>
+            <a href="{% url 'aapayout:payout_list' loot_pool.pk %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> {% trans "Back to Payouts" %}
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle"></i> {% trans "Payment Verification" %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>{% trans "How it works:" %}</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>{% trans "The system will check your ESI wallet journal for ISK transfers" %}</li>
+                        <li>{% trans "Pending payouts that match journal entries will be automatically marked as paid" %}</li>
+                        <li>{% trans "Matching is based on amount, recipient, and timestamp" %}</li>
+                        <li>{% trans "Any unmatched payouts can be manually verified afterward" %}</li>
+                    </ul>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">{% trans "Fleet" %}</h6>
+                                <p class="mb-0">
+                                    <a href="{% url 'aapayout:fleet_detail' loot_pool.fleet.pk %}">
+                                        {{ loot_pool.fleet.name }}
+                                    </a>
+                                </p>
+                                <small class="text-muted">
+                                    {{ loot_pool.fleet.fleet_time|date:"Y-m-d H:i" }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">{% trans "Pending Payouts" %}</h6>
+                                <p class="mb-0">
+                                    <strong class="text-warning">{{ pending_count }}</strong> {% trans "payout(s)" %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" id="verification-form">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="time_window" class="form-label">
+                            {% trans "Time Window" %}
+                        </label>
+                        <select class="form-select" id="time_window" name="time_window">
+                            <option value="6">{% trans "Last 6 hours" %}</option>
+                            <option value="12">{% trans "Last 12 hours" %}</option>
+                            <option value="24" selected>{% trans "Last 24 hours" %}</option>
+                            <option value="48">{% trans "Last 48 hours" %}</option>
+                            <option value="168">{% trans "Last 7 days" %}</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            {% trans "How far back to search in your wallet journal for matching payments" %}
+                        </small>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>{% trans "Requirements:" %}</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>{% trans "You must have an ESI token linked with wallet journal access" %}</li>
+                            <li>{% trans "Required scope:" %} <code>esi-wallet.read_character_journal.v1</code></li>
+                            <li>{% trans "Verification may take a few moments to complete" %}</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-check-double"></i> {% trans "Start Verification" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-question-circle"></i> {% trans "Help" %}
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>{% trans "What is ESI?" %}</h6>
+                <p class="small">
+                    {% trans "ESI (EVE Swagger Interface) is CCP's official API for accessing EVE Online data. It allows this app to check your wallet journal for payment verification." %}
+                </p>
+
+                <h6 class="mt-3">{% trans "Why do I need wallet access?" %}</h6>
+                <p class="small">
+                    {% trans "To verify payments, the system needs to read your character's wallet journal to find the ISK transfers you made." %}
+                </p>
+
+                <h6 class="mt-3">{% trans "Is this secure?" %}</h6>
+                <p class="small">
+                    {% trans "Yes! ESI uses OAuth2 authentication and only requests the specific permissions needed. Your wallet journal is only used for payment matching." %}
+                </p>
+
+                <h6 class="mt-3">{% trans "What if verification fails?" %}</h6>
+                <p class="small">
+                    {% trans "You can always manually mark payouts as paid using the \"Mark Paid\" button on the payout list." %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('verification-form').addEventListener('submit', function(e) {
+    // Show loading state
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {% trans "Starting verification..." %}';
+});
+</script>
+{% endblock %}

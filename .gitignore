@@ -15,8 +15,6 @@ __pycache__
 /coverage.xml
 alliance_auth.sqlite3
 
-# Example plugin template (not needed in repo)
-aa-example-plugin-master/
-
 # Claude Code settings
 .claude/
+plans

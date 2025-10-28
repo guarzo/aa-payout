@@ -1,0 +1,166 @@
+{% extends 'aapayout/base.html' %}
+{% load i18n %}
+
+{% block details %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>{% translate "Add Participant to" %} {{ fleet.name }}</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Participant Information" %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="participant-form">
+                        {% csrf_token %}
+
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.character_name.id_for_label }}" class="form-label">
+                                {{ form.character_name.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.character_name }}
+                            <div id="character-suggestions" class="list-group position-absolute" style="z-index: 1000; display: none;"></div>
+                            {% if form.character_name.errors %}
+                                <div class="text-danger">{{ form.character_name.errors }}</div>
+                            {% endif %}
+                            {% if form.character_name.help_text %}
+                                <small class="form-text text-muted">{{ form.character_name.help_text }}</small>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.role.id_for_label }}" class="form-label">
+                                {{ form.role.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.role }}
+                            {% if form.role.errors %}
+                                <div class="text-danger">{{ form.role.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.joined_at.id_for_label }}" class="form-label">
+                                {{ form.joined_at.label }} <span class="text-danger">*</span>
+                            </label>
+                            {{ form.joined_at }}
+                            {% if form.joined_at.errors %}
+                                <div class="text-danger">{{ form.joined_at.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                {{ form.notes.label }}
+                            </label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> {% translate "Cancel" %}
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> {% translate "Add Participant" %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h5>{% translate "Tips" %}</h5>
+                </div>
+                <div class="card-body">
+                    <h6>{% translate "Adding Participants" %}</h6>
+                    <ul class="small">
+                        <li>{% translate "Start typing a character name to search" %}</li>
+                        <li>{% translate "Character must be registered in Alliance Auth" %}</li>
+                        <li>{% translate "Select the appropriate role (Scout or Regular)" %}</li>
+                        <li>{% translate "Set when the pilot joined the fleet" %}</li>
+                    </ul>
+                    <hr>
+                    <h6>{% translate "Roles" %}</h6>
+                    <ul class="small">
+                        <li><strong>{% translate "Regular" %}:</strong> {% translate "Standard fleet participant" %}</li>
+                        <li><strong>{% translate "Scout" %}:</strong> {% translate "Scout role (may affect payout rules)" %}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+// Character autocomplete functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const charInput = document.getElementById('{{ form.character_name.id_for_label }}');
+    const suggestions = document.getElementById('character-suggestions');
+    let selectedCharacterId = null;
+
+    if (charInput) {
+        charInput.addEventListener('input', function() {
+            const query = this.value;
+            if (query.length < 2) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            fetch('{% url "aapayout:character_search" %}?q=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    suggestions.innerHTML = '';
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(char => {
+                            const item = document.createElement('a');
+                            item.href = '#';
+                            item.className = 'list-group-item list-group-item-action';
+                            item.textContent = char.character_name;
+                            item.dataset.characterId = char.character_id;
+                            item.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                charInput.value = this.textContent;
+                                selectedCharacterId = this.dataset.characterId;
+                                suggestions.style.display = 'none';
+                            });
+                            suggestions.appendChild(item);
+                        });
+                        suggestions.style.display = 'block';
+                    } else {
+                        suggestions.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching character suggestions:', error);
+                    suggestions.style.display = 'none';
+                });
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target !== charInput) {
+                suggestions.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
