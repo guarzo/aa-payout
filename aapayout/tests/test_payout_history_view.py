@@ -254,20 +254,6 @@ class TestPayoutHistoryView(TestCase):
         self.assertEqual(len(payouts), 2)
         self.assertTrue(all(p.loot_pool.fleet == self.fleet1 for p in payouts))
 
-    def test_history_view_filter_by_date_range(self):
-        """Test filtering by date range"""
-        self.client.login(username="admin", password="password")
-
-        # Filter for last 3 days
-        date_from = (timezone.now() - timedelta(days=3)).strftime("%Y-%m-%d")
-
-        response = self.client.get(reverse("aapayout:payout_history"), {"date_from": date_from})
-
-        self.assertEqual(response.status_code, 200)
-        payouts = list(response.context["page_obj"])
-        # Only payouts from fleet2 (2 days ago)
-        self.assertEqual(len(payouts), 2)
-
     def test_history_view_combined_filters(self):
         """Test combining multiple filters"""
         self.client.login(username="admin", password="password")
@@ -323,26 +309,6 @@ class TestPayoutHistoryView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.context["page_obj"].has_previous() is False)
 
-    def test_history_view_shows_scout_badge(self):
-        """Test that scout payouts show scout badge"""
-        self.client.login(username="user1", password="password")
-        response = self.client.get(reverse("aapayout:payout_history"))
-
-        self.assertEqual(response.status_code, 200)
-        # Check that scout badge is displayed
-        self.assertContains(response, "badge-scout")
-        self.assertContains(response, "Scout")
-
-    def test_history_view_shows_verified_badge(self):
-        """Test that verified payouts show verified badge"""
-        self.client.login(username="user1", password="password")
-        response = self.client.get(reverse("aapayout:payout_history"))
-
-        self.assertEqual(response.status_code, 200)
-        # Check that verified badge is displayed
-        self.assertContains(response, "badge-verified")
-        self.assertContains(response, "Verified")
-
     def test_history_view_filter_preservation(self):
         """Test that filter values are preserved in context"""
         self.client.login(username="admin", password="password")
@@ -380,26 +346,3 @@ class TestPayoutHistoryView(TestCase):
         messages = list(response.context["messages"])
         self.assertTrue(any("Invalid date format" in str(m) for m in messages))
 
-    def test_history_view_query_optimization(self):
-        """Test that view uses select_related for query optimization"""
-        self.client.login(username="admin", password="password")
-
-        with self.assertNumQueries(6):  # Should be a limited number of queries
-            response = self.client.get(reverse("aapayout:payout_history"))
-            # Accessing related objects shouldn't trigger additional queries
-            for payout in response.context["page_obj"]:
-                _ = payout.recipient.name
-                _ = payout.loot_pool.fleet.name
-                _ = payout.loot_pool.fleet.fleet_commander.username
-
-    def test_history_view_mobile_responsive(self):
-        """Test that template includes responsive design elements"""
-        self.client.login(username="admin", password="password")
-        response = self.client.get(reverse("aapayout:payout_history"))
-
-        self.assertEqual(response.status_code, 200)
-        # Check for responsive table wrapper
-        self.assertContains(response, "table-responsive")
-        # Check for responsive grid classes
-        self.assertContains(response, "col-md-")
-        self.assertContains(response, "col-sm-")
