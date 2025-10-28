@@ -1,10 +1,15 @@
 """App Tasks"""
 
+# Standard Library
 import logging
 
+# Third Party
 from celery import shared_task
+
+# Django
 from django.utils import timezone
 
+# AA Payout
 from aapayout import constants
 from aapayout.helpers import create_loot_items_from_appraisal
 from aapayout.models import LootPool
@@ -123,18 +128,19 @@ def import_fleet_async(fleet_id: int, esi_fleet_id: int, user_id: int):
     Returns:
         Dict with results or error information
     """
+    # Django
     from django.contrib.auth.models import User
+
+    # Alliance Auth
     from esi.models import Token
 
+    # AA Payout
     from aapayout.helpers import get_main_character_for_participant
     from aapayout.models import ESIFleetImport, Fleet, FleetParticipant
     from aapayout.services.esi_fleet import esi_fleet_service
 
     try:
-        logger.info(
-            f"Starting async fleet import for fleet {fleet_id} "
-            f"from ESI fleet {esi_fleet_id}"
-        )
+        logger.info(f"Starting async fleet import for fleet {fleet_id} " f"from ESI fleet {esi_fleet_id}")
 
         # Get fleet
         fleet = Fleet.objects.get(id=fleet_id)
@@ -143,17 +149,20 @@ def import_fleet_async(fleet_id: int, esi_fleet_id: int, user_id: int):
         user = User.objects.get(id=user_id)
 
         # Get user's ESI token
-        token = Token.objects.filter(
-            user=user,
-        ).require_scopes("esi-fleets.read_fleet.v1").require_valid().first()
+        token = (
+            Token.objects.filter(
+                user=user,
+            )
+            .require_scopes("esi-fleets.read_fleet.v1")
+            .require_valid()
+            .first()
+        )
 
         if not token:
             raise ValueError("No valid ESI token found for user")
 
         # Import fleet composition from ESI
-        member_data, error = esi_fleet_service.import_fleet_composition(
-            esi_fleet_id, token
-        )
+        member_data, error = esi_fleet_service.import_fleet_composition(esi_fleet_id, token)
 
         if error:
             raise ValueError(f"ESI import failed: {error}")
@@ -182,10 +191,7 @@ def import_fleet_async(fleet_id: int, esi_fleet_id: int, user_id: int):
                 continue
 
             # Check if participant already exists
-            existing = FleetParticipant.objects.filter(
-                fleet=fleet,
-                character=character_entity
-            ).first()
+            existing = FleetParticipant.objects.filter(fleet=fleet, character=character_entity).first()
 
             if existing:
                 characters_skipped += 1
@@ -259,16 +265,18 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
     Returns:
         Dict with verification results or error information
     """
+    # Django
     from django.contrib.auth.models import User
+
+    # Alliance Auth
     from esi.models import Token
 
+    # AA Payout
     from aapayout.models import LootPool
     from aapayout.services.esi_wallet import esi_wallet_service
 
     try:
-        logger.info(
-            f"Starting payment verification for loot pool {loot_pool_id}"
-        )
+        logger.info(f"Starting payment verification for loot pool {loot_pool_id}")
 
         # Get loot pool
         loot_pool = LootPool.objects.get(id=loot_pool_id)
@@ -282,9 +290,14 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
             raise ValueError("User has no main character set")
 
         # Get user's ESI token with wallet journal scope
-        token = Token.objects.filter(
-            user=user,
-        ).require_scopes("esi-wallet.read_character_journal.v1").require_valid().first()
+        token = (
+            Token.objects.filter(
+                user=user,
+            )
+            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_valid()
+            .first()
+        )
 
         if not token:
             raise ValueError(
@@ -293,9 +306,7 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
             )
 
         # Get all pending payouts for this loot pool
-        pending_payouts = loot_pool.payouts.filter(
-            status=constants.PAYOUT_STATUS_PENDING
-        )
+        pending_payouts = loot_pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING)
 
         if pending_payouts.count() == 0:
             logger.info(f"No pending payouts found for loot pool {loot_pool_id}")
@@ -304,7 +315,7 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
                 "loot_pool_id": loot_pool_id,
                 "verified_count": 0,
                 "pending_count": 0,
-                "errors": ["No pending payouts to verify"]
+                "errors": ["No pending payouts to verify"],
             }
 
         # Verify payouts via wallet journal
@@ -312,7 +323,7 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
             payouts=list(pending_payouts),
             fc_character_id=fc_character.character_id,
             token=token,
-            time_window_hours=time_window_hours
+            time_window_hours=time_window_hours,
         )
 
         logger.info(
@@ -325,7 +336,7 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
             "loot_pool_id": loot_pool_id,
             "verified_count": verified_count,
             "pending_count": pending_count,
-            "errors": errors
+            "errors": errors,
         }
 
     except LootPool.DoesNotExist:

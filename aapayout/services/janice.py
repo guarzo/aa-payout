@@ -5,14 +5,19 @@ Handles interaction with the Janice API for EVE Online item appraisals.
 Documentation: https://janice.e-351.com/api/rest/docs/index.html
 """
 
+# Standard Library
 import logging
 from decimal import Decimal
-from typing import Dict, List
+from typing import Dict
 
+# Third Party
 import requests
+
+# Django
 from django.core.cache import cache
 from django.utils import timezone
 
+# AA Payout
 from aapayout import app_settings
 
 logger = logging.getLogger(__name__)
@@ -22,6 +27,7 @@ JANICE_API_URL = "https://janice.e-351.com/api/rest/v2"
 
 class JaniceAPIError(Exception):
     """Custom exception for Janice API errors"""
+
     pass
 
 
@@ -46,10 +52,7 @@ class JaniceService:
             raise JaniceAPIError("Loot text cannot be empty")
 
         if not app_settings.AAPAYOUT_JANICE_API_KEY:
-            raise JaniceAPIError(
-                "Janice API key not configured. "
-                "Please set AAPAYOUT_JANICE_API_KEY in settings."
-            )
+            raise JaniceAPIError("Janice API key not configured. " "Please set AAPAYOUT_JANICE_API_KEY in settings.")
 
         # Check cache first (cache by hash of loot text)
         cache_key = f"janice_appraisal_{hash(loot_text.strip())}"
@@ -109,13 +112,15 @@ class JaniceService:
                     unit_price = Decimal(str(item["immediatePrices"][price_key]))
                     item_total_value = quantity * unit_price
 
-                    processed_items.append({
-                        "type_id": type_id,
-                        "name": name,
-                        "quantity": quantity,
-                        "unit_price": unit_price,
-                        "total_value": item_total_value,
-                    })
+                    processed_items.append(
+                        {
+                            "type_id": type_id,
+                            "name": name,
+                            "quantity": quantity,
+                            "unit_price": unit_price,
+                            "total_value": item_total_value,
+                        }
+                    )
 
                     total_value += item_total_value
 
@@ -140,8 +145,7 @@ class JaniceService:
             cache.set(cache_key, result, cache_seconds)
 
             logger.info(
-                f"Successfully appraised {len(processed_items)} items "
-                f"(total value: {total_value:,.2f} ISK)"
+                f"Successfully appraised {len(processed_items)} items " f"(total value: {total_value:,.2f} ISK)"
             )
 
             return result
@@ -149,8 +153,7 @@ class JaniceService:
         except requests.exceptions.Timeout:
             logger.error("Janice API request timed out")
             raise JaniceAPIError(
-                f"Janice API request timed out after "
-                f"{app_settings.AAPAYOUT_JANICE_TIMEOUT} seconds"
+                f"Janice API request timed out after " f"{app_settings.AAPAYOUT_JANICE_TIMEOUT} seconds"
             )
         except requests.exceptions.ConnectionError:
             logger.error("Failed to connect to Janice API")

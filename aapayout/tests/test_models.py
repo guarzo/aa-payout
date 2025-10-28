@@ -2,13 +2,18 @@
 Tests for AA-Payout models
 """
 
+# Standard Library
 from decimal import Decimal
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
+
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
+# AA Payout
 from aapayout import constants
 from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool, Payout
 
@@ -19,9 +24,7 @@ class FleetModelTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         # Create test user
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
     def test_create_fleet(self):
         """Test creating a fleet"""
@@ -65,9 +68,7 @@ class FleetModelTest(TestCase):
 
     def test_fleet_can_edit_other_user(self):
         """Test that other users cannot edit fleet without permission"""
-        other_user = User.objects.create_user(
-            username="otheruser", email="other@example.com", password="testpass"
-        )
+        other_user = User.objects.create_user(username="otheruser", email="other@example.com", password="testpass")
 
         fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -109,9 +110,7 @@ class FleetParticipantModelTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.character = EveEntity.objects.create(
             id=12345,
@@ -174,9 +173,7 @@ class LootPoolModelTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -259,9 +256,7 @@ class LootItemModelTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -328,9 +323,7 @@ class PayoutModelTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.character = EveEntity.objects.create(
             id=12345,

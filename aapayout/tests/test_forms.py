@@ -2,12 +2,15 @@
 Tests for AA-Payout forms
 """
 
+# Standard Library
 from decimal import Decimal
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+# AA Payout
 from aapayout import constants
 from aapayout.forms import (
     FleetCreateForm,
@@ -68,9 +71,7 @@ class FleetEditFormTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -262,9 +263,7 @@ class LootPoolApproveFormTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -310,9 +309,7 @@ class LootPoolApproveFormTest(TestCase):
         form = LootPoolApproveForm(self.loot_pool)
 
         # Initial value should be from loot pool
-        self.assertEqual(
-            form.initial["corp_share_percentage"], self.loot_pool.corp_share_percentage
-        )
+        self.assertEqual(form.initial["corp_share_percentage"], self.loot_pool.corp_share_percentage)
 
 
 class PayoutMarkPaidFormTest(TestCase):
@@ -343,6 +340,4 @@ class PayoutMarkPaidFormTest(TestCase):
         form = PayoutMarkPaidForm()
 
         # Initial value should be manual
-        self.assertEqual(
-            form.fields["payment_method"].initial, constants.PAYMENT_METHOD_MANUAL
-        )
+        self.assertEqual(form.fields["payment_method"].initial, constants.PAYMENT_METHOD_MANUAL)

@@ -4,12 +4,15 @@ ESI Fleet Service
 Handles ESI fleet composition imports
 """
 
+# Standard Library
 import logging
 from typing import Dict, List, Optional, Tuple
 
+# Alliance Auth
 from esi.clients import EsiClientProvider
 from esi.models import Token
 
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
 logger = logging.getLogger(__name__)
@@ -43,8 +46,7 @@ class ESIFleetService:
         """
         try:
             result = esi.client.Fleets.get_fleets_fleet_id(
-                fleet_id=fleet_id,
-                token=token.valid_access_token()
+                fleet_id=fleet_id, token=token.valid_access_token()
             ).results()
 
             logger.info(f"Successfully fetched fleet info for fleet ID {fleet_id}")
@@ -85,20 +87,14 @@ class ESIFleetService:
         """
         try:
             result = esi.client.Fleets.get_fleets_fleet_id_members(
-                fleet_id=fleet_id,
-                token=token.valid_access_token()
+                fleet_id=fleet_id, token=token.valid_access_token()
             ).results()
 
-            logger.info(
-                f"Successfully fetched {len(result)} fleet members "
-                f"for fleet ID {fleet_id}"
-            )
+            logger.info(f"Successfully fetched {len(result)} fleet members " f"for fleet ID {fleet_id}")
             return result
 
         except Exception as e:
-            logger.error(
-                f"Failed to fetch fleet members for fleet ID {fleet_id}: {e}"
-            )
+            logger.error(f"Failed to fetch fleet members for fleet ID {fleet_id}: {e}")
             return None
 
     @staticmethod
@@ -119,24 +115,16 @@ class ESIFleetService:
             if created:
                 logger.info(f"Created new EveEntity for character ID {character_id}")
             else:
-                logger.debug(
-                    f"Found existing EveEntity for character ID {character_id}"
-                )
+                logger.debug(f"Found existing EveEntity for character ID {character_id}")
 
             return entity
 
         except Exception as e:
-            logger.error(
-                f"Failed to get or create entity for character ID {character_id}: {e}"
-            )
+            logger.error(f"Failed to get or create entity for character ID {character_id}: {e}")
             return None
 
     @classmethod
-    def import_fleet_composition(
-        cls,
-        fleet_id: int,
-        token: Token
-    ) -> Tuple[Optional[List[Dict]], Optional[str]]:
+    def import_fleet_composition(cls, fleet_id: int, token: Token) -> Tuple[Optional[List[Dict]], Optional[str]]:
         """
         Import fleet composition from ESI
 
@@ -200,10 +188,7 @@ class ESIFleetService:
             character_entity = cls.get_or_create_character_entity(character_id)
 
             if not character_entity:
-                logger.warning(
-                    f"Skipping character ID {character_id} - "
-                    f"failed to create entity"
-                )
+                logger.warning(f"Skipping character ID {character_id} - " f"failed to create entity")
                 continue
 
             # Add entity to member data
@@ -211,24 +196,18 @@ class ESIFleetService:
             member_data["character_entity"] = character_entity
 
             # Convert join_time to datetime if needed
+            # Third Party
             from dateutil import parser as date_parser
+
             if isinstance(member.get("join_time"), str):
                 try:
-                    member_data["join_time"] = date_parser.parse(
-                        member["join_time"]
-                    )
+                    member_data["join_time"] = date_parser.parse(member["join_time"])
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to parse join_time for character "
-                        f"{character_id}: {e}"
-                    )
+                    logger.warning(f"Failed to parse join_time for character " f"{character_id}: {e}")
 
             processed_members.append(member_data)
 
-        logger.info(
-            f"Processed {len(processed_members)} out of "
-            f"{len(raw_members)} fleet members"
-        )
+        logger.info(f"Processed {len(processed_members)} out of " f"{len(raw_members)} fleet members")
 
         return processed_members, None
 
@@ -240,6 +219,7 @@ esi_fleet_service = ESIFleetService()
 # ==============================================================================
 # Phase 2 Week 6: Express Mode - ESI UI Window Opening
 # ==============================================================================
+
 
 class ESIUIService:
     """Service for ESI UI interactions (opening windows in EVE client)"""
@@ -279,8 +259,7 @@ class ESIUIService:
 
             # Open character window via ESI
             esi.client.User_Interface.post_ui_openwindow_information(
-                target_id=character_id,
-                token=token.valid_access_token()
+                target_id=character_id, token=token.valid_access_token()
             ).results()
 
             logger.info(f"Successfully opened character window for ID {character_id}")

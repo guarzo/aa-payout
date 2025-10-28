@@ -2,17 +2,22 @@
 Tests for character deduplication functionality (Phase 2)
 """
 
+# Standard Library
 from decimal import Decimal
 from unittest.mock import Mock, patch
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+# Alliance Auth
 from allianceauth.eveonline.models import EveCharacter
+
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
-from aapayout import constants
+# AA Payout
 from aapayout.helpers import (
     calculate_payouts,
     deduplicate_participants,
@@ -51,14 +56,14 @@ class GetMainCharacterForParticipantTest(TestCase):
             defaults={
                 "name": "Main Character",
                 "category": EveEntity.CATEGORY_CHARACTER,
-            }
+            },
         )
         self.alt_entity, _ = EveEntity.objects.get_or_create(
             id=1002,
             defaults={
                 "name": "Alt Character",
                 "category": EveEntity.CATEGORY_CHARACTER,
-            }
+            },
         )
 
         # Create fleet and participant
@@ -73,9 +78,7 @@ class GetMainCharacterForParticipantTest(TestCase):
         """Test getting main character when already set"""
         # Create participant with main_character already set
         participant = FleetParticipant.objects.create(
-            fleet=self.fleet,
-            character=self.alt_entity,
-            main_character=self.main_entity
+            fleet=self.fleet, character=self.alt_entity, main_character=self.main_entity
         )
 
         # Call function
@@ -92,9 +95,7 @@ class GetMainCharacterForParticipantTest(TestCase):
     ):
         """Test getting main character when ownership exists"""
         # Create participant with alt character (no main_character set)
-        participant = FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.alt_entity
-        )
+        participant = FleetParticipant.objects.create(fleet=self.fleet, character=self.alt_entity)
 
         # Mock EveCharacter lookup
         mock_eve_char_filter.return_value.first.return_value = self.alt_char
@@ -108,9 +109,7 @@ class GetMainCharacterForParticipantTest(TestCase):
         mock_get_main.return_value = self.main_char
 
         # Call function
-        with patch.object(
-            EveEntity.objects, "get_or_create_esi", return_value=(self.main_entity, False)
-        ):
+        with patch.object(EveEntity.objects, "get_or_create_esi", return_value=(self.main_entity, False)):
             result = get_main_character_for_participant(participant)
 
         # Verify result
@@ -119,9 +118,7 @@ class GetMainCharacterForParticipantTest(TestCase):
     def test_get_main_character_for_participant_fallback(self):
         """Test fallback to participant's character when no ownership"""
         # Create participant
-        participant = FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.alt_entity
-        )
+        participant = FleetParticipant.objects.create(fleet=self.fleet, character=self.alt_entity)
 
         # Call function (should fallback since no ownership exists)
         result = get_main_character_for_participant(participant)
@@ -140,20 +137,16 @@ class DeduplicateParticipantsTest(TestCase):
 
         # Create characters
         self.main_entity, _ = EveEntity.objects.get_or_create(
-            id=1001,
-            defaults={"name": "Main Character", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1001, defaults={"name": "Main Character", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.alt1_entity, _ = EveEntity.objects.get_or_create(
-            id=1002,
-            defaults={"name": "Alt 1", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1002, defaults={"name": "Alt 1", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.alt2_entity, _ = EveEntity.objects.get_or_create(
-            id=1003,
-            defaults={"name": "Alt 2", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1003, defaults={"name": "Alt 2", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.other_entity, _ = EveEntity.objects.get_or_create(
-            id=1004,
-            defaults={"name": "Other Player", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1004, defaults={"name": "Other Player", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create fleet
@@ -258,16 +251,13 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
 
         # Create characters
         self.player1_main, _ = EveEntity.objects.get_or_create(
-            id=1001,
-            defaults={"name": "Player 1 Main", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1001, defaults={"name": "Player 1 Main", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.player1_alt, _ = EveEntity.objects.get_or_create(
-            id=1002,
-            defaults={"name": "Player 1 Alt", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1002, defaults={"name": "Player 1 Alt", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.player2_main, _ = EveEntity.objects.get_or_create(
-            id=1003,
-            defaults={"name": "Player 2 Main", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1003, defaults={"name": "Player 2 Main", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create fleet
@@ -392,26 +382,21 @@ class DeduplicationIntegrationTest(TestCase):
 
         # Create characters for Player 1 (2 chars)
         self.p1_main, _ = EveEntity.objects.get_or_create(
-            id=1001,
-            defaults={"name": "P1 Main", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1001, defaults={"name": "P1 Main", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.p1_alt, _ = EveEntity.objects.get_or_create(
-            id=1002,
-            defaults={"name": "P1 Alt", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1002, defaults={"name": "P1 Alt", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create characters for Player 2 (3 chars)
         self.p2_main, _ = EveEntity.objects.get_or_create(
-            id=2001,
-            defaults={"name": "P2 Main", "category": EveEntity.CATEGORY_CHARACTER}
+            id=2001, defaults={"name": "P2 Main", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.p2_alt1, _ = EveEntity.objects.get_or_create(
-            id=2002,
-            defaults={"name": "P2 Alt1", "category": EveEntity.CATEGORY_CHARACTER}
+            id=2002, defaults={"name": "P2 Alt1", "category": EveEntity.CATEGORY_CHARACTER}
         )
         self.p2_alt2, _ = EveEntity.objects.get_or_create(
-            id=2003,
-            defaults={"name": "P2 Alt2", "category": EveEntity.CATEGORY_CHARACTER}
+            id=2003, defaults={"name": "P2 Alt2", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create fleet
@@ -438,32 +423,20 @@ class DeduplicationIntegrationTest(TestCase):
         )
 
         # Player 1 participants
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.p1_main, main_character=self.p1_main
-        )
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.p1_alt, main_character=self.p1_main
-        )
+        FleetParticipant.objects.create(fleet=self.fleet, character=self.p1_main, main_character=self.p1_main)
+        FleetParticipant.objects.create(fleet=self.fleet, character=self.p1_alt, main_character=self.p1_main)
 
         # Player 2 participants
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.p2_main, main_character=self.p2_main
-        )
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.p2_alt1, main_character=self.p2_main
-        )
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=self.p2_alt2, main_character=self.p2_main
-        )
+        FleetParticipant.objects.create(fleet=self.fleet, character=self.p2_main, main_character=self.p2_main)
+        FleetParticipant.objects.create(fleet=self.fleet, character=self.p2_alt1, main_character=self.p2_main)
+        FleetParticipant.objects.create(fleet=self.fleet, character=self.p2_alt2, main_character=self.p2_main)
 
         # Calculate payouts
         payouts = calculate_payouts(loot_pool)
 
         # Verify counts
         self.assertEqual(len(payouts), 2, "Should have 2 payouts (one per player)")
-        self.assertEqual(
-            self.fleet.participants.count(), 5, "Should have 5 participant records"
-        )
+        self.assertEqual(self.fleet.participants.count(), 5, "Should have 5 participant records")
 
         # Verify amounts
         # Corp: 20M, Participant pool: 180M, Split by 2: 90M each
@@ -479,8 +452,7 @@ class DeduplicationIntegrationTest(TestCase):
         """
         # Create Player 3
         p3_main, _ = EveEntity.objects.get_or_create(
-            id=3001,
-            defaults={"name": "P3 Main", "category": EveEntity.CATEGORY_CHARACTER}
+            id=3001, defaults={"name": "P3 Main", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create loot pool
@@ -514,9 +486,7 @@ class DeduplicationIntegrationTest(TestCase):
         )
 
         # Player 3 - regular
-        FleetParticipant.objects.create(
-            fleet=self.fleet, character=p3_main, main_character=p3_main
-        )
+        FleetParticipant.objects.create(fleet=self.fleet, character=p3_main, main_character=p3_main)
 
         # Calculate payouts
         payouts = calculate_payouts(loot_pool)

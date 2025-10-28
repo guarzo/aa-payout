@@ -2,17 +2,21 @@
 Tests for participant controls (Phase 2)
 """
 
+# Standard Library
 import json
 
+# Django
 from django.contrib.auth.models import Permission, User
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
-from aapayout.models import Fleet, FleetParticipant
+# AA Payout
 from aapayout import views
+from aapayout.models import Fleet, FleetParticipant
 
 
 class ParticipantUpdateStatusTest(TestCase):
@@ -21,15 +25,14 @@ class ParticipantUpdateStatusTest(TestCase):
     def setUp(self):
         """Set up test data"""
         # Create test users
-        self.fc_user = User.objects.create_user(
-            username="fc_user", password="password"
-        )
-        self.other_user = User.objects.create_user(
-            username="other_user", password="password"
-        )
+        self.fc_user = User.objects.create_user(username="fc_user", password="password")
+        self.other_user = User.objects.create_user(username="other_user", password="password")
 
         # Give permissions
+        # Django
         from django.contrib.contenttypes.models import ContentType
+
+        # AA Payout
         from aapayout.models import General
 
         ct = ContentType.objects.get_for_model(General)
@@ -39,8 +42,7 @@ class ParticipantUpdateStatusTest(TestCase):
 
         # Create character
         self.character, _ = EveEntity.objects.get_or_create(
-            id=1001,
-            defaults={"name": "Test Character", "category": EveEntity.CATEGORY_CHARACTER}
+            id=1001, defaults={"name": "Test Character", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create fleet
@@ -153,6 +155,7 @@ class ParticipantUpdateStatusTest(TestCase):
 
     def test_unauthenticated_user_redirected(self):
         """Test that unauthenticated users need authentication"""
+        # Django
         from django.contrib.auth.models import AnonymousUser
 
         url = reverse("aapayout:participant_update_status", kwargs={"pk": self.participant.pk})
@@ -172,6 +175,7 @@ class ParticipantUpdateStatusTest(TestCase):
 
     def test_invalid_participant_id(self):
         """Test handling of invalid participant ID"""
+        # Django
         from django.http import Http404
 
         url = reverse("aapayout:participant_update_status", kwargs={"pk": 99999})
@@ -190,13 +194,14 @@ class ParticipantUpdateStatusTest(TestCase):
 
     def test_admin_user_can_update_any_fleet(self):
         """Test that admin with manage_all_fleets can update any participant"""
+        # Django
         from django.contrib.contenttypes.models import ContentType
+
+        # AA Payout
         from aapayout.models import General
 
         # Create admin user with special permission
-        admin_user = User.objects.create_user(
-            username="admin_user", password="password"
-        )
+        admin_user = User.objects.create_user(username="admin_user", password="password")
         ct = ContentType.objects.get_for_model(General)
         basic_access = Permission.objects.get(content_type=ct, codename="basic_access")
         manage_all = Permission.objects.get(content_type=ct, codename="manage_all_fleets")

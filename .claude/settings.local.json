@@ -28,7 +28,11 @@
       "Bash(export DJANGO_SETTINGS_MODULE=testauth.settings)",
       "Bash(for file in aapayout/tests/test_*.py)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(pre-commit run:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=testauth.settings python runtests.py:*)",
+      "Bash(export DJANGO_SETTINGS_MODULE=testauth.settings.local)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

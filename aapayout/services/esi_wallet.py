@@ -4,12 +4,16 @@ ESI Wallet Service
 Handles ESI wallet journal integration for payment verification
 """
 
+# Standard Library
 import logging
 from datetime import timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 
+# Django
 from django.utils import timezone
+
+# Alliance Auth
 from esi.clients import EsiClientProvider
 from esi.models import Token
 
@@ -23,11 +27,7 @@ class ESIWalletService:
     """Service for interacting with ESI Wallet endpoints"""
 
     @staticmethod
-    def get_wallet_journal(
-        character_id: int,
-        token: Token,
-        max_pages: int = 10
-    ) -> Optional[List[Dict]]:
+    def get_wallet_journal(character_id: int, token: Token, max_pages: int = 10) -> Optional[List[Dict]]:
         """
         Get wallet journal entries from ESI
 
@@ -66,9 +66,7 @@ class ESIWalletService:
 
             while page <= max_pages:
                 result = esi.client.Wallet.get_characters_character_id_wallet_journal(
-                    character_id=character_id,
-                    token=token.valid_access_token(),
-                    page=page
+                    character_id=character_id, token=token.valid_access_token(), page=page
                 ).results()
 
                 if not result or len(result) == 0:
@@ -85,17 +83,12 @@ class ESIWalletService:
             return all_entries
 
         except Exception as e:
-            logger.error(
-                f"Failed to fetch wallet journal for character ID {character_id}: {e}"
-            )
+            logger.error(f"Failed to fetch wallet journal for character ID {character_id}: {e}")
             return None
 
     @staticmethod
     def match_payout_to_journal(
-        payout_amount: Decimal,
-        recipient_character_id: int,
-        journal_entries: List[Dict],
-        time_window_hours: int = 24
+        payout_amount: Decimal, recipient_character_id: int, journal_entries: List[Dict], time_window_hours: int = 24
     ) -> Optional[Dict]:
         """
         Match a payout to a wallet journal entry
@@ -119,7 +112,9 @@ class ESIWalletService:
 
         for entry in journal_entries:
             # Parse entry date
+            # Third Party
             from dateutil import parser as date_parser
+
             try:
                 entry_date = date_parser.parse(entry.get("date", ""))
                 # Make timezone aware if needed
@@ -138,11 +133,7 @@ class ESIWalletService:
             second_party = entry.get("second_party_id")
             amount = abs(Decimal(str(entry.get("amount", 0))))
 
-            if (
-                ref_type == "player_donation"
-                and second_party == recipient_character_id
-                and amount == payout_amount
-            ):
+            if ref_type == "player_donation" and second_party == recipient_character_id and amount == payout_amount:
                 logger.info(
                     f"Matched payout {payout_amount} ISK to {recipient_character_id} "
                     f"with journal entry {entry.get('id')}"
@@ -154,11 +145,7 @@ class ESIWalletService:
 
     @classmethod
     def verify_payouts(
-        cls,
-        payouts: List,
-        fc_character_id: int,
-        token: Token,
-        time_window_hours: int = 24
+        cls, payouts: List, fc_character_id: int, token: Token, time_window_hours: int = 24
     ) -> Tuple[int, int, List[str]]:
         """
         Verify multiple payouts against wallet journal
@@ -197,7 +184,7 @@ class ESIWalletService:
                 payout_amount=payout.amount,
                 recipient_character_id=payout.recipient.id,
                 journal_entries=journal_entries,
-                time_window_hours=time_window_hours
+                time_window_hours=time_window_hours,
             )
 
             if match:
@@ -210,21 +197,14 @@ class ESIWalletService:
                 payout.save()
 
                 verified_count += 1
-                logger.info(
-                    f"Verified payout {payout.id}: {payout.amount} ISK to "
-                    f"{payout.recipient.name}"
-                )
+                logger.info(f"Verified payout {payout.id}: {payout.amount} ISK to " f"{payout.recipient.name}")
             else:
                 pending_count += 1
                 logger.warning(
-                    f"No match found for payout {payout.id}: {payout.amount} ISK to "
-                    f"{payout.recipient.name}"
+                    f"No match found for payout {payout.id}: {payout.amount} ISK to " f"{payout.recipient.name}"
                 )
 
-        logger.info(
-            f"Verification complete: {verified_count} verified, "
-            f"{pending_count} pending"
-        )
+        logger.info(f"Verification complete: {verified_count} verified, " f"{pending_count} pending")
 
         return verified_count, pending_count, errors
 

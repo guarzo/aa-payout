@@ -4,17 +4,22 @@ Tests for Express Mode Payment Interface
 Phase 2: Week 6 - Express Mode
 """
 
+# Standard Library
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+# Django
 from django.contrib.auth.models import Permission, User
 from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+# Alliance Auth (External Libs)
+from eveuniverse.models import EveEntity
+
+# AA Payout
 from aapayout import constants
 from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
-from eveuniverse.models import EveEntity
 
 
 class ExpressModeViewTests(TestCase):
@@ -24,10 +29,7 @@ class ExpressModeViewTests(TestCase):
     def setUpTestData(cls):
         """Set up test data"""
         # Create user with permissions
-        cls.user = User.objects.create_user(
-            username="fc_user",
-            password="testpass"
-        )
+        cls.user = User.objects.create_user(username="fc_user", password="testpass")
         cls.user.user_permissions.add(
             Permission.objects.get(codename="basic_access"),
             Permission.objects.get(codename="approve_payouts"),
@@ -121,9 +123,7 @@ class ExpressModeViewTests(TestCase):
     def test_express_mode_no_pending_payouts(self):
         """Test Express Mode redirects when no pending payouts"""
         # Mark all payouts as paid
-        Payout.objects.filter(loot_pool=self.loot_pool).update(
-            status=constants.PAYOUT_STATUS_PAID
-        )
+        Payout.objects.filter(loot_pool=self.loot_pool).update(status=constants.PAYOUT_STATUS_PAID)
 
         url = reverse("aapayout:express_mode_start", kwargs={"pool_id": self.loot_pool.pk})
         response = self.client.get(url)
@@ -140,7 +140,9 @@ class ExpressModeViewTests(TestCase):
         mock_token = MagicMock()
         mock_token.has_scope.return_value = True
         mock_token.valid_access_token.return_value = "test_token"
-        mock_token_filter.return_value.require_scopes.return_value.require_valid.return_value.first.return_value = mock_token
+        mock_token_filter.return_value.require_scopes.return_value.require_valid.return_value.first.return_value = (
+            mock_token
+        )
 
         # Mock window opening
         mock_open_window.return_value = (True, None)

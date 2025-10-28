@@ -2,14 +2,19 @@
 Tests for AA-Payout helper functions
 """
 
+# Standard Library
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
+# Django
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
+
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
+# AA Payout
 from aapayout import app_settings, constants
 from aapayout.helpers import calculate_payouts, create_loot_items_from_appraisal
 from aapayout.models import Fleet, FleetParticipant, LootPool
@@ -21,11 +26,7 @@ class CalculatePayoutsTest(TestCase):
     def setUp(self):
         """Patch settings before each test"""
         # Patch app_settings to use low minimum payout for tests
-        self.settings_patcher = patch.object(
-            app_settings,
-            'AAPAYOUT_MINIMUM_PAYOUT',
-            1000  # 1k ISK minimum for tests
-        )
+        self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)  # 1k ISK minimum for tests
         self.settings_patcher.start()
 
     def tearDown(self):
@@ -34,9 +35,7 @@ class CalculatePayoutsTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
@@ -52,7 +51,7 @@ class CalculatePayoutsTest(TestCase):
             defaults={
                 "name": "Character 1",
                 "category": EveEntity.CATEGORY_CHARACTER,
-            }
+            },
         )
 
         cls.char2, _ = EveEntity.objects.get_or_create(
@@ -60,7 +59,7 @@ class CalculatePayoutsTest(TestCase):
             defaults={
                 "name": "Character 2",
                 "category": EveEntity.CATEGORY_CHARACTER,
-            }
+            },
         )
 
         cls.char3, _ = EveEntity.objects.get_or_create(
@@ -68,7 +67,7 @@ class CalculatePayoutsTest(TestCase):
             defaults={
                 "name": "Character 3",
                 "category": EveEntity.CATEGORY_CHARACTER,
-            }
+            },
         )
 
         # Add participants (Phase 2: set main_character for deduplication)
@@ -217,9 +216,7 @@ class CreateLootItemsFromAppraisalTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass"
-        )
+        cls.user = User.objects.create_user(username="testuser", email="test@example.com", password="testpass")
 
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",

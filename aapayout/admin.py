@@ -1,8 +1,10 @@
 """Admin models"""
 
+# Django
 from django.contrib import admin
 from django.utils.html import format_html
 
+# AA Payout
 from aapayout.models import (
     ESIFleetImport,
     Fleet,
@@ -15,6 +17,7 @@ from aapayout.models import (
 
 class FleetParticipantInline(admin.TabularInline):
     """Inline admin for fleet participants"""
+
     model = FleetParticipant
     extra = 0
     fields = ("character", "role", "joined_at", "left_at")
@@ -23,6 +26,7 @@ class FleetParticipantInline(admin.TabularInline):
 
 class LootPoolInline(admin.TabularInline):
     """Inline admin for loot pools"""
+
     model = LootPool
     extra = 0
     fields = ("name", "status", "total_value", "created_at")
@@ -51,27 +55,28 @@ class FleetAdmin(admin.ModelAdmin):
     inlines = [FleetParticipantInline, LootPoolInline]
 
     fieldsets = (
-        ("Fleet Information", {
-            "fields": ("name", "fleet_commander", "doctrine", "location", "fleet_time")
-        }),
-        ("Status", {
-            "fields": ("status", "notes")
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        ("Fleet Information", {"fields": ("name", "fleet_commander", "doctrine", "location", "fleet_time")}),
+        ("Status", {"fields": ("status", "notes")}),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def participant_count(self, obj):
         """Get participant count"""
         return obj.get_participant_count()
+
     participant_count.short_description = "Participants"
 
     def total_value(self, obj):
         """Get total loot value"""
         value = obj.get_total_loot_value()
         return format_html("{:,.2f} ISK", value)
+
     total_value.short_description = "Total Loot Value"
 
 
@@ -92,21 +97,21 @@ class FleetParticipantAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at",)
 
     fieldsets = (
-        ("Participant Information", {
-            "fields": ("fleet", "character", "role")
-        }),
-        ("Timing", {
-            "fields": ("joined_at", "left_at")
-        }),
-        ("Additional", {
-            "fields": ("notes", "created_at"),
-            "classes": ("collapse",),
-        }),
+        ("Participant Information", {"fields": ("fleet", "character", "role")}),
+        ("Timing", {"fields": ("joined_at", "left_at")}),
+        (
+            "Additional",
+            {
+                "fields": ("notes", "created_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
 
 class LootItemInline(admin.TabularInline):
     """Inline admin for loot items"""
+
     model = LootItem
     extra = 0
     fields = ("name", "quantity", "unit_price", "total_value", "price_source", "manual_override")
@@ -115,6 +120,7 @@ class LootItemInline(admin.TabularInline):
 
 class PayoutInline(admin.TabularInline):
     """Inline admin for payouts"""
+
     model = Payout
     extra = 0
     fields = ("recipient", "amount", "status", "paid_at")
@@ -151,43 +157,51 @@ class LootPoolAdmin(admin.ModelAdmin):
     inlines = [LootItemInline, PayoutInline]
 
     fieldsets = (
-        ("Loot Pool Information", {
-            "fields": ("fleet", "name", "raw_loot_text")
-        }),
-        ("Pricing", {
-            "fields": ("pricing_method", "status", "janice_appraisal_code")
-        }),
-        ("Values", {
-            "fields": (
-                "total_value",
-                "corp_share_percentage",
-                "corp_share_amount",
-                "participant_share_amount",
-            )
-        }),
-        ("Approval", {
-            "fields": ("approved_by", "approved_at", "valued_at"),
-            "classes": ("collapse",),
-        }),
-        ("Timestamps", {
-            "fields": ("created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        ("Loot Pool Information", {"fields": ("fleet", "name", "raw_loot_text")}),
+        ("Pricing", {"fields": ("pricing_method", "status", "janice_appraisal_code")}),
+        (
+            "Values",
+            {
+                "fields": (
+                    "total_value",
+                    "corp_share_percentage",
+                    "corp_share_amount",
+                    "participant_share_amount",
+                )
+            },
+        ),
+        (
+            "Approval",
+            {
+                "fields": ("approved_by", "approved_at", "valued_at"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def total_value_display(self, obj):
         """Format total value"""
         return format_html("{:,.2f} ISK", obj.total_value)
+
     total_value_display.short_description = "Total Value"
 
     def corp_share_display(self, obj):
         """Format corp share"""
         return format_html("{:,.2f} ISK ({}%)", obj.corp_share_amount, obj.corp_share_percentage)
+
     corp_share_display.short_description = "Corp Share"
 
     def participant_share_display(self, obj):
         """Format participant share"""
         return format_html("{:,.2f} ISK", obj.participant_share_amount)
+
     participant_share_display.short_description = "Participant Share"
 
 
@@ -210,32 +224,38 @@ class LootItemAdmin(admin.ModelAdmin):
     readonly_fields = ("total_value", "price_fetched_at")
 
     fieldsets = (
-        ("Item Information", {
-            "fields": ("loot_pool", "type_id", "name", "quantity")
-        }),
-        ("Pricing", {
-            "fields": (
-                "unit_price",
-                "total_value",
-                "price_source",
-                "manual_override",
-                "price_fetched_at",
-            )
-        }),
-        ("Additional", {
-            "fields": ("notes",),
-            "classes": ("collapse",),
-        }),
+        ("Item Information", {"fields": ("loot_pool", "type_id", "name", "quantity")}),
+        (
+            "Pricing",
+            {
+                "fields": (
+                    "unit_price",
+                    "total_value",
+                    "price_source",
+                    "manual_override",
+                    "price_fetched_at",
+                )
+            },
+        ),
+        (
+            "Additional",
+            {
+                "fields": ("notes",),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     def unit_price_display(self, obj):
         """Format unit price"""
         return format_html("{:,.2f} ISK", obj.unit_price)
+
     unit_price_display.short_description = "Unit Price"
 
     def total_value_display(self, obj):
         """Format total value"""
         return format_html("{:,.2f} ISK", obj.total_value)
+
     total_value_display.short_description = "Total Value"
 
 
@@ -259,20 +279,22 @@ class PayoutAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
 
     fieldsets = (
-        ("Payout Information", {
-            "fields": ("loot_pool", "recipient", "amount")
-        }),
-        ("Payment Details", {
-            "fields": ("status", "payment_method", "transaction_reference")
-        }),
-        ("Payment Tracking", {
-            "fields": ("paid_by", "paid_at"),
-            "classes": ("collapse",),
-        }),
-        ("Additional", {
-            "fields": ("notes", "created_at"),
-            "classes": ("collapse",),
-        }),
+        ("Payout Information", {"fields": ("loot_pool", "recipient", "amount")}),
+        ("Payment Details", {"fields": ("status", "payment_method", "transaction_reference")}),
+        (
+            "Payment Tracking",
+            {
+                "fields": ("paid_by", "paid_at"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Additional",
+            {
+                "fields": ("notes", "created_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     actions = ["mark_as_paid"]
@@ -280,12 +302,16 @@ class PayoutAdmin(admin.ModelAdmin):
     def amount_display(self, obj):
         """Format amount"""
         return format_html("{:,.2f} ISK", obj.amount)
+
     amount_display.short_description = "Amount"
 
     @admin.action(description="Mark selected payouts as paid")
     def mark_as_paid(self, request, queryset):
         """Admin action to mark payouts as paid"""
+        # Django
         from django.utils import timezone
+
+        # AA Payout
         from aapayout import constants
 
         count = queryset.update(
@@ -325,4 +351,3 @@ class ESIFleetImportAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Disable manual creation (should only be created via import view)"""
         return False
-

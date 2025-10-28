@@ -2,23 +2,25 @@
 Views for AA-Payout
 """
 
+# Standard Library
 import logging
 
+# Django
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator
-from django.db.models import Q, Sum
-from django.http import Http404, HttpResponse, JsonResponse
+from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
+# AA Payout
 from aapayout import constants
 from aapayout.forms import (
-    BulkPayoutMarkPaidForm,
     FleetCreateForm,
     FleetEditForm,
     LootItemEditForm,
@@ -28,7 +30,7 @@ from aapayout.forms import (
     ParticipantEditForm,
     PayoutMarkPaidForm,
 )
-from aapayout.helpers import create_payouts
+from aapayout.helpers import calculate_payouts, create_payouts
 from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool, Payout
 from aapayout.tasks import appraise_loot_pool
 
@@ -59,9 +61,7 @@ def dashboard(request):
     # Get recent fleets (if user is FC)
     recent_fleets = Fleet.objects.none()
     if request.user.has_perm("aapayout.create_fleet"):
-        recent_fleets = Fleet.objects.filter(
-            fleet_commander=request.user
-        ).order_by("-fleet_time")[:5]
+        recent_fleets = Fleet.objects.filter(fleet_commander=request.user).order_by("-fleet_time")[:5]
 
     # Calculate stats
     total_pending = sum(p.amount for p in pending_payouts)
@@ -130,12 +130,14 @@ def fleet_create(request):
 @permission_required("aapayout.basic_access")
 def fleet_detail(request, pk):
     """View fleet details"""
+    # AA Payout
     from aapayout.helpers import get_main_character_for_participant
 
     fleet = get_object_or_404(
-        Fleet.objects.select_related("fleet_commander")
-        .prefetch_related("participants", "loot_pools", "loot_pools__payouts"),
-        pk=pk
+        Fleet.objects.select_related("fleet_commander").prefetch_related(
+            "participants", "loot_pools", "loot_pools__payouts"
+        ),
+        pk=pk,
     )
 
     # Get participants
@@ -235,10 +237,14 @@ def participant_add(request, fleet_id):
                 character = EveEntity.objects.get(name=character_name, category_id=1)
             except EveEntity.DoesNotExist:
                 messages.error(request, f"Character '{character_name}' not found")
-                return render(request, "aapayout/participants/participant_add.html", {
-                    "form": form,
-                    "fleet": fleet,
-                })
+                return render(
+                    request,
+                    "aapayout/participants/participant_add.html",
+                    {
+                        "form": form,
+                        "fleet": fleet,
+                    },
+                )
 
             # Check if already a participant
             if FleetParticipant.objects.filter(fleet=fleet, character=character).exists():
@@ -331,10 +337,7 @@ def loot_create(request, fleet_id):
             # Trigger async appraisal
             appraise_loot_pool.delay(loot_pool.id)
 
-            messages.success(
-                request,
-                "Loot pool created! Valuation in progress, this may take a few moments..."
-            )
+            messages.success(request, "Loot pool created! Valuation in progress, this may take a few moments...")
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
     else:
         form = LootPoolCreateForm()
@@ -348,9 +351,10 @@ def loot_create(request, fleet_id):
 def loot_detail(request, pk):
     """View loot pool details"""
     loot_pool = get_object_or_404(
-        LootPool.objects.select_related("fleet", "fleet__fleet_commander", "approved_by")
-        .prefetch_related("items", "payouts"),
-        pk=pk
+        LootPool.objects.select_related("fleet", "fleet__fleet_commander", "approved_by").prefetch_related(
+            "items", "payouts"
+        ),
+        pk=pk,
     )
 
     # Get loot items
@@ -440,10 +444,7 @@ def loot_approve(request, pk):
             loot_pool.approved_at = timezone.now()
             loot_pool.save()
 
-            messages.success(
-                request,
-                f"Loot pool approved! Created {payouts_created} payouts."
-            )
+            messages.success(request, f"Loot pool approved! Created {payouts_created} payouts.")
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
     else:
         form = LootPoolApproveForm(loot_pool)
@@ -476,6 +477,7 @@ def loot_approve(request, pk):
 @permission_required("aapayout.basic_access")
 def payout_list(request, pool_id):
     """View payouts for a loot pool"""
+    # Standard Library
     from decimal import Decimal
 
     loot_pool = get_object_or_404(LootPool.objects.select_related("fleet"), pk=pool_id)
@@ -484,19 +486,12 @@ def payout_list(request, pool_id):
     # Calculate statistics
     pending_count = payouts.filter(status=constants.PAYOUT_STATUS_PENDING).count()
     paid_count = payouts.filter(status=constants.PAYOUT_STATUS_PAID).count()
-    pending_amount = sum(
-        p.amount for p in payouts.filter(status=constants.PAYOUT_STATUS_PENDING)
-    ) or Decimal("0.00")
-    paid_amount = sum(
-        p.amount for p in payouts.filter(status=constants.PAYOUT_STATUS_PAID)
-    ) or Decimal("0.00")
+    pending_amount = sum(p.amount for p in payouts.filter(status=constants.PAYOUT_STATUS_PENDING)) or Decimal("0.00")
+    paid_amount = sum(p.amount for p in payouts.filter(status=constants.PAYOUT_STATUS_PAID)) or Decimal("0.00")
     total_amount = sum(p.amount for p in payouts) or Decimal("0.00")
 
     # Check if user can mark payouts as paid
-    can_mark_paid = (
-        request.user.has_perm("aapayout.approve_payouts")
-        or loot_pool.fleet.fleet_commander == request.user
-    )
+    can_mark_paid = request.user.has_perm("aapayout.approve_payouts") or loot_pool.fleet.fleet_commander == request.user
 
     context = {
         "loot_pool": loot_pool,
@@ -531,10 +526,7 @@ def payout_mark_paid(request, pk):
                 payout.notes = form.cleaned_data["notes"]
             payout.save()
 
-            messages.success(
-                request,
-                f"Marked payout to {payout.recipient.name} as paid"
-            )
+            messages.success(request, f"Marked payout to {payout.recipient.name} as paid")
             return redirect("aapayout:payout_list", pool_id=payout.loot_pool.pk)
     else:
         form = PayoutMarkPaidForm()
@@ -554,25 +546,18 @@ def verify_payments(request, pool_id):
     This view triggers the verification process for all pending payouts
     in a loot pool by checking the FC's wallet journal for matching transfers.
     """
+    # AA Payout
     from aapayout.tasks import verify_payments_async
 
-    loot_pool = get_object_or_404(
-        LootPool.objects.select_related("fleet", "fleet__fleet_commander"),
-        pk=pool_id
-    )
+    loot_pool = get_object_or_404(LootPool.objects.select_related("fleet", "fleet__fleet_commander"), pk=pool_id)
 
     # Check permissions (must be FC or have approve_payouts permission)
-    if not (
-        request.user == loot_pool.fleet.fleet_commander
-        or request.user.has_perm("aapayout.approve_payouts")
-    ):
+    if not (request.user == loot_pool.fleet.fleet_commander or request.user.has_perm("aapayout.approve_payouts")):
         messages.error(request, "You don't have permission to verify payments for this fleet")
         return redirect("aapayout:payout_list", pool_id=pool_id)
 
     # Check that there are pending payouts
-    pending_count = loot_pool.payouts.filter(
-        status=constants.PAYOUT_STATUS_PENDING
-    ).count()
+    pending_count = loot_pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING).count()
 
     if pending_count == 0:
         messages.info(request, "No pending payouts to verify")
@@ -580,17 +565,23 @@ def verify_payments(request, pool_id):
 
     if request.method == "POST":
         # Check if user has ESI token with wallet journal scope
+        # Alliance Auth
         from esi.models import Token
 
-        token = Token.objects.filter(
-            user=request.user,
-        ).require_scopes("esi-wallet.read_character_journal.v1").require_valid().first()
+        token = (
+            Token.objects.filter(
+                user=request.user,
+            )
+            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_valid()
+            .first()
+        )
 
         if not token:
             messages.error(
                 request,
                 "You need to link your ESI token with wallet journal access. "
-                "Please add the 'esi-wallet.read_character_journal.v1' scope."
+                "Please add the 'esi-wallet.read_character_journal.v1' scope.",
             )
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
@@ -599,15 +590,11 @@ def verify_payments(request, pool_id):
 
         # Trigger async verification task
         result = verify_payments_async.delay(
-            loot_pool_id=pool_id,
-            user_id=request.user.id,
-            time_window_hours=time_window
+            loot_pool_id=pool_id, user_id=request.user.id, time_window_hours=time_window
         )
 
         messages.success(
-            request,
-            f"Payment verification started for {pending_count} pending payouts. "
-            "This may take a moment..."
+            request, f"Payment verification started for {pending_count} pending payouts. " "This may take a moment..."
         )
 
         # Redirect to results page with task ID
@@ -633,12 +620,10 @@ def verification_results(request, pool_id, task_id):
     Shows the results of the payment verification task, including
     which payouts were successfully verified and which are still pending.
     """
+    # Third Party
     from celery.result import AsyncResult
 
-    loot_pool = get_object_or_404(
-        LootPool.objects.select_related("fleet"),
-        pk=pool_id
-    )
+    loot_pool = get_object_or_404(LootPool.objects.select_related("fleet"), pk=pool_id)
 
     # Get task result
     task_result = AsyncResult(task_id)
@@ -659,14 +644,11 @@ def verification_results(request, pool_id, task_id):
         result_data = task_result.result
 
         # Get updated payout counts
-        verified_payouts = loot_pool.payouts.filter(
-            status=constants.PAYOUT_STATUS_PAID,
-            verified=True
-        ).select_related("recipient")
+        verified_payouts = loot_pool.payouts.filter(status=constants.PAYOUT_STATUS_PAID, verified=True).select_related(
+            "recipient"
+        )
 
-        pending_payouts = loot_pool.payouts.filter(
-            status=constants.PAYOUT_STATUS_PENDING
-        ).select_related("recipient")
+        pending_payouts = loot_pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING).select_related("recipient")
 
         context = {
             "loot_pool": loot_pool,
@@ -728,9 +710,7 @@ def payout_history(request):
             messages.warning(request, "You don't have a main character set")
             return redirect("aapayout:dashboard")
 
-        payouts = Payout.objects.filter(
-            recipient__character_id=main_character.character_id
-        )
+        payouts = Payout.objects.filter(recipient__character_id=main_character.character_id)
 
     # Apply filters
     fleet_id = request.GET.get("fleet")
@@ -747,7 +727,9 @@ def payout_history(request):
 
     if date_from:
         try:
+            # Standard Library
             from datetime import datetime
+
             date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
             payouts = payouts.filter(created_at__gte=date_from_obj)
         except ValueError:
@@ -755,7 +737,9 @@ def payout_history(request):
 
     if date_to:
         try:
+            # Standard Library
             from datetime import datetime, timedelta
+
             date_to_obj = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
             payouts = payouts.filter(created_at__lt=date_to_obj)
         except ValueError:
@@ -764,19 +748,11 @@ def payout_history(request):
     # Search by character or fleet name
     search = request.GET.get("search")
     if search:
-        from django.db.models import Q
-
-        payouts = payouts.filter(
-            Q(recipient__name__icontains=search) |
-            Q(loot_pool__fleet__name__icontains=search)
-        )
+        payouts = payouts.filter(Q(recipient__name__icontains=search) | Q(loot_pool__fleet__name__icontains=search))
 
     # Optimize query with select_related
     payouts = payouts.select_related(
-        "recipient",
-        "loot_pool__fleet",
-        "loot_pool__fleet__fleet_commander",
-        "paid_by"
+        "recipient", "loot_pool__fleet", "loot_pool__fleet__fleet_commander", "paid_by"
     ).order_by("-paid_at", "-created_at")
 
     # Calculate totals before pagination
@@ -784,7 +760,7 @@ def payout_history(request):
         total_paid=Sum("amount", filter=Q(status=constants.PAYOUT_STATUS_PAID)),
         total_pending=Sum("amount", filter=Q(status=constants.PAYOUT_STATUS_PENDING)),
         count_paid=Count("id", filter=Q(status=constants.PAYOUT_STATUS_PAID)),
-        count_pending=Count("id", filter=Q(status=constants.PAYOUT_STATUS_PENDING))
+        count_pending=Count("id", filter=Q(status=constants.PAYOUT_STATUS_PENDING)),
     )
 
     # Pagination
@@ -796,11 +772,10 @@ def payout_history(request):
     fleet_list = None
     if can_view_all:
         fleet_list = Fleet.objects.filter(
-            status__in=[
-                constants.FLEET_STATUS_COMPLETED,
-                constants.FLEET_STATUS_PAID
-            ]
-        ).order_by("-fleet_time")[:50]  # Last 50 fleets
+            status__in=[constants.FLEET_STATUS_COMPLETED, constants.FLEET_STATUS_PAID]
+        ).order_by("-fleet_time")[
+            :50
+        ]  # Last 50 fleets
 
     context = {
         "page_obj": page_obj,
@@ -840,7 +815,9 @@ def character_search(request):
     characters = EveEntity.objects.filter(
         name__icontains=query,
         category_id=1,  # Characters only
-    ).order_by("name")[:20]
+    ).order_by(
+        "name"
+    )[:20]
 
     results = [{"id": char.id, "name": char.name} for char in characters]
 
@@ -856,6 +833,7 @@ def participant_update_status(request, pk):
 
     Phase 2: Real-time participant controls
     """
+    # Standard Library
     import json
 
     participant = get_object_or_404(FleetParticipant, pk=pk)
@@ -876,11 +854,13 @@ def participant_update_status(request, pk):
 
         participant.save()
 
-        return JsonResponse({
-            "success": True,
-            "is_scout": participant.is_scout,
-            "excluded_from_payout": participant.excluded_from_payout,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "is_scout": participant.is_scout,
+                "excluded_from_payout": participant.excluded_from_payout,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Failed to update participant {pk}: {e}")
@@ -903,9 +883,10 @@ def fleet_import(request, pk):
 
     Phase 2: Week 3-4 - ESI Fleet Import
     """
-    from esi.decorators import token_required
+    # Alliance Auth
     from esi.models import Token
 
+    # AA Payout
     from aapayout import app_settings
     from aapayout.helpers import get_main_character_for_participant
     from aapayout.models import ESIFleetImport, FleetParticipant
@@ -941,30 +922,30 @@ def fleet_import(request, pk):
 
         # Get user's ESI token with required scope
         try:
-            token = Token.objects.filter(
-                user=request.user,
-            ).require_scopes("esi-fleets.read_fleet.v1").require_valid().first()
+            token = (
+                Token.objects.filter(
+                    user=request.user,
+                )
+                .require_scopes("esi-fleets.read_fleet.v1")
+                .require_valid()
+                .first()
+            )
 
             if not token:
                 messages.error(
                     request,
                     "You need to add an ESI token with fleet read access. "
-                    "Please add your character and authorize the required scopes."
+                    "Please add your character and authorize the required scopes.",
                 )
                 return redirect("aapayout:fleet_import", pk=fleet.pk)
 
         except Exception as e:
             logger.error(f"Failed to get ESI token for user {request.user.id}: {e}")
-            messages.error(
-                request,
-                "Failed to get your ESI token. Please try adding your character again."
-            )
+            messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 
         # Import fleet composition from ESI
-        member_data, error = esi_fleet_service.import_fleet_composition(
-            esi_fleet_id, token
-        )
+        member_data, error = esi_fleet_service.import_fleet_composition(esi_fleet_id, token)
 
         if error:
             messages.error(request, f"Failed to import fleet: {error}")
@@ -994,19 +975,13 @@ def fleet_import(request, pk):
                 continue
 
             # Check if participant already exists
-            existing = FleetParticipant.objects.filter(
-                fleet=fleet,
-                character=character_entity
-            ).first()
+            existing = FleetParticipant.objects.filter(fleet=fleet, character=character_entity).first()
 
             if existing:
-                logger.info(
-                    f"Participant {character_entity.name} already in fleet, skipping"
-                )
+                logger.info(f"Participant {character_entity.name} already in fleet, skipping")
                 characters_skipped += 1
 
                 # Still count for unique players
-                from aapayout.helpers import get_main_character_for_participant
                 main_char = get_main_character_for_participant(existing)
                 unique_players_set.add(main_char.id)
 
@@ -1028,10 +1003,7 @@ def fleet_import(request, pk):
             unique_players_set.add(main_char.id)
             characters_added += 1
 
-            logger.info(
-                f"Added participant {character_entity.name} "
-                f"(main: {main_char.name})"
-            )
+            logger.info(f"Added participant {character_entity.name} " f"(main: {main_char.name})")
 
         # Update ESI import record with results
         esi_import.characters_added = characters_added
@@ -1044,7 +1016,7 @@ def fleet_import(request, pk):
             request,
             f"Successfully imported {characters_added} new participants "
             f"({len(unique_players_set)} unique players). "
-            f"Skipped {characters_skipped} already in fleet."
+            f"Skipped {characters_skipped} already in fleet.",
         )
 
         return redirect("aapayout:fleet_import_results", import_id=esi_import.pk)
@@ -1072,6 +1044,7 @@ def fleet_import_results(request, import_id):
 
     Phase 2: Week 3-4 - ESI Fleet Import
     """
+    # AA Payout
     from aapayout.models import ESIFleetImport
 
     esi_import = get_object_or_404(ESIFleetImport, pk=import_id)
@@ -1107,18 +1080,17 @@ def express_mode_start(request, pool_id):
 
     Phase 2: Week 6 - Express Mode
     """
+    # Standard Library
     from decimal import Decimal
 
+    # AA Payout
     from aapayout import app_settings
     from aapayout.models import LootPool
 
     loot_pool = get_object_or_404(LootPool.objects.select_related("fleet"), pk=pool_id)
 
     # Check permissions
-    if not (
-        request.user.has_perm("aapayout.approve_payouts")
-        or loot_pool.fleet.fleet_commander == request.user
-    ):
+    if not (request.user.has_perm("aapayout.approve_payouts") or loot_pool.fleet.fleet_commander == request.user):
         messages.error(request, "You do not have permission to make payments for this fleet.")
         return redirect("aapayout:payout_list", pool_id=loot_pool.pk)
 
@@ -1128,9 +1100,9 @@ def express_mode_start(request, pool_id):
         return redirect("aapayout:payout_list", pool_id=loot_pool.pk)
 
     # Get pending payouts
-    pending_payouts = loot_pool.payouts.filter(
-        status=constants.PAYOUT_STATUS_PENDING
-    ).select_related("recipient").order_by("-amount")
+    pending_payouts = (
+        loot_pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING).select_related("recipient").order_by("-amount")
+    )
 
     if pending_payouts.count() == 0:
         messages.info(request, "No pending payouts for this loot pool.")
@@ -1167,10 +1139,10 @@ def express_mode_open_window(request, payout_id):
 
     Phase 2: Week 6 - Express Mode
     """
-    import json
-
+    # Alliance Auth
     from esi.models import Token
 
+    # AA Payout
     from aapayout.models import Payout
     from aapayout.services.esi_fleet import esi_ui_service
 
@@ -1182,40 +1154,38 @@ def express_mode_open_window(request, payout_id):
 
     try:
         # Get user's ESI token with required scope
-        token = Token.objects.filter(
-            user=request.user,
-        ).require_scopes("esi-ui.open_window.v1").require_valid().first()
-
-        if not token:
-            return JsonResponse({
-                "success": False,
-                "error": "You need an ESI token with UI window access. Please add your character."
-            }, status=400)
-
-        # Open character window
-        success, error = esi_ui_service.open_character_window(
-            payout.recipient.id,
-            token
+        token = (
+            Token.objects.filter(
+                user=request.user,
+            )
+            .require_scopes("esi-ui.open_window.v1")
+            .require_valid()
+            .first()
         )
 
-        if not success:
-            return JsonResponse({
-                "success": False,
-                "error": f"Failed to open window: {error}"
-            }, status=500)
+        if not token:
+            return JsonResponse(
+                {"success": False, "error": "You need an ESI token with UI window access. Please add your character."},
+                status=400,
+            )
 
-        return JsonResponse({
-            "success": True,
-            "character_id": payout.recipient.id,
-            "character_name": payout.recipient.name,
-        })
+        # Open character window
+        success, error = esi_ui_service.open_character_window(payout.recipient.id, token)
+
+        if not success:
+            return JsonResponse({"success": False, "error": f"Failed to open window: {error}"}, status=500)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "character_id": payout.recipient.id,
+                "character_name": payout.recipient.name,
+            }
+        )
 
     except Exception as e:
         logger.error(f"Failed to open window for payout {payout_id}: {e}")
-        return JsonResponse({
-            "success": False,
-            "error": str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 @login_required
@@ -1230,8 +1200,7 @@ def express_mode_mark_paid(request, payout_id):
 
     Phase 2: Week 6 - Express Mode
     """
-    import json
-
+    # AA Payout
     from aapayout.models import Payout
 
     payout = get_object_or_404(Payout.objects.select_related("loot_pool"), pk=payout_id)
@@ -1248,15 +1217,14 @@ def express_mode_mark_paid(request, payout_id):
         payout.payment_method = constants.PAYMENT_METHOD_MANUAL  # Express Mode uses manual
         payout.save()
 
-        return JsonResponse({
-            "success": True,
-            "payout_id": payout.id,
-            "amount": float(payout.amount),
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "payout_id": payout.id,
+                "amount": float(payout.amount),
+            }
+        )
 
     except Exception as e:
         logger.error(f"Failed to mark payout {payout_id} as paid: {e}")
-        return JsonResponse({
-            "success": False,
-            "error": str(e)
-        }, status=500)
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
