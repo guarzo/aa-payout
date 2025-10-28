@@ -726,7 +726,12 @@ def payout_history(request):
             # Standard Library
             from datetime import datetime
 
+            # Django
+            from django.utils import timezone as tz
+
             date_from_obj = datetime.strptime(date_from, "%Y-%m-%d")
+            # Make timezone aware
+            date_from_obj = tz.make_aware(date_from_obj)
             payouts = payouts.filter(created_at__gte=date_from_obj)
         except ValueError:
             messages.warning(request, "Invalid date format for 'from' date")
@@ -736,7 +741,12 @@ def payout_history(request):
             # Standard Library
             from datetime import datetime, timedelta
 
+            # Django
+            from django.utils import timezone as tz
+
             date_to_obj = datetime.strptime(date_to, "%Y-%m-%d") + timedelta(days=1)
+            # Make timezone aware
+            date_to_obj = tz.make_aware(date_to_obj)
             payouts = payouts.filter(created_at__lt=date_to_obj)
         except ValueError:
             messages.warning(request, "Invalid date format for 'to' date")

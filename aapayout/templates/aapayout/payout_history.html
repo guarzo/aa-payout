@@ -248,7 +248,7 @@
                                     <td>
                                         <i class="fas fa-user"></i> {{ payout.recipient.name }}
                                         {% if payout.is_scout_payout %}
-                                            <span class="badge badge-scout">
+                                            <span class="badge bg-info badge-scout">
                                                 <i class="fas fa-eye"></i> Scout
                                             </span>
                                         {% endif %}
@@ -266,7 +266,7 @@
                                                 <i class="fas fa-check"></i> {{ payout.get_status_display }}
                                             </span>
                                             {% if payout.verified %}
-                                                <span class="badge badge-verified" title="{% trans 'Verified via ESI' %}">
+                                                <span class="badge bg-success badge-verified" title="{% trans 'Verified via ESI' %}">
                                                     <i class="fas fa-shield-alt"></i> Verified
                                                 </span>
                                             {% endif %}

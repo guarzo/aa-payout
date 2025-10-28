@@ -65,7 +65,8 @@ class ESIFleetServiceTests(TestCase):
         self.assertEqual(entity.name, "New Character")
         mock_get_or_create.assert_called_once_with(id=9999)
 
-    def test_get_fleet_members_success(self):
+    @patch("aapayout.services.esi_fleet.esi")
+    def test_get_fleet_members_success(self, mock_esi):
         """Test successfully getting fleet members from ESI"""
         # Mock ESI response - the ESI call returns an object with a results() method
         expected_data = [
@@ -85,23 +86,19 @@ class ESIFleetServiceTests(TestCase):
 
         # Create mock ESI result object
         mock_result = MagicMock()
-        mock_result.results = MagicMock(return_value=expected_data)
+        mock_result.results.return_value = expected_data
+        mock_esi.client.Fleets.get_fleets_fleet_id_members.return_value = mock_result
 
-        # Import the esi object from the module
-        from aapayout.services import esi_fleet
+        # Create mock token
+        mock_token = MagicMock()
+        mock_token.valid_access_token.return_value = "test_token"
 
-        # Patch the esi client at the module level where it's defined
-        with patch.object(esi_fleet.esi.client.Fleets, 'get_fleets_fleet_id_members', return_value=mock_result):
-            # Create mock token
-            mock_token = MagicMock()
-            mock_token.valid_access_token.return_value = "test_token"
+        result = esi_fleet_service.get_fleet_members(123456, mock_token)
 
-            result = esi_fleet_service.get_fleet_members(123456, mock_token)
-
-            self.assertIsNotNone(result)
-            self.assertEqual(len(result), 2)
-            self.assertEqual(result[0]["character_id"], 1001)
-            self.assertEqual(result[1]["character_id"], 1002)
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["character_id"], 1001)
+        self.assertEqual(result[1]["character_id"], 1002)
 
     @patch("aapayout.services.esi_fleet.esi.client.Fleets.get_fleets_fleet_id_members")
     def test_get_fleet_members_error(self, mock_esi_members):
