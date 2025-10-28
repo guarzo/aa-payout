@@ -36,32 +36,25 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="{{ form.doctrine.id_for_label }}" class="form-label">
-                                {{ form.doctrine.label }}
-                            </label>
-                            {{ form.doctrine }}
-                            {% if form.doctrine.errors %}
-                                <div class="text-danger">{{ form.doctrine.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="{{ form.location.id_for_label }}" class="form-label">
-                                {{ form.location.label }} <span class="text-danger">*</span>
-                            </label>
-                            {{ form.location }}
-                            {% if form.location.errors %}
-                                <div class="text-danger">{{ form.location.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
                             <label for="{{ form.fleet_time.id_for_label }}" class="form-label">
                                 {{ form.fleet_time.label }} <span class="text-danger">*</span>
                             </label>
                             {{ form.fleet_time }}
                             {% if form.fleet_time.errors %}
                                 <div class="text-danger">{{ form.fleet_time.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.battle_report.id_for_label }}" class="form-label">
+                                {{ form.battle_report.label }}
+                            </label>
+                            {{ form.battle_report }}
+                            {% if form.battle_report.errors %}
+                                <div class="text-danger">{{ form.battle_report.errors }}</div>
+                            {% endif %}
+                            {% if form.battle_report.help_text %}
+                                <small class="form-text text-muted">{{ form.battle_report.help_text }}</small>
                             {% endif %}
                         </div>
 

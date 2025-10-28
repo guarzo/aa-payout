@@ -32,9 +32,7 @@ class FleetCreateFormTest(TestCase):
         """Test form with valid data"""
         form_data = {
             "name": "Test Fleet",
-            "doctrine": "Stealth Bombers",
-            "location": "J123456",
-            "fleet_time": timezone.now().strftime("%Y-%m-%dT%H:%M"),
+            "battle_report": "https://br.evetools.org/123456",
             "notes": "Test notes",
         }
 
@@ -44,22 +42,18 @@ class FleetCreateFormTest(TestCase):
     def test_missing_required_fields(self):
         """Test form with missing required fields"""
         form_data = {
-            "doctrine": "Stealth Bombers",
-            # Missing name, location, fleet_time
+            "battle_report": "https://br.evetools.org/123456",
+            # Missing name
         }
 
         form = FleetCreateForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn("name", form.errors)
-        self.assertIn("location", form.errors)
-        self.assertIn("fleet_time", form.errors)
 
     def test_optional_fields(self):
         """Test form with optional fields empty"""
         form_data = {
             "name": "Test Fleet",
-            "location": "J123456",
-            "fleet_time": timezone.now().strftime("%Y-%m-%dT%H:%M"),
         }
 
         form = FleetCreateForm(data=form_data)
@@ -76,7 +70,6 @@ class FleetEditFormTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -85,9 +78,8 @@ class FleetEditFormTest(TestCase):
         """Test editing fleet with valid data"""
         form_data = {
             "name": "Updated Fleet Name",
-            "doctrine": "Updated Doctrine",
-            "location": "J654321",
             "fleet_time": timezone.now().strftime("%Y-%m-%dT%H:%M"),
+            "battle_report": "https://zkillboard.com/related/123456",
             "notes": "Updated notes",
         }
 
@@ -164,7 +156,6 @@ class LootPoolCreateFormTest(TestCase):
             "name": "Test Loot Pool",
             "raw_loot_text": "Compressed Arkonor\t1000\nCompressed Bistot\t500",
             "pricing_method": constants.PRICING_JANICE_BUY,
-            "corp_share_percentage": Decimal("10.00"),
         }
 
         form = LootPoolCreateForm(data=form_data)
@@ -176,7 +167,6 @@ class LootPoolCreateFormTest(TestCase):
             "name": "Test Loot Pool",
             "raw_loot_text": "",
             "pricing_method": constants.PRICING_JANICE_BUY,
-            "corp_share_percentage": Decimal("10.00"),
         }
 
         form = LootPoolCreateForm(data=form_data)
@@ -189,38 +179,11 @@ class LootPoolCreateFormTest(TestCase):
             "name": "Test Loot Pool",
             "raw_loot_text": "   \n\n   ",
             "pricing_method": constants.PRICING_JANICE_BUY,
-            "corp_share_percentage": Decimal("10.00"),
         }
 
         form = LootPoolCreateForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn("raw_loot_text", form.errors)
-
-    def test_invalid_corp_share_percentage(self):
-        """Test validation for invalid corp share percentage"""
-        form_data = {
-            "name": "Test Loot Pool",
-            "raw_loot_text": "Compressed Arkonor\t1000",
-            "pricing_method": constants.PRICING_JANICE_BUY,
-            "corp_share_percentage": Decimal("150.00"),  # Over 100
-        }
-
-        form = LootPoolCreateForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("corp_share_percentage", form.errors)
-
-    def test_negative_corp_share_percentage(self):
-        """Test validation for negative corp share percentage"""
-        form_data = {
-            "name": "Test Loot Pool",
-            "raw_loot_text": "Compressed Arkonor\t1000",
-            "pricing_method": constants.PRICING_JANICE_BUY,
-            "corp_share_percentage": Decimal("-5.00"),
-        }
-
-        form = LootPoolCreateForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("corp_share_percentage", form.errors)
 
 
 class LootItemEditFormTest(TestCase):
@@ -268,7 +231,6 @@ class LootPoolApproveFormTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
@@ -286,7 +248,6 @@ class LootPoolApproveFormTest(TestCase):
     def test_valid_form(self):
         """Test form with valid data"""
         form_data = {
-            "corp_share_percentage": Decimal("15.00"),
             "confirm": True,
         }
 
@@ -296,20 +257,12 @@ class LootPoolApproveFormTest(TestCase):
     def test_missing_confirmation(self):
         """Test that confirmation is required"""
         form_data = {
-            "corp_share_percentage": Decimal("10.00"),
             "confirm": False,
         }
 
         form = LootPoolApproveForm(self.loot_pool, data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn("confirm", form.errors)
-
-    def test_default_corp_share(self):
-        """Test that default corp share is set from loot pool"""
-        form = LootPoolApproveForm(self.loot_pool)
-
-        # Initial value should be from loot pool
-        self.assertEqual(form.initial["corp_share_percentage"], self.loot_pool.corp_share_percentage)
 
 
 class PayoutMarkPaidFormTest(TestCase):

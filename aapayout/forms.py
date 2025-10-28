@@ -17,7 +17,7 @@ class FleetCreateForm(forms.ModelForm):
 
     class Meta:
         model = Fleet
-        fields = ["name", "doctrine", "location", "fleet_time", "notes"]
+        fields = ["name", "battle_report", "notes"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -25,22 +25,10 @@ class FleetCreateForm(forms.ModelForm):
                     "placeholder": "e.g., Wormhole Gank Fleet",
                 }
             ),
-            "doctrine": forms.TextInput(
+            "battle_report": forms.URLInput(
                 attrs={
                     "class": "form-control",
-                    "placeholder": "e.g., Stealth Bombers (optional)",
-                }
-            ),
-            "location": forms.TextInput(
-                attrs={
-                    "class": "form-control",
-                    "placeholder": "e.g., J123456",
-                }
-            ),
-            "fleet_time": forms.DateTimeInput(
-                attrs={
-                    "class": "form-control",
-                    "type": "datetime-local",
+                    "placeholder": "https://br.evetools.org/... (optional)",
                 }
             ),
             "notes": forms.Textarea(
@@ -52,14 +40,8 @@ class FleetCreateForm(forms.ModelForm):
             ),
         }
         help_texts = {
-            "fleet_time": "Date and time of the fleet operation",
+            "battle_report": "Link to zkillboard, evetools, or other battle report",
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set default fleet time to now
-        if not self.instance.pk and "fleet_time" not in self.initial:
-            self.initial["fleet_time"] = timezone.now().strftime("%Y-%m-%dT%H:%M")
 
 
 class FleetEditForm(forms.ModelForm):
@@ -67,15 +49,19 @@ class FleetEditForm(forms.ModelForm):
 
     class Meta:
         model = Fleet
-        fields = ["name", "doctrine", "location", "fleet_time", "notes"]
+        fields = ["name", "fleet_time", "battle_report", "notes"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control"}),
-            "doctrine": forms.TextInput(attrs={"class": "form-control"}),
-            "location": forms.TextInput(attrs={"class": "form-control"}),
             "fleet_time": forms.DateTimeInput(
                 attrs={
                     "class": "form-control",
                     "type": "datetime-local",
+                }
+            ),
+            "battle_report": forms.URLInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "https://br.evetools.org/... (optional)",
                 }
             ),
             "notes": forms.Textarea(
@@ -172,7 +158,7 @@ class LootPoolCreateForm(forms.ModelForm):
 
     class Meta:
         model = LootPool
-        fields = ["name", "raw_loot_text", "pricing_method", "corp_share_percentage"]
+        fields = ["name", "raw_loot_text", "pricing_method"]
         widgets = {
             "name": forms.TextInput(
                 attrs={
@@ -191,37 +177,16 @@ class LootPoolCreateForm(forms.ModelForm):
                 }
             ),
             "pricing_method": forms.Select(attrs={"class": "form-select"}),
-            "corp_share_percentage": forms.NumberInput(
-                attrs={
-                    "class": "form-control",
-                    "min": "0",
-                    "max": "100",
-                    "step": "0.01",
-                }
-            ),
         }
         help_texts = {
             "raw_loot_text": "Paste items directly from EVE client inventory",
-            "corp_share_percentage": "Percentage of loot value that goes to the corporation",
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set default corp share from settings
-        if not self.instance.pk and "corp_share_percentage" not in self.initial:
-            self.initial["corp_share_percentage"] = app_settings.AAPAYOUT_CORP_SHARE_PERCENTAGE
 
     def clean_raw_loot_text(self):
         loot_text = self.cleaned_data.get("raw_loot_text", "")
         if not loot_text or not loot_text.strip():
             raise ValidationError("Loot text cannot be empty")
         return loot_text.strip()
-
-    def clean_corp_share_percentage(self):
-        percentage = self.cleaned_data.get("corp_share_percentage")
-        if percentage < 0 or percentage > 100:
-            raise ValidationError("Corporation share must be between 0 and 100")
-        return percentage
 
 
 class LootItemEditForm(forms.ModelForm):
@@ -260,20 +225,6 @@ class LootItemEditForm(forms.ModelForm):
 class LootPoolApproveForm(forms.Form):
     """Form for approving a loot pool for payout"""
 
-    corp_share_percentage = forms.DecimalField(
-        label="Corporation Share Percentage",
-        min_value=0,
-        max_value=100,
-        decimal_places=2,
-        widget=forms.NumberInput(
-            attrs={
-                "class": "form-control",
-                "step": "0.01",
-            }
-        ),
-        help_text="Percentage of loot value that goes to the corporation",
-    )
-
     confirm = forms.BooleanField(
         label="I confirm these values are correct and ready for payout",
         required=True,
@@ -283,10 +234,6 @@ class LootPoolApproveForm(forms.Form):
     def __init__(self, loot_pool, *args, **kwargs):
         self.loot_pool = loot_pool
         super().__init__(*args, **kwargs)
-
-        # Set initial value from loot pool
-        if "corp_share_percentage" not in self.initial:
-            self.initial["corp_share_percentage"] = loot_pool.corp_share_percentage
 
 
 class PayoutMarkPaidForm(forms.Form):

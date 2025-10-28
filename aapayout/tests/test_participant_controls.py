@@ -49,7 +49,6 @@ class ParticipantUpdateStatusTest(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.fc_user,
-            location="Test System",
             fleet_time=timezone.now(),
         )
 

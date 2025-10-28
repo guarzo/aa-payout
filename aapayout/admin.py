@@ -41,7 +41,6 @@ class FleetAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "fleet_commander",
-        "location",
         "fleet_time",
         "status",
         "participant_count",
@@ -49,13 +48,13 @@ class FleetAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("status", "fleet_time", "created_at")
-    search_fields = ("name", "location", "fleet_commander__username")
+    search_fields = ("name", "fleet_commander__username")
     readonly_fields = ("created_at", "updated_at")
     date_hierarchy = "fleet_time"
     inlines = [FleetParticipantInline, LootPoolInline]
 
     fieldsets = (
-        ("Fleet Information", {"fields": ("name", "fleet_commander", "doctrine", "location", "fleet_time")}),
+        ("Fleet Information", {"fields": ("name", "fleet_commander", "fleet_time", "battle_report")}),
         ("Status", {"fields": ("status", "notes")}),
         (
             "Timestamps",

@@ -20,7 +20,7 @@ class PayoutMenuItem(MenuItemHook):
             self,
             _("Fleet Payouts"),
             "fas fa-coins fa-fw",
-            "aapayout:index",
+            "aapayout:dashboard",
             navactive=["aapayout:"],
         )
 

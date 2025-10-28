@@ -31,7 +31,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -46,7 +45,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=fleet_time,
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -59,7 +57,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -73,7 +70,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -85,7 +81,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -97,7 +92,6 @@ class FleetModelTest(TestCase):
         fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -121,7 +115,6 @@ class FleetParticipantModelTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -178,7 +171,6 @@ class LootPoolModelTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -261,7 +253,6 @@ class LootItemModelTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )
@@ -334,7 +325,6 @@ class PayoutModelTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_DRAFT,
         )

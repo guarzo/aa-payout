@@ -28,6 +28,10 @@ class ExpressModeViewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
+        # Import Alliance Auth models
+        from allianceauth.authentication.models import CharacterOwnership
+        from allianceauth.eveonline.models import EveCharacter
+
         # Create user with permissions
         cls.user = User.objects.create_user(username="fc_user", password="testpass")
         cls.user.user_permissions.add(
@@ -35,11 +39,29 @@ class ExpressModeViewTests(TestCase):
             Permission.objects.get(codename="approve_payouts"),
         )
 
+        # Create main character for user (required by Alliance Auth)
+        cls.main_character = EveCharacter.objects.create(
+            character_id=1001,
+            character_name="FC Main",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=cls.user,
+            character=cls.main_character,
+            owner_hash="test_hash",
+        )
+        # Set as main character
+        from allianceauth.authentication.models import UserProfile
+        profile, _ = UserProfile.objects.get_or_create(user=cls.user)
+        profile.main_character = cls.main_character
+        profile.save()
+
         # Create fleet
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="Jita",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
@@ -107,9 +129,30 @@ class ExpressModeViewTests(TestCase):
 
     def test_express_mode_requires_permission(self):
         """Test Express Mode requires approve_payouts permission"""
+        # Import Alliance Auth models
+        from allianceauth.authentication.models import CharacterOwnership, UserProfile
+        from allianceauth.eveonline.models import EveCharacter
+
         # Create user without permission
         user = User.objects.create_user(username="noob", password="test")
         user.user_permissions.add(Permission.objects.get(codename="basic_access"))
+
+        # Create main character for user (required by Alliance Auth)
+        main_char = EveCharacter.objects.create(
+            character_id=1002,
+            character_name="Noob Main",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=user,
+            character=main_char,
+            owner_hash="test_hash_noob",
+        )
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.main_character = main_char
+        profile.save()
 
         client = Client()
         client.login(username="noob", password="test")
@@ -132,7 +175,7 @@ class ExpressModeViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("payouts", response.url)
 
-    @patch("aapayout.views.esi_ui_service.open_character_window")
+    @patch("aapayout.services.esi_fleet.esi_ui_service.open_character_window")
     @patch("esi.models.Token.objects.filter")
     def test_express_mode_open_window(self, mock_token_filter, mock_open_window):
         """Test Express Mode open character window endpoint"""
@@ -177,12 +220,33 @@ class ExpressModeViewTests(TestCase):
 
     def test_express_mode_mark_paid_requires_permission(self):
         """Test marking paid requires proper permissions"""
+        # Import Alliance Auth models
+        from allianceauth.authentication.models import CharacterOwnership, UserProfile
+        from allianceauth.eveonline.models import EveCharacter
+
         # Create user without permission
-        user = User.objects.create_user(username="noob", password="test")
+        user = User.objects.create_user(username="noob2", password="test")
         user.user_permissions.add(Permission.objects.get(codename="basic_access"))
 
+        # Create main character for user (required by Alliance Auth)
+        main_char = EveCharacter.objects.create(
+            character_id=1003,
+            character_name="Noob2 Main",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=user,
+            character=main_char,
+            owner_hash="test_hash_noob2",
+        )
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.main_character = main_char
+        profile.save()
+
         client = Client()
-        client.login(username="noob", password="test")
+        client.login(username="noob2", password="test")
 
         url = reverse("aapayout:express_mode_mark_paid", kwargs={"payout_id": self.payout1.pk})
         response = client.post(url)
