@@ -46,9 +46,8 @@ class Fleet(models.Model):
         related_name="commanded_fleets",
         help_text="Fleet commander",
     )
-    doctrine = models.CharField(max_length=100, blank=True, help_text="Fleet doctrine (optional)")
-    location = models.CharField(max_length=200, help_text="Primary operation location")
-    fleet_time = models.DateTimeField(help_text="Fleet operation time")
+    fleet_time = models.DateTimeField(default=timezone.now, help_text="Fleet operation time")
+    battle_report = models.URLField(max_length=500, blank=True, help_text="Battle report URL (optional)")
     status = models.CharField(
         max_length=20,
         choices=constants.FLEET_STATUS_CHOICES,

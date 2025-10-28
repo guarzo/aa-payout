@@ -431,11 +431,7 @@ def loot_approve(request, pk):
     if request.method == "POST":
         form = LootPoolApproveForm(loot_pool, request.POST)
         if form.is_valid():
-            # Update corp share if changed
-            loot_pool.corp_share_percentage = form.cleaned_data["corp_share_percentage"]
-            loot_pool.calculate_totals()
-
-            # Create payouts
+            # Create payouts (corp share is auto-calculated in calculate_payouts)
             payouts_created = create_payouts(loot_pool)
 
             # Update status
@@ -710,7 +706,7 @@ def payout_history(request):
             messages.warning(request, "You don't have a main character set")
             return redirect("aapayout:dashboard")
 
-        payouts = Payout.objects.filter(recipient__character_id=main_character.character_id)
+        payouts = Payout.objects.filter(recipient__id=main_character.character_id)
 
     # Apply filters
     fleet_id = request.GET.get("fleet")
@@ -794,7 +790,7 @@ def payout_history(request):
         "filter_search": search,
     }
 
-    return render(request, "aapayout/payouts/payout_history.html", context)
+    return render(request, "aapayout/payout_history.html", context)
 
 
 # ============================================================================
@@ -1128,7 +1124,7 @@ def express_mode_start(request, pool_id):
 
 
 @login_required
-@permission_required("aapayout.approve_payouts")
+@permission_required("aapayout.approve_payouts", raise_exception=True)
 @require_http_methods(["POST"])
 def express_mode_open_window(request, payout_id):
     """
@@ -1189,7 +1185,7 @@ def express_mode_open_window(request, payout_id):
 
 
 @login_required
-@permission_required("aapayout.approve_payouts")
+@permission_required("aapayout.approve_payouts", raise_exception=True)
 @require_http_methods(["POST"])
 def express_mode_mark_paid(request, payout_id):
     """

@@ -32,7 +32,6 @@ class ScoutBonusCalculationTests(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="Jita",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )

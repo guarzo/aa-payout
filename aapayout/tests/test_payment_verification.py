@@ -32,15 +32,15 @@ class TestESIWalletService(TestCase):
 
         # Create test characters
         cls.fc_character, _ = EveEntity.objects.get_or_create(
-            id=12345678, defaults={"name": "Test FC", "category_id": 1}
+            id=12345678, defaults={"name": "Test FC"}
         )
 
         cls.recipient1, _ = EveEntity.objects.get_or_create(
-            id=11111111, defaults={"name": "Pilot One", "category_id": 1}
+            id=11111111, defaults={"name": "Pilot One"}
         )
 
         cls.recipient2, _ = EveEntity.objects.get_or_create(
-            id=22222222, defaults={"name": "Pilot Two", "category_id": 1}
+            id=22222222, defaults={"name": "Pilot Two"}
         )
 
     def setUp(self):
@@ -49,7 +49,6 @@ class TestESIWalletService(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="Jita",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_COMPLETED,
         )

@@ -27,23 +27,19 @@ class ESIFleetServiceTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
-        # Create test entities using get_or_create_esi with mock
-        # Standard Library
-        from unittest.mock import patch
-
-        with patch("eveuniverse.models.esi"):
-            cls.char1 = EveEntity.objects.create(
-                id=1001,
-                name="Test Character 1",
-            )
-            cls.char2 = EveEntity.objects.create(
-                id=1002,
-                name="Test Character 2",
-            )
-            cls.char3 = EveEntity.objects.create(
-                id=1003,
-                name="Test Character 3",
-            )
+        # Create test entities (no ESI calls needed for simple creates)
+        cls.char1 = EveEntity.objects.create(
+            id=1001,
+            name="Test Character 1",
+        )
+        cls.char2 = EveEntity.objects.create(
+            id=1002,
+            name="Test Character 2",
+        )
+        cls.char3 = EveEntity.objects.create(
+            id=1003,
+            name="Test Character 3",
+        )
 
     def test_get_or_create_character_entity_existing(self):
         """Test getting an existing character entity"""
@@ -56,8 +52,10 @@ class ESIFleetServiceTests(TestCase):
     @patch("aapayout.services.esi_fleet.EveEntity.objects.get_or_create_esi")
     def test_get_or_create_character_entity_new(self, mock_get_or_create):
         """Test creating a new character entity from ESI"""
-        # Mock ESI response
-        new_char = EveEntity(id=9999, name="New Character", category_id=1)
+        # Mock ESI response - create a mock object instead of actual EveEntity
+        new_char = MagicMock(spec=EveEntity)
+        new_char.id = 9999
+        new_char.name = "New Character"
         mock_get_or_create.return_value = (new_char, True)
 
         entity = esi_fleet_service.get_or_create_character_entity(9999)
@@ -67,12 +65,10 @@ class ESIFleetServiceTests(TestCase):
         self.assertEqual(entity.name, "New Character")
         mock_get_or_create.assert_called_once_with(id=9999)
 
-    @patch("aapayout.services.esi_fleet.esi.client.Fleets.get_fleets_fleet_id_members")
-    def test_get_fleet_members_success(self, mock_esi_members):
+    def test_get_fleet_members_success(self):
         """Test successfully getting fleet members from ESI"""
-        # Mock ESI response
-        mock_result = MagicMock()
-        mock_result.results.return_value = [
+        # Mock ESI response - the ESI call returns an object with a results() method
+        expected_data = [
             {
                 "character_id": 1001,
                 "join_time": "2025-10-28T12:00:00Z",
@@ -86,18 +82,26 @@ class ESIFleetServiceTests(TestCase):
                 "ship_type_id": 11978,
             },
         ]
-        mock_esi_members.return_value = mock_result
 
-        # Create mock token
-        mock_token = MagicMock()
-        mock_token.valid_access_token.return_value = "test_token"
+        # Create mock ESI result object
+        mock_result = MagicMock()
+        mock_result.results = MagicMock(return_value=expected_data)
 
-        result = esi_fleet_service.get_fleet_members(123456, mock_token)
+        # Import the esi object from the module
+        from aapayout.services import esi_fleet
 
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0]["character_id"], 1001)
-        self.assertEqual(result[1]["character_id"], 1002)
+        # Patch the esi client at the module level where it's defined
+        with patch.object(esi_fleet.esi.client.Fleets, 'get_fleets_fleet_id_members', return_value=mock_result):
+            # Create mock token
+            mock_token = MagicMock()
+            mock_token.valid_access_token.return_value = "test_token"
+
+            result = esi_fleet_service.get_fleet_members(123456, mock_token)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result), 2)
+            self.assertEqual(result[0]["character_id"], 1001)
+            self.assertEqual(result[1]["character_id"], 1002)
 
     @patch("aapayout.services.esi_fleet.esi.client.Fleets.get_fleets_fleet_id_members")
     def test_get_fleet_members_error(self, mock_esi_members):
@@ -178,7 +182,6 @@ class ESIFleetImportModelTests(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="Jita",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
@@ -225,28 +228,23 @@ class ESIFleetImportIntegrationTests(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Integration Test Fleet",
             fleet_commander=cls.user,
-            location="Jita",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
 
-        # Create test characters using mock
-        # Standard Library
-        from unittest.mock import patch
-
-        with patch("eveuniverse.models.esi"):
-            cls.char1 = EveEntity.objects.create(
-                id=2001,
-                name="Pilot Alpha",
-            )
-            cls.char2 = EveEntity.objects.create(
-                id=2002,
-                name="Pilot Bravo",
-            )
-            cls.char3 = EveEntity.objects.create(
-                id=2003,
-                name="Pilot Charlie",
-            )
+        # Create test characters (no ESI calls needed for simple creates)
+        cls.char1 = EveEntity.objects.create(
+            id=2001,
+            name="Pilot Alpha",
+        )
+        cls.char2 = EveEntity.objects.create(
+            id=2002,
+            name="Pilot Bravo",
+        )
+        cls.char3 = EveEntity.objects.create(
+            id=2003,
+            name="Pilot Charlie",
+        )
 
     @patch("aapayout.services.esi_fleet.esi_fleet_service.import_fleet_composition")
     def test_full_import_workflow(self, mock_import):

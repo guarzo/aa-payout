@@ -32,7 +32,8 @@
       "Bash(pre-commit run:*)",
       "Bash(DJANGO_SETTINGS_MODULE=testauth.settings python runtests.py:*)",
       "Bash(export DJANGO_SETTINGS_MODULE=testauth.settings.local)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(DJANGO_SETTINGS_MODULE=testauth.settings.local python runtests.py:*)"
     ],
     "deny": [],
     "ask": []

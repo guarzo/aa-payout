@@ -26,6 +26,10 @@ class TestPayoutHistoryView(TestCase):
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""
+        # Import Alliance Auth models
+        from allianceauth.authentication.models import CharacterOwnership, UserProfile
+        from allianceauth.eveonline.models import EveCharacter
+
         # Create test users
         cls.user1 = User.objects.create_user(username="user1", password="password")
         cls.user2 = User.objects.create_user(username="user2", password="password")
@@ -39,27 +43,68 @@ class TestPayoutHistoryView(TestCase):
         cls.user2.user_permissions.add(basic_access)
         cls.admin.user_permissions.add(basic_access)
 
-        # Create test characters
+        # Create main characters for users
+        cls.char1_eve = EveCharacter.objects.create(
+            character_id=11111111,
+            character_name="Test Character 1",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=cls.user1,
+            character=cls.char1_eve,
+            owner_hash="test_hash_user1",
+        )
+        profile1, _ = UserProfile.objects.get_or_create(user=cls.user1)
+        profile1.main_character = cls.char1_eve
+        profile1.save()
+
+        cls.char2_eve = EveCharacter.objects.create(
+            character_id=22222222,
+            character_name="Test Character 2",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=cls.user2,
+            character=cls.char2_eve,
+            owner_hash="test_hash_user2",
+        )
+        profile2, _ = UserProfile.objects.get_or_create(user=cls.user2)
+        profile2.main_character = cls.char2_eve
+        profile2.save()
+
+        # Create main character for admin
+        cls.admin_char_eve = EveCharacter.objects.create(
+            character_id=33333333,
+            character_name="Admin Character",
+            corporation_id=2001,
+            corporation_name="Test Corp",
+            corporation_ticker="TEST",
+        )
+        CharacterOwnership.objects.create(
+            user=cls.admin,
+            character=cls.admin_char_eve,
+            owner_hash="test_hash_admin",
+        )
+        profile_admin, _ = UserProfile.objects.get_or_create(user=cls.admin)
+        profile_admin.main_character = cls.admin_char_eve
+        profile_admin.save()
+
+        # Create EveEntity for payout recipients
         cls.char1, _ = EveEntity.objects.get_or_create(
-            id=11111111, defaults={"name": "Test Character 1", "category_id": 1}
+            id=11111111, defaults={"name": "Test Character 1"}
         )
-
         cls.char2, _ = EveEntity.objects.get_or_create(
-            id=22222222, defaults={"name": "Test Character 2", "category_id": 1}
+            id=22222222, defaults={"name": "Test Character 2"}
         )
-
-        # Mock user profiles with main characters
-        cls.user1.profile.main_character = cls.char1
-        cls.user1.profile.save()
-
-        cls.user2.profile.main_character = cls.char2
-        cls.user2.profile.save()
 
         # Create test fleets
         cls.fleet1 = Fleet.objects.create(
             name="Test Fleet Alpha",
             fleet_commander=cls.user1,
-            location="Jita",
             fleet_time=timezone.now() - timedelta(days=5),
             status=constants.FLEET_STATUS_COMPLETED,
         )
@@ -67,7 +112,6 @@ class TestPayoutHistoryView(TestCase):
         cls.fleet2 = Fleet.objects.create(
             name="Test Fleet Bravo",
             fleet_commander=cls.user2,
-            location="Amarr",
             fleet_time=timezone.now() - timedelta(days=2),
             status=constants.FLEET_STATUS_COMPLETED,
         )

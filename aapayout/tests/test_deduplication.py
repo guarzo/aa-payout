@@ -70,7 +70,6 @@ class GetMainCharacterForParticipantTest(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="Test System",
             fleet_time=timezone.now(),
         )
 
@@ -153,7 +152,6 @@ class DeduplicateParticipantsTest(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="Test System",
             fleet_time=timezone.now(),
         )
 
@@ -264,7 +262,6 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="Test System",
             fleet_time=timezone.now(),
         )
 
@@ -403,7 +400,6 @@ class DeduplicationIntegrationTest(TestCase):
         self.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=self.user,
-            location="Test System",
             fleet_time=timezone.now(),
         )
 

@@ -9,11 +9,35 @@ An Alliance Auth plugin that allows fleet commanders to value loot from PvP enga
 
 ## Features
 
+### Core Features
 - **Fleet Management**: Create and track fleet operations with participant rosters
-- **Loot Valuation**: Automatically value loot using EVE market data (ESI/Fuzzwork)
-- **Flexible Payout Rules**: Configure payout distribution based on roles, time, and custom rules
+- **Loot Valuation**: Automatically value loot using Janice API (Jita buy/sell prices)
+- **Payout Calculation**: Even split distribution with configurable corporation share
 - **Payment Tracking**: Track payment status and maintain audit trails
-- **Comprehensive Reporting**: View payout history, fleet profitability, and export data
+- **Admin Interface**: Complete Django admin with inline management for all models
+
+### Advanced Features
+- **Manual & ESI Import**: Add participants manually or import entire fleet from EVE client via ESI
+- **Character Deduplication**: Automatic grouping of alts - one payout per human player
+- **Scout Bonus System**: Mark scouts for +10% ISK bonus (configurable percentage)
+- **Participant Controls**: Exclude specific participants from payouts
+- **Express Mode Payment**: Keyboard-driven payment workflow with ESI window opening (~80% time savings)
+- **Payment Verification**: Automatic verification via ESI wallet journal
+- **Payout History**: Advanced filtering, search, and pagination for historical payouts
+
+## Requirements
+
+Before installing this plugin, you need:
+
+1. **Alliance Auth 4.3.1+**: This plugin requires Alliance Auth to be installed
+2. **Janice API Key** (Required): This plugin uses the Janice API to value loot items
+   - Create a free account at [https://janice.e-351.com](https://janice.e-351.com)
+   - Generate an API key from your account settings
+   - See [Janice API Documentation](https://janice.e-351.com/api/rest/docs/index.html) for more information
+3. **ESI Token** (Optional but recommended): For advanced features, FCs need ESI tokens with these scopes:
+   - `esi-fleets.read_fleet.v1` - Import fleet composition
+   - `esi-ui.open_window.v1` - Express Mode payment interface
+   - `esi-wallet.read_character_journal.v1` - Payment verification
 
 ## Installation
 
@@ -41,7 +65,26 @@ INSTALLED_APPS += [
 ]
 ```
 
-### Step 3: Run Migrations
+### Step 3: Configure Settings
+
+Add your Janice API key to your `local.py` settings file:
+
+```python
+# Janice API Configuration (REQUIRED)
+AAPAYOUT_JANICE_API_KEY = "your-api-key-here"  # Get this from https://janice.e-351.com
+AAPAYOUT_JANICE_MARKET = "jita"          # Market hub: jita, amarr, dodixie, rens, hek
+AAPAYOUT_JANICE_PRICE_TYPE = "buy"      # Price type: buy or sell
+
+# Payout Configuration
+AAPAYOUT_CORP_SHARE_PERCENTAGE = 10     # Percentage of loot value to corporation
+AAPAYOUT_MINIMUM_PAYOUT = 1000000       # Minimum payout amount in ISK (1M ISK)
+AAPAYOUT_SCOUT_BONUS_PERCENTAGE = 10    # Scout bonus percentage (default: +10%)
+
+# Optional: Holding Corporation
+AAPAYOUT_HOLDING_CORP_ID = 123456       # EVE corporation ID for corp share recipient
+```
+
+### Step 4: Run Migrations
 
 Run Django migrations to create the database tables:
 
@@ -49,7 +92,7 @@ Run Django migrations to create the database tables:
 python manage.py migrate
 ```
 
-### Step 4: Collect Static Files
+### Step 5: Collect Static Files
 
 Collect static files:
 
@@ -57,7 +100,7 @@ Collect static files:
 python manage.py collectstatic
 ```
 
-### Step 5: Restart Services
+### Step 6: Restart Services
 
 Restart your Alliance Auth services:
 
@@ -85,59 +128,162 @@ The following permissions are available:
 
 1. Navigate to **Fleet Payouts** in the Alliance Auth sidebar
 2. Click **Create Fleet**
-3. Fill in fleet details (name, doctrine, location, etc.)
-4. Add participants manually or import from ESI
+3. Fill in fleet details:
+   - Fleet name (e.g., "Roaming Fleet - 2025-10-28")
+   - Battle report URL (optional, e.g., link to zkillboard or evetools battle report)
+   - Notes (optional)
+4. Fleet time is automatically set to the current time
+5. Click **Create**
+
+### Adding Participants
+
+**Option 1: Manual Entry**
+1. Open your fleet
+2. Click **Add Participant**
+3. Enter character name
+4. Optionally mark as scout or exclude from payout
+5. Click **Add**
+
+**Option 2: ESI Fleet Import**
+1. Open your fleet
+2. Click **Import from ESI**
+3. Enter your ESI fleet ID (visible in EVE client fleet window)
+4. Click **Import**
+5. System will automatically add all fleet members and deduplicate alts
 
 ### Adding Loot
 
 1. Open your fleet
 2. Click **Add Loot Pool**
-3. Paste loot from cargo/contract or enter items manually
-4. Click **Value Loot** to fetch market prices
+3. Give the loot pool a name (e.g., "Main Haul")
+4. Paste raw loot text from EVE client:
+   - Select items in cargo/contract
+   - Copy (Ctrl+C in EVE)
+   - Paste into the "Raw Loot Text" field
+5. Click **Create**
+6. System will automatically value loot via Janice API
+7. Corporation share is automatically set to 10% if per-character payout > 200k ISK, otherwise 0%
 
-### Calculating Payouts
+### Reviewing and Approving Payouts
 
-1. Review the valued loot
-2. Select a payout rule (equal split, role-based, etc.)
-3. Preview the payout distribution
-4. Approve and finalize payouts
+1. View the loot pool details to see valued items
+2. Click **Edit Item** to manually adjust any prices if needed
+3. Click **Approve Payouts**
+4. Review the payout preview:
+   - Base share per participant
+   - Scout bonuses (if any scouts marked)
+   - Corporation share (auto-calculated: 10% if per-character > 200k ISK, else 0%)
+   - Total distribution
+5. Click **Approve**
 
 ### Processing Payments
 
-1. View pending payouts
-2. Make payments via in-game contracts/trades
-3. Mark payments as complete in the system
-4. Pilots can view their payment status
+**Option 1: Regular Mode**
+1. Go to **Payout List** for the loot pool
+2. For each payout:
+   - Open EVE client
+   - Send ISK to recipient character
+   - Click **Mark as Paid**
+   - Enter transaction reference (optional)
+   - Confirm
+
+**Option 2: Express Mode** (Recommended)
+1. Go to **Payout List** for the loot pool
+2. Click **Express Mode**
+3. For each payout:
+   - Press `O` to open character window in EVE (via ESI)
+   - Transfer ISK manually in EVE client
+   - Press `Space` to mark as paid and move to next
+4. System tracks progress and estimates time remaining
+
+**Option 3: Payment Verification**
+1. Make all payments manually in EVE client
+2. Go to **Payout List**
+3. Click **Verify Payments**
+4. System checks your wallet journal via ESI
+5. Automatically marks matching payments as verified
+
+### Viewing Payout History
+
+1. Click **Payout History** in the main menu
+2. Use filters to find specific payouts:
+   - Filter by fleet
+   - Filter by status (pending/paid)
+   - Filter by date range
+   - Search by character or fleet name
+3. View summary statistics (total paid, pending, etc.)
+
+## How It Works
+
+### Payout Calculation
+
+1. **Corporation Share**: Automatically set to 10% if per-character payout > 200k ISK, otherwise 0%
+2. **Character Deduplication**: Group alts by main character (one payout per human)
+3. **Base Share**: Remaining ISK split evenly among unique players
+4. **Scout Bonus**: Scouts get +10% additional ISK (not a multiplier)
+5. **Rounding**: Individual shares round down to nearest 0.01 ISK
+6. **Remainder**: Rounding remainder goes to corporation
+
+**Example** (100M ISK loot, 3 players, 2 scouts):
+- Corp share: 10M ISK
+- Participant pool: 90M ISK
+- Base share: 90M / 3 = 30M ISK
+- Scout bonus: 30M * 0.10 = 3M ISK
+- Scout A: 30M + 3M = 33M ISK
+- Scout B: 30M + 3M = 33M ISK
+- Regular: 30M ISK
+- Total paid: 96M ISK
+- Corp final: 10M + 4M remainder = 14M ISK
 
 ## Configuration
 
-You can customize the plugin behavior in your `local.py`:
+Additional configuration options in your `local.py`:
 
 ```python
-# Default pricing source (jita_buy, jita_sell, regional)
-AAPAYOUT_DEFAULT_PRICING_SOURCE = "jita_sell"
+# Advanced Configuration
+AAPAYOUT_JANICE_TIMEOUT = 30             # API request timeout in seconds
+AAPAYOUT_JANICE_CACHE_HOURS = 1         # Cache appraisals for this many hours
+AAPAYOUT_REQUIRE_APPROVAL = True        # Require FC approval before payouts
 
-# Minimum payout amount in ISK
-AAPAYOUT_MINIMUM_PAYOUT = 1000000  # 1M ISK
+# ESI Integration
+AAPAYOUT_ESI_FLEET_IMPORT_ENABLED = True  # Enable ESI fleet import
+AAPAYOUT_EXPRESS_MODE_ENABLED = True      # Enable Express Mode payment interface
 
-# Automatically value loot on submission
-AAPAYOUT_AUTO_VALUE_ON_SUBMIT = True
-
-# Require approval before payouts can be processed
-AAPAYOUT_REQUIRE_APPROVAL = True
-
-# Discord webhook for notifications (optional)
-AAPAYOUT_NOTIFICATION_WEBHOOK = ""
-
-# Market region ID for pricing (10000002 = The Forge/Jita)
-AAPAYOUT_MARKET_REGION_ID = 10000002
+# Payment Verification
+AAPAYOUT_VERIFICATION_TIME_WINDOW_HOURS = 24  # Wallet journal search window
+AAPAYOUT_AUTO_VERIFY_AFTER_PAYMENT = True     # Auto-verify after Express Mode
 ```
 
-## Development Status
+## Troubleshooting
 
-This plugin is currently in active development. See the [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for detailed development roadmap.
+### Janice API Issues
 
-Current status: **Phase 1 - Core Framework**
+**Problem**: "Failed to value loot" error
+- **Solution**: Check your Janice API key is valid and has not expired
+- **Solution**: Verify your Janice account has sufficient API credits
+- **Solution**: Check network connectivity to janice.e-351.com
+
+### ESI Import Issues
+
+**Problem**: "ESI fleet import failed" error
+- **Solution**: Ensure you have added an ESI token with `esi-fleets.read_fleet.v1` scope
+- **Solution**: Verify your ESI fleet ID is correct (visible in EVE fleet window)
+- **Solution**: Ensure you are the fleet commander or have fleet boss role
+
+### Express Mode Issues
+
+**Problem**: Character window not opening in EVE
+- **Solution**: Ensure EVE client is running and logged in
+- **Solution**: Verify you have ESI token with `esi-ui.open_window.v1` scope
+- **Solution**: Check you are logged into the correct character
+
+### Payment Verification Issues
+
+**Problem**: Payments not being verified
+- **Solution**: Ensure you have ESI token with `esi-wallet.read_character_journal.v1` scope
+- **Solution**: Verify you made the payment from the correct character
+- **Solution**: Check the payment was made within the time window (default 24 hours)
+- **Solution**: Ensure payment amount matches exactly (within 0.01 ISK)
 
 ## Contributing
 
@@ -148,6 +294,23 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Development Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/guarzo/aa-payout.git
+cd aa-payout
+
+# Install in development mode
+pip install -e .
+
+# Run tests
+python runtests.py
+
+# Run pre-commit checks
+pre-commit run --all-files
+```
 
 ## Support
 
@@ -160,5 +323,6 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Acknowledgments
 
 - Built for [Alliance Auth](https://gitlab.com/allianceauth/allianceauth)
+- Loot valuation powered by [Janice API](https://janice.e-351.com)
 - Based on the [AA Example Plugin](https://github.com/ppfeufer/aa-example-plugin)
 - EVE Online and all associated content is property of CCP Games

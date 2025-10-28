@@ -72,8 +72,10 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
         logger.warning(f"Fleet {loot_pool.fleet.id} has no eligible participants")
         return []
 
+    # Use the corp share percentage from the loot pool
+    corp_share_percentage = loot_pool.corp_share_percentage or Decimal("0.00")
+
     # Calculate corporation share
-    corp_share_percentage = loot_pool.corp_share_percentage
     corp_share_amount = (total_value * corp_share_percentage / Decimal("100")).quantize(
         Decimal("0.01"), rounding=ROUND_DOWN
     )

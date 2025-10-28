@@ -40,7 +40,6 @@ class CalculatePayoutsTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
@@ -171,7 +170,6 @@ class CalculatePayoutsTest(TestCase):
         empty_fleet = Fleet.objects.create(
             name="Empty Fleet",
             fleet_commander=self.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
@@ -221,7 +219,6 @@ class CreateLootItemsFromAppraisalTest(TestCase):
         cls.fleet = Fleet.objects.create(
             name="Test Fleet",
             fleet_commander=cls.user,
-            location="J123456",
             fleet_time=timezone.now(),
             status=constants.FLEET_STATUS_ACTIVE,
         )
