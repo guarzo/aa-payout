@@ -29,6 +29,7 @@ class ExpressModeViewTests(TestCase):
     def setUpTestData(cls):
         """Set up test data"""
         # Import Alliance Auth models
+        # Alliance Auth
         from allianceauth.authentication.models import CharacterOwnership
         from allianceauth.eveonline.models import EveCharacter
 
@@ -53,7 +54,9 @@ class ExpressModeViewTests(TestCase):
             owner_hash="test_hash",
         )
         # Set as main character
+        # Alliance Auth
         from allianceauth.authentication.models import UserProfile
+
         profile, _ = UserProfile.objects.get_or_create(user=cls.user)
         profile.main_character = cls.main_character
         profile.save()
@@ -130,6 +133,7 @@ class ExpressModeViewTests(TestCase):
     def test_express_mode_requires_permission(self):
         """Test Express Mode requires approve_payouts permission"""
         # Import Alliance Auth models
+        # Alliance Auth
         from allianceauth.authentication.models import CharacterOwnership, UserProfile
         from allianceauth.eveonline.models import EveCharacter
 
@@ -221,6 +225,7 @@ class ExpressModeViewTests(TestCase):
     def test_express_mode_mark_paid_requires_permission(self):
         """Test marking paid requires proper permissions"""
         # Import Alliance Auth models
+        # Alliance Auth
         from allianceauth.authentication.models import CharacterOwnership, UserProfile
         from allianceauth.eveonline.models import EveCharacter
 

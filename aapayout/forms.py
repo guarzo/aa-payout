@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 # AA Payout
-from aapayout import app_settings, constants
+from aapayout import constants
 from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool
 
 

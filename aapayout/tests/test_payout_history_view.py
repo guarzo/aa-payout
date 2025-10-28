@@ -27,6 +27,7 @@ class TestPayoutHistoryView(TestCase):
     def setUpTestData(cls):
         """Set up test data"""
         # Import Alliance Auth models
+        # Alliance Auth
         from allianceauth.authentication.models import CharacterOwnership, UserProfile
         from allianceauth.eveonline.models import EveCharacter
 
@@ -94,12 +95,8 @@ class TestPayoutHistoryView(TestCase):
         profile_admin.save()
 
         # Create EveEntity for payout recipients
-        cls.char1, _ = EveEntity.objects.get_or_create(
-            id=11111111, defaults={"name": "Test Character 1"}
-        )
-        cls.char2, _ = EveEntity.objects.get_or_create(
-            id=22222222, defaults={"name": "Test Character 2"}
-        )
+        cls.char1, _ = EveEntity.objects.get_or_create(id=11111111, defaults={"name": "Test Character 1"})
+        cls.char2, _ = EveEntity.objects.get_or_create(id=22222222, defaults={"name": "Test Character 2"})
 
         # Create test fleets
         cls.fleet1 = Fleet.objects.create(
@@ -345,4 +342,3 @@ class TestPayoutHistoryView(TestCase):
         # Should still work, just ignore the invalid date
         messages = list(response.context["messages"])
         self.assertTrue(any("Invalid date format" in str(m) for m in messages))
-

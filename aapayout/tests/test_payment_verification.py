@@ -31,17 +31,11 @@ class TestESIWalletService(TestCase):
         cls.user = User.objects.create_user(username="testfc", password="password")
 
         # Create test characters
-        cls.fc_character, _ = EveEntity.objects.get_or_create(
-            id=12345678, defaults={"name": "Test FC"}
-        )
+        cls.fc_character, _ = EveEntity.objects.get_or_create(id=12345678, defaults={"name": "Test FC"})
 
-        cls.recipient1, _ = EveEntity.objects.get_or_create(
-            id=11111111, defaults={"name": "Pilot One"}
-        )
+        cls.recipient1, _ = EveEntity.objects.get_or_create(id=11111111, defaults={"name": "Pilot One"})
 
-        cls.recipient2, _ = EveEntity.objects.get_or_create(
-            id=22222222, defaults={"name": "Pilot Two"}
-        )
+        cls.recipient2, _ = EveEntity.objects.get_or_create(id=22222222, defaults={"name": "Pilot Two"})
 
     def setUp(self):
         """Set up each test"""
@@ -246,7 +240,11 @@ class TestESIWalletService(TestCase):
         mock_result3 = MagicMock()
         mock_result3.results.return_value = []  # Empty page ends pagination
 
-        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = [mock_result1, mock_result2, mock_result3]
+        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = [
+            mock_result1,
+            mock_result2,
+            mock_result3,
+        ]
 
         # Mock token
         mock_token = MagicMock()
