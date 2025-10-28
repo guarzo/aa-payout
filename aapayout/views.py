@@ -102,7 +102,7 @@ def fleet_list(request):
         "status_choices": constants.FLEET_STATUS_CHOICES,
     }
 
-    return render(request, "aapayout/fleets/fleet_list.html", context)
+    return render(request, "aapayout/fleet_list.html", context)
 
 
 @login_required
@@ -123,7 +123,7 @@ def fleet_create(request):
         form = FleetCreateForm()
 
     context = {"form": form}
-    return render(request, "aapayout/fleets/fleet_create.html", context)
+    return render(request, "aapayout/fleet_create.html", context)
 
 
 @login_required
@@ -166,7 +166,7 @@ def fleet_detail(request, pk):
         "can_delete": fleet.can_delete(request.user),
     }
 
-    return render(request, "aapayout/fleets/fleet_detail.html", context)
+    return render(request, "aapayout/fleet_detail.html", context)
 
 
 @login_required
@@ -190,7 +190,7 @@ def fleet_edit(request, pk):
         form = FleetEditForm(instance=fleet)
 
     context = {"form": form, "fleet": fleet}
-    return render(request, "aapayout/fleets/fleet_edit.html", context)
+    return render(request, "aapayout/fleet_edit.html", context)
 
 
 @login_required
@@ -239,7 +239,7 @@ def participant_add(request, fleet_id):
                 messages.error(request, f"Character '{character_name}' not found")
                 return render(
                     request,
-                    "aapayout/participants/participant_add.html",
+                    "aapayout/participant_add.html",
                     {
                         "form": form,
                         "fleet": fleet,
@@ -263,7 +263,7 @@ def participant_add(request, fleet_id):
         form = ParticipantAddForm()
 
     context = {"form": form, "fleet": fleet}
-    return render(request, "aapayout/participants/participant_add.html", context)
+    return render(request, "aapayout/participant_add.html", context)
 
 
 @login_required
@@ -287,7 +287,7 @@ def participant_edit(request, pk):
         form = ParticipantEditForm(instance=participant)
 
     context = {"form": form, "participant": participant}
-    return render(request, "aapayout/participants/participant_edit.html", context)
+    return render(request, "aapayout/participant_edit.html", context)
 
 
 @login_required
@@ -343,7 +343,7 @@ def loot_create(request, fleet_id):
         form = LootPoolCreateForm()
 
     context = {"form": form, "fleet": fleet}
-    return render(request, "aapayout/loot/loot_create.html", context)
+    return render(request, "aapayout/loot_create.html", context)
 
 
 @login_required
@@ -372,7 +372,7 @@ def loot_detail(request, pk):
         "can_approve": loot_pool.can_approve(request.user),
     }
 
-    return render(request, "aapayout/loot/loot_detail.html", context)
+    return render(request, "aapayout/loot_detail.html", context)
 
 
 @login_required
@@ -404,7 +404,7 @@ def loot_edit_item(request, pool_id, item_id):
         form = LootItemEditForm(instance=loot_item)
 
     context = {"form": form, "loot_item": loot_item, "loot_pool": loot_pool}
-    return render(request, "aapayout/loot/loot_edit_item.html", context)
+    return render(request, "aapayout/loot_edit_item.html", context)
 
 
 @login_required
@@ -461,7 +461,7 @@ def loot_approve(request, pk):
         "scout_count": scout_count,
         "regular_count": regular_count,
     }
-    return render(request, "aapayout/loot/loot_approve.html", context)
+    return render(request, "aapayout/loot_approve.html", context)
 
 
 # ============================================================================
@@ -499,7 +499,7 @@ def payout_list(request, pool_id):
         "total_amount": total_amount,
         "can_mark_paid": can_mark_paid,
     }
-    return render(request, "aapayout/payouts/payout_list.html", context)
+    return render(request, "aapayout/payout_list.html", context)
 
 
 @login_required
@@ -528,7 +528,7 @@ def payout_mark_paid(request, pk):
         form = PayoutMarkPaidForm()
 
     context = {"form": form, "payout": payout}
-    return render(request, "aapayout/payouts/payout_mark_paid.html", context)
+    return render(request, "aapayout/payout_mark_paid.html", context)
 
 
 @login_required
@@ -602,7 +602,7 @@ def verify_payments(request, pool_id):
         "pending_count": pending_count,
     }
 
-    return render(request, "aapayout/payouts/verify_payments.html", context)
+    return render(request, "aapayout/verify_payments.html", context)
 
 
 @login_required
@@ -633,7 +633,7 @@ def verification_results(request, pool_id, task_id):
             "task_status": task_result.state,
             "loading": True,
         }
-        return render(request, "aapayout/payouts/verification_results.html", context)
+        return render(request, "aapayout/verification_results.html", context)
 
     # Task complete - get results
     if task_result.successful():
@@ -671,7 +671,7 @@ def verification_results(request, pool_id, task_id):
             "error": error_message,
         }
 
-    return render(request, "aapayout/payouts/verification_results.html", context)
+    return render(request, "aapayout/verification_results.html", context)
 
 
 @login_required

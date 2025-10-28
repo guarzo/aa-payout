@@ -159,11 +159,7 @@
                 <h4>{% translate "Welcome to Fleet Payouts!" %}</h4>
                 <p>{% translate "You don't have any pending payouts or fleets yet." %}</p>
                 {% if perms.aapayout.create_fleet %}
-                <p>
-                    <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> {% translate "Create Your First Fleet" %}
-                    </a>
-                </p>
+                <p>{% translate "Use the Quick Actions button above to create your first fleet." %}</p>
                 {% endif %}
             </div>
         </div>
