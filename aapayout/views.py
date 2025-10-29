@@ -436,23 +436,22 @@ def loot_create(request, fleet_id):
             loot_pool.save()
             logger.info(f"Loot pool {loot_pool.id} saved to database")
 
-            # Trigger appraisal (async if Celery is available, sync otherwise)
-            try:
-                # Try async first
-                logger.info(f"Triggering async appraisal task for loot pool {loot_pool.id}")
-                task = appraise_loot_pool.delay(loot_pool.id)
-                logger.info(f"Celery task {task.id} queued for loot pool {loot_pool.id}")
-                messages.success(request, "Loot pool created! Valuation in progress, this may take a few moments...")
-            except Exception as e:
-                # If Celery isn't available, run synchronously
-                logger.warning(f"Celery not available, running appraisal synchronously: {e}")
-                result = appraise_loot_pool(loot_pool.id)
-                if result.get("success"):
-                    messages.success(request, "Loot pool created and valued successfully!")
-                else:
-                    messages.error(
-                        request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}"
-                    )
+            # Run appraisal synchronously
+            # The Janice API is fast enough that async processing is not needed,
+            # and sync provides immediate feedback to the user
+            logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
+            result = appraise_loot_pool(loot_pool.id)
+
+            if result.get("success"):
+                messages.success(
+                    request,
+                    f"Loot pool created and valued successfully! "
+                    f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
+                    f"{result.get('payouts_created')} payouts created."
+                )
+            else:
+                messages.error(request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}")
+                messages.info(request, "You can retry valuation from the loot pool detail page.")
 
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
         else:
