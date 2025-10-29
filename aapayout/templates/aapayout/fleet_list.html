@@ -18,7 +18,7 @@
         </div>
     </div>
 
-    {% if fleets %}
+    {% if page_obj %}
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -37,7 +37,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for fleet in fleets %}
+                                {% for fleet in page_obj %}
                                 <tr>
                                     <td>
                                         <a href="{% url 'aapayout:fleet_detail' fleet.pk %}">
@@ -78,7 +78,7 @@
                     </div>
 
                     <!-- Pagination (if needed) -->
-                    {% if is_paginated %}
+                    {% if page_obj.paginator.num_pages > 1 %}
                     <nav aria-label="Fleet list pagination">
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}

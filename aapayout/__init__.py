@@ -1,6 +1,6 @@
 """Initialize the app"""
 
-__version__ = "0.2.16"
+__version__ = "0.2.17"
 __title__ = "AA Payout"
 
 # Ensure Celery discovers tasks

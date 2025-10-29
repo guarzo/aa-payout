@@ -447,10 +447,12 @@ def loot_create(request, fleet_id):
                     request,
                     f"Loot pool created and valued successfully! "
                     f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
-                    f"{result.get('payouts_created')} payouts created."
+                    f"{result.get('payouts_created')} payouts created.",
                 )
             else:
-                messages.error(request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}")
+                messages.error(
+                    request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}"
+                )
                 messages.info(request, "You can retry valuation from the loot pool detail page.")
 
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
