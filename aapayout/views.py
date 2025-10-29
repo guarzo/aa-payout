@@ -439,28 +439,27 @@ def loot_reappraise(request, pk):
     logger.info(f"Manual reappraisal requested for loot pool {loot_pool.id} by user {request.user.username}")
 
     # Clear existing items
+    deleted_count = loot_pool.items.count()
     loot_pool.items.all().delete()
-    logger.info(f"Cleared {loot_pool.items.count()} existing items from loot pool {loot_pool.id}")
+    logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
 
     # Reset status to draft
     loot_pool.status = constants.LOOT_STATUS_DRAFT
     loot_pool.save()
 
-    # Trigger appraisal
-    try:
-        logger.info(f"Triggering reappraisal task for loot pool {loot_pool.id}")
-        task = appraise_loot_pool.delay(loot_pool.id)
-        logger.info(f"Celery task {task.id} queued for reappraisal of loot pool {loot_pool.id}")
-        messages.success(request, "Reappraisal triggered! This may take a few moments...")
-    except Exception as e:
-        logger.error(f"Failed to trigger reappraisal task: {e}")
-        # Try synchronously
-        logger.warning(f"Celery not available, running reappraisal synchronously: {e}")
-        result = appraise_loot_pool(loot_pool.id)
-        if result.get("success"):
-            messages.success(request, "Loot reappraised successfully!")
-        else:
-            messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
+    # Run appraisal SYNCHRONOUSLY for manual retries
+    # This ensures immediate feedback and avoids Celery worker issues
+    logger.info(f"Running synchronous reappraisal for loot pool {loot_pool.id}")
+    result = appraise_loot_pool(loot_pool.id)
+
+    if result.get("success"):
+        messages.success(
+            request,
+            f"Loot reappraised successfully! {result.get('items_created')} items valued at "
+            f"{result.get('total_value'):,.2f} ISK"
+        )
+    else:
+        messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
 
     return redirect("aapayout:loot_detail", pk=loot_pool.pk)
 

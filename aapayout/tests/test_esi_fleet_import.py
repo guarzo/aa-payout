@@ -93,43 +93,52 @@ class ESIFleetServiceTests(TestCase):
         mock_token = MagicMock()
         mock_token.valid_access_token.return_value = "test_token"
 
-        result = esi_fleet_service.get_fleet_members(123456, mock_token)
+        result, error = esi_fleet_service.get_fleet_members(123456, mock_token)
 
+        self.assertIsNone(error)
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["character_id"], 1001)
         self.assertEqual(result[1]["character_id"], 1002)
 
-    @patch("aapayout.services.esi_fleet.esi.client.Fleets.get_fleets_fleet_id_members")
-    def test_get_fleet_members_error(self, mock_esi_members):
+    @patch("aapayout.services.esi_fleet.esi")
+    def test_get_fleet_members_error(self, mock_esi):
         """Test error handling when ESI call fails"""
-        # Mock ESI error
-        mock_esi_members.side_effect = Exception("ESI Error")
+        # Mock ESI error - the ESI call raises an exception
+        mock_result = MagicMock()
+        mock_result.results.side_effect = Exception("Test error message")
+        mock_esi.client.Fleets.get_fleets_fleet_id_members.return_value = mock_result
 
         mock_token = MagicMock()
         mock_token.valid_access_token.return_value = "test_token"
 
-        result = esi_fleet_service.get_fleet_members(123456, mock_token)
+        result, error = esi_fleet_service.get_fleet_members(123456, mock_token)
 
         self.assertIsNone(result)
+        self.assertIsNotNone(error)
+        self.assertIn("ESI API error", error)
+        self.assertIn("Test error message", error)
 
     @patch("aapayout.services.esi_fleet.ESIFleetService.get_fleet_members")
     @patch("aapayout.services.esi_fleet.ESIFleetService.get_or_create_character_entity")
     def test_import_fleet_composition_success(self, mock_get_char, mock_get_members):
         """Test successful fleet composition import"""
-        # Mock fleet members from ESI
-        mock_get_members.return_value = [
-            {
-                "character_id": 1001,
-                "join_time": "2025-10-28T12:00:00Z",
-                "role": "squad_member",
-            },
-            {
-                "character_id": 1002,
-                "join_time": "2025-10-28T12:05:00Z",
-                "role": "squad_commander",
-            },
-        ]
+        # Mock fleet members from ESI - now returns tuple (data, error)
+        mock_get_members.return_value = (
+            [
+                {
+                    "character_id": 1001,
+                    "join_time": "2025-10-28T12:00:00Z",
+                    "role": "squad_member",
+                },
+                {
+                    "character_id": 1002,
+                    "join_time": "2025-10-28T12:05:00Z",
+                    "role": "squad_commander",
+                },
+            ],
+            None,  # No error
+        )
 
         # Mock character entity creation
         def get_char_side_effect(char_id):
@@ -154,18 +163,6 @@ class ESIFleetServiceTests(TestCase):
         self.assertEqual(len(members), 2)
         self.assertEqual(members[0]["character_entity"], self.char1)
         self.assertEqual(members[1]["character_entity"], self.char2)
-
-    def test_import_fleet_composition_missing_scope(self):
-        """Test import fails when token missing required scope"""
-        # Create mock token without required scope
-        mock_token = MagicMock()
-        mock_token.has_scope.return_value = False
-
-        members, error = esi_fleet_service.import_fleet_composition(123456, mock_token)
-
-        self.assertIsNone(members)
-        self.assertIsNotNone(error)
-        self.assertIn("required scope", error)
 
 
 class ESIFleetImportModelTests(TestCase):

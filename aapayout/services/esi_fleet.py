@@ -91,7 +91,7 @@ class ESIFleetService:
             return None
 
     @staticmethod
-    def get_fleet_members(fleet_id: int, token: Token) -> Optional[List[Dict]]:
+    def get_fleet_members(fleet_id: int, token: Token) -> Tuple[Optional[List[Dict]], Optional[str]]:
         """
         Get all fleet members from ESI
 
@@ -100,24 +100,29 @@ class ESIFleetService:
             token: ESI token with esi-fleets.read_fleet.v1 scope
 
         Returns:
-            List of fleet member dicts or None if error
+            Tuple of (member_list, error_message)
+            - member_list: List of fleet member dicts or None if error
+            - error_message: String error message if failed, None if success
 
         Example response:
-        [
-            {
-                'character_id': 12345678,
-                'join_time': '2025-10-28T12:00:00Z',
-                'role': 'squad_commander',
-                'role_name': 'Squad Commander',
-                'ship_type_id': 587,  # Ship type ID
-                'solar_system_id': 30000142,
-                'squad_id': 1,
-                'station_id': 60003760,
-                'takes_fleet_warp': True,
-                'wing_id': 1
-            },
-            ...
-        ]
+        (
+            [
+                {
+                    'character_id': 12345678,
+                    'join_time': '2025-10-28T12:00:00Z',
+                    'role': 'squad_commander',
+                    'role_name': 'Squad Commander',
+                    'ship_type_id': 587,  # Ship type ID
+                    'solar_system_id': 30000142,
+                    'squad_id': 1,
+                    'station_id': 60003760,
+                    'takes_fleet_warp': True,
+                    'wing_id': 1
+                },
+                ...
+            ],
+            None
+        )
         """
         try:
             logger.info(f"[ESI] Fetching fleet members for fleet ID {fleet_id}")
@@ -130,12 +135,13 @@ class ESIFleetService:
             ).results()
 
             logger.info(f"[ESI] Successfully fetched {len(result)} fleet members for fleet ID {fleet_id}")
-            return result
+            return result, None
 
         except Exception as e:
-            logger.error(f"[ESI] Failed to fetch fleet members for fleet ID {fleet_id}: {e}")
+            error_msg = str(e)
+            logger.error(f"[ESI] Failed to fetch fleet members for fleet ID {fleet_id}: {error_msg}")
             logger.exception("[ESI] Full exception details:")
-            return None
+            return None, f"ESI API error: {error_msg}"
 
     @staticmethod
     def get_or_create_character_entity(character_id: int) -> Optional[EveEntity]:
@@ -201,17 +207,17 @@ class ESIFleetService:
         logger.info(f"[ESI] Starting fleet composition import for fleet ID {fleet_id}")
 
         # Fetch fleet members from ESI
-        raw_members = cls.get_fleet_members(fleet_id, token)
+        raw_members, error = cls.get_fleet_members(fleet_id, token)
 
-        if raw_members is None:
-            logger.error(f"[ESI] get_fleet_members returned None for fleet ID {fleet_id}")
-            return None, "Failed to fetch fleet members from ESI"
+        if error:
+            logger.error(f"[ESI] get_fleet_members failed for fleet ID {fleet_id}: {error}")
+            return None, error
 
-        logger.info(f"[ESI] Retrieved {len(raw_members)} raw members from ESI")
-
-        if len(raw_members) == 0:
+        if raw_members is None or len(raw_members) == 0:
             logger.warning(f"[ESI] Fleet {fleet_id} is empty (no members found)")
             return None, "Fleet is empty (no members found)"
+
+        logger.info(f"[ESI] Retrieved {len(raw_members)} raw members from ESI")
 
         # Process members and create/fetch character entities
         processed_members = []
