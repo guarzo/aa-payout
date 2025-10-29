@@ -166,8 +166,13 @@ def fleet_create(request):
 @permission_required("aapayout.basic_access")
 def fleet_detail(request, pk):
     """View fleet details"""
+    # Alliance Auth
+    from esi.models import Token
+
     # AA Payout
+    from aapayout import app_settings
     from aapayout.helpers import get_main_character_for_participant
+    from aapayout.services.esi_fleet import esi_fleet_service
 
     fleet = get_object_or_404(
         Fleet.objects.select_related("fleet_commander").prefetch_related(
@@ -193,6 +198,57 @@ def fleet_detail(request, pk):
     # Calculate totals
     total_loot_value = fleet.get_total_loot_value()
 
+    # Check ESI fleet import status (Phase 2)
+    esi_status = {
+        "enabled": app_settings.AAPAYOUT_ESI_FLEET_IMPORT_ENABLED,
+        "has_scope": False,
+        "in_fleet": False,
+        "fleet_role": None,
+        "can_import": False,
+        "message": None,
+    }
+
+    if esi_status["enabled"] and fleet.can_edit(request.user):
+        # Check if user has ESI scope
+        token = (
+            Token.objects.filter(user=request.user)
+            .require_scopes("esi-fleets.read_fleet.v1")
+            .require_valid()
+            .first()
+        )
+
+        if token:
+            esi_status["has_scope"] = True
+
+            # Get FC character ID from session or use main character
+            fc_character_id = request.session.get("fc_character_id")
+            if not fc_character_id and hasattr(request.user, "profile"):
+                fc_character = request.user.profile.main_character
+                if fc_character:
+                    fc_character_id = fc_character.character_id
+
+            if fc_character_id:
+                # Check if character is in a fleet and their role
+                esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(
+                    fc_character_id, token
+                )
+
+                if esi_fleet_id and not check_error:
+                    esi_status["in_fleet"] = True
+                    esi_status["fleet_role"] = fleet_role
+
+                    # Can only import if fleet commander
+                    if fleet_role == "fleet_commander":
+                        esi_status["can_import"] = True
+                    else:
+                        esi_status["message"] = (
+                            f"You need Fleet Boss role to import. Your current role: {fleet_role}"
+                        )
+                else:
+                    esi_status["message"] = "Not currently in a fleet in EVE Online"
+        else:
+            esi_status["message"] = "ESI access required - click to grant permissions"
+
     context = {
         "fleet": fleet,
         "participants": updated_participants,
@@ -200,6 +256,7 @@ def fleet_detail(request, pk):
         "total_loot_value": total_loot_value,
         "can_edit": fleet.can_edit(request.user),
         "can_delete": fleet.can_delete(request.user),
+        "esi_status": esi_status,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -1064,16 +1121,24 @@ def fleet_import(request, pk):
 
         # Get the fleet ID the FC is currently in
         logger.info(f"Checking if character {fc_character_id} is in a fleet")
-        esi_fleet_id = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
+        esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
 
-        if not esi_fleet_id:
+        if check_error or not esi_fleet_id:
+            error_msg = check_error or "You are not currently in a fleet in EVE Online."
+            messages.error(request, f"{error_msg} Please join a fleet and try again.")
+            return redirect("aapayout:fleet_import", pk=fleet.pk)
+
+        # Validate fleet role - must be fleet commander to import members
+        if fleet_role != "fleet_commander":
             messages.error(
                 request,
-                "You are not currently in a fleet in EVE Online. " "Please join a fleet and try again.",
+                f"You must be the Fleet Commander (Fleet Boss) to import fleet members. "
+                f"Your current role is '{fleet_role}'. "
+                f"Please ask the FC to promote you to Fleet Boss or use their character to import.",
             )
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 
-        logger.info(f"FC is in fleet {esi_fleet_id}, importing members")
+        logger.info(f"FC is in fleet {esi_fleet_id} with role '{fleet_role}', importing members")
 
         # Import fleet composition from ESI
         member_data, error = esi_fleet_service.import_fleet_composition(esi_fleet_id, token)
@@ -1083,12 +1148,26 @@ def fleet_import(request, pk):
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 
         # Create ESI import record
+        # Convert member_data to JSON-serializable format
+        serializable_data = []
+        for member in member_data:
+            serializable_member = member.copy()
+            # Convert datetime to ISO format string
+            if "join_time" in serializable_member and serializable_member["join_time"]:
+                serializable_member["join_time"] = serializable_member["join_time"].isoformat()
+            # Convert EveEntity to character ID and name
+            if "character_entity" in serializable_member:
+                char_entity = serializable_member.pop("character_entity")
+                serializable_member["character_id"] = char_entity.id
+                serializable_member["character_name"] = char_entity.name
+            serializable_data.append(serializable_member)
+
         esi_import = ESIFleetImport.objects.create(
             fleet=fleet,
             esi_fleet_id=esi_fleet_id,
             imported_by=request.user,
             characters_found=len(member_data),
-            raw_data=member_data,  # Store raw data for debugging
+            raw_data=serializable_data,  # Store JSON-serializable data for debugging
         )
 
         # Process members and add as participants

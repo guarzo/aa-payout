@@ -95,6 +95,15 @@ class JaniceService:
             elif response.status_code == 429:
                 logger.error("[Janice] Rate limit exceeded (429)")
                 raise JaniceAPIError("Janice API rate limit exceeded")
+            elif response.status_code == 400:
+                # Bad request - log response body for debugging
+                try:
+                    error_body = response.text
+                    logger.error(f"[Janice] Bad Request (400): {error_body}")
+                    raise JaniceAPIError(f"Invalid loot format or API request. Janice returned: {error_body}")
+                except Exception:
+                    logger.error("[Janice] Bad Request (400) with no response body")
+                    raise JaniceAPIError("Invalid loot format or API request")
             elif response.status_code >= 500:
                 logger.error(f"[Janice] Server error: {response.status_code}")
                 raise JaniceAPIError(f"Janice API server error: {response.status_code}")

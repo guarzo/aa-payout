@@ -131,17 +131,46 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>{% translate "Fleet Participants" %}</h5>
-                    {% if can_edit %}
-                        <div>
-                            <a href="{% url 'aapayout:fleet_import' fleet.pk %}" class="btn btn-sm btn-success me-2">
-                                <i class="fas fa-download"></i> {% translate "Import from ESI" %}
-                            </a>
-                            <a href="{% url 'aapayout:participant_add' fleet.pk %}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-plus"></i> {% translate "Add Manual" %}
-                            </a>
-                        </div>
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{% translate "Fleet Participants" %}</h5>
+                        {% if can_edit %}
+                            <div>
+                                {% if esi_status.enabled %}
+                                    {% if esi_status.can_import %}
+                                        {# User has everything needed - show enabled import button #}
+                                        <form method="post" action="{% url 'aapayout:fleet_import' fleet.pk %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-success me-2"
+                                                    title="{% translate 'Import current fleet from EVE Online' %}">
+                                                <i class="fas fa-download"></i> {% translate "Import ESI Fleet" %}
+                                            </button>
+                                        </form>
+                                    {% elif not esi_status.has_scope %}
+                                        {# User needs to grant ESI access #}
+                                        <a href="{% url 'authentication:dashboard' %}" class="btn btn-sm btn-warning me-2"
+                                           title="{% translate 'Click to add ESI token with fleet read permissions' %}">
+                                            <i class="fas fa-key"></i> {% translate "Grant ESI Access" %}
+                                        </a>
+                                    {% else %}
+                                        {# Show disabled button with explanation #}
+                                        <button type="button" class="btn btn-sm btn-secondary me-2" disabled
+                                                title="{{ esi_status.message }}">
+                                            <i class="fas fa-ban"></i> {% translate "Import Unavailable" %}
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
+                                <a href="{% url 'aapayout:participant_add' fleet.pk %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-plus"></i> {% translate "Add Manual" %}
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% if can_edit and esi_status.enabled and esi_status.message and not esi_status.can_import %}
+                        {# Show explanation message below buttons #}
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle"></i> {{ esi_status.message }}
+                        </small>
                     {% endif %}
                 </div>
                 <div class="card-body">

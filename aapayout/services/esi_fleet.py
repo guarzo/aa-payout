@@ -25,7 +25,7 @@ class ESIFleetService:
     """Service for interacting with ESI Fleet endpoints"""
 
     @staticmethod
-    def get_character_fleet_id(character_id: int, token: Token) -> Optional[int]:
+    def get_character_fleet_id(character_id: int, token: Token) -> Tuple[Optional[int], Optional[str], Optional[str]]:
         """
         Get the fleet ID that a character is currently in
 
@@ -34,7 +34,18 @@ class ESIFleetService:
             token: ESI token with esi-fleets.read_fleet.v1 scope
 
         Returns:
-            Fleet ID if character is in a fleet, None otherwise
+            Tuple of (fleet_id, role, error_message)
+            - fleet_id: Fleet ID if character is in a fleet
+            - role: Character's fleet role ('fleet_commander', 'wing_commander', 'squad_commander', 'squad_member')
+            - error_message: Error message if failed, None if success
+
+        Example response from ESI:
+        {
+            'fleet_id': 1234567890,
+            'role': 'fleet_commander',
+            'squad_id': -1,
+            'wing_id': -1
+        }
         """
         try:
             logger.info(f"[ESI] Checking if character {character_id} is in a fleet")
@@ -46,17 +57,20 @@ class ESIFleetService:
             logger.debug(f"[ESI] Fleet check result: {result}")
 
             fleet_id = result.get("fleet_id")
+            role = result.get("role", "squad_member")
+
             if fleet_id:
-                logger.info(f"[ESI] Character {character_id} is in fleet {fleet_id}")
+                logger.info(f"[ESI] Character {character_id} is in fleet {fleet_id} with role '{role}'")
+                return fleet_id, role, None
             else:
                 logger.info(f"[ESI] Character {character_id} is not in a fleet")
-
-            return fleet_id
+                return None, None, "Character is not in a fleet"
 
         except Exception as e:
-            logger.warning(f"[ESI] Character {character_id} is not in a fleet or error occurred: {e}")
+            error_msg = str(e)
+            logger.warning(f"[ESI] Character {character_id} is not in a fleet or error occurred: {error_msg}")
             logger.exception("[ESI] Full exception details:")
-            return None
+            return None, None, f"Failed to check fleet status: {error_msg}"
 
     @staticmethod
     def get_fleet_info(fleet_id: int, token: Token) -> Optional[Dict]:
@@ -141,6 +155,15 @@ class ESIFleetService:
             error_msg = str(e)
             logger.error(f"[ESI] Failed to fetch fleet members for fleet ID {fleet_id}: {error_msg}")
             logger.exception("[ESI] Full exception details:")
+
+            # Provide helpful hint for common 404 error (insufficient permissions)
+            if "404" in error_msg and ("does not exist" in error_msg or "don't have access" in error_msg):
+                return None, (
+                    f"ESI API error: {error_msg}\n\n"
+                    "This usually means you need to be the Fleet Commander (Fleet Boss) to import fleet members. "
+                    "Please verify you have the Fleet Boss role in EVE Online."
+                )
+
             return None, f"ESI API error: {error_msg}"
 
     @staticmethod

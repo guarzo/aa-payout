@@ -217,12 +217,28 @@ def import_fleet_async(fleet_id: int, esi_fleet_id: int, user_id: int):
             raise ValueError(f"ESI import failed: {error}")
 
         # Create ESI import record
+        # Convert member_data to JSON-serializable format
+        serializable_data = []
+        for member in member_data:
+            serializable_member = member.copy()
+            # Convert datetime to ISO format string
+            if "join_time" in serializable_member and serializable_member["join_time"]:
+                serializable_member["join_time"] = serializable_member["join_time"].isoformat()
+            # Convert EveEntity to character ID and name
+            if "character_entity" in serializable_member:
+                char_entity = serializable_member.get("character_entity")
+                if char_entity:
+                    serializable_member["character_id"] = char_entity.id
+                    serializable_member["character_name"] = char_entity.name
+                serializable_member.pop("character_entity", None)
+            serializable_data.append(serializable_member)
+
         esi_import = ESIFleetImport.objects.create(
             fleet=fleet,
             esi_fleet_id=esi_fleet_id,
             imported_by=user,
             characters_found=len(member_data),
-            raw_data=member_data,
+            raw_data=serializable_data,
         )
 
         # Process members and add as participants
