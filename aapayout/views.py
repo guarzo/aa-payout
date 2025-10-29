@@ -172,7 +172,6 @@ def fleet_detail(request, pk):
     # AA Payout
     from aapayout import app_settings
     from aapayout.helpers import get_main_character_for_participant
-    from aapayout.services.esi_fleet import esi_fleet_service
 
     fleet = get_object_or_404(
         Fleet.objects.select_related("fleet_commander").prefetch_related(

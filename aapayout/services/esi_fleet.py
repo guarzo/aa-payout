@@ -69,7 +69,7 @@ class ESIFleetService:
                 logger.info(f"[ESI] Character {character_id} is not in a fleet")
                 return None, None, "Character is not in a fleet"
 
-        except HTTPNotFound as e:
+        except HTTPNotFound:
             # This is expected when character is not in a fleet - not an error
             logger.info(f"[ESI] Character {character_id} is not in a fleet (404 from ESI)")
             return None, None, "Character is not in a fleet"
