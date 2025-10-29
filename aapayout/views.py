@@ -270,7 +270,8 @@ def participant_add(request, fleet_id):
             # Get character by name
             character_name = form.cleaned_data["character_name"]
             try:
-                character = EveEntity.objects.get(name=character_name, category_id=1)
+                # Filter by category name "character" (EveEntity uses ForeignKey to EveType)
+                character = EveEntity.objects.get(name=character_name, category__name="character")
             except EveEntity.DoesNotExist:
                 messages.error(request, f"Character '{character_name}' not found")
                 return render(
@@ -412,6 +413,56 @@ def loot_create(request, fleet_id):
 
     context = {"form": form, "fleet": fleet}
     return render(request, "aapayout/loot_create.html", context)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+def loot_reappraise(request, pk):
+    """
+    Manually trigger reappraisal of a loot pool
+
+    Useful for debugging or if the initial appraisal failed.
+    """
+    loot_pool = get_object_or_404(LootPool, pk=pk)
+    fleet = loot_pool.fleet
+
+    # Check permissions
+    if not fleet.can_edit(request.user):
+        messages.error(request, "You don't have permission to edit this fleet")
+        return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+
+    # Check if loot pool has raw text
+    if not loot_pool.raw_loot_text:
+        messages.error(request, "Cannot reappraise: No loot text available")
+        return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+
+    logger.info(f"Manual reappraisal requested for loot pool {loot_pool.id} by user {request.user.username}")
+
+    # Clear existing items
+    loot_pool.items.all().delete()
+    logger.info(f"Cleared {loot_pool.items.count()} existing items from loot pool {loot_pool.id}")
+
+    # Reset status to draft
+    loot_pool.status = constants.LOOT_STATUS_DRAFT
+    loot_pool.save()
+
+    # Trigger appraisal
+    try:
+        logger.info(f"Triggering reappraisal task for loot pool {loot_pool.id}")
+        task = appraise_loot_pool.delay(loot_pool.id)
+        logger.info(f"Celery task {task.id} queued for reappraisal of loot pool {loot_pool.id}")
+        messages.success(request, "Reappraisal triggered! This may take a few moments...")
+    except Exception as e:
+        logger.error(f"Failed to trigger reappraisal task: {e}")
+        # Try synchronously
+        logger.warning(f"Celery not available, running reappraisal synchronously: {e}")
+        result = appraise_loot_pool(loot_pool.id)
+        if result.get("success"):
+            messages.success(request, "Loot reappraised successfully!")
+        else:
+            messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
+
+    return redirect("aapayout:loot_detail", pk=loot_pool.pk)
 
 
 @login_required
@@ -888,10 +939,8 @@ def character_search(request):
     # Search for characters
     characters = EveEntity.objects.filter(
         name__icontains=query,
-        category_id=1,  # Characters only
-    ).order_by(
-        "name"
-    )[:20]
+        category__name="character",  # Characters only (category is ForeignKey)
+    ).order_by("name")[:20]
 
     results = [{"id": char.id, "name": char.name} for char in characters]
 

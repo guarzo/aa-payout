@@ -37,20 +37,25 @@ class ESIFleetService:
             Fleet ID if character is in a fleet, None otherwise
         """
         try:
+            logger.info(f"[ESI] Checking if character {character_id} is in a fleet")
+
             result = esi.client.Fleets.get_characters_character_id_fleet(
                 character_id=character_id, token=token.valid_access_token()
             ).results()
 
+            logger.debug(f"[ESI] Fleet check result: {result}")
+
             fleet_id = result.get("fleet_id")
             if fleet_id:
-                logger.info(f"Character {character_id} is in fleet {fleet_id}")
+                logger.info(f"[ESI] Character {character_id} is in fleet {fleet_id}")
             else:
-                logger.info(f"Character {character_id} is not in a fleet")
+                logger.info(f"[ESI] Character {character_id} is not in a fleet")
 
             return fleet_id
 
         except Exception as e:
-            logger.warning(f"Character {character_id} is not in a fleet or error occurred: {e}")
+            logger.warning(f"[ESI] Character {character_id} is not in a fleet or error occurred: {e}")
+            logger.exception("[ESI] Full exception details:")
             return None
 
     @staticmethod
@@ -115,15 +120,21 @@ class ESIFleetService:
         ]
         """
         try:
+            logger.info(f"[ESI] Fetching fleet members for fleet ID {fleet_id}")
+            logger.debug(
+                f"[ESI] Token character: {token.character_name if hasattr(token, 'character_name') else 'unknown'}"
+            )
+
             result = esi.client.Fleets.get_fleets_fleet_id_members(
                 fleet_id=fleet_id, token=token.valid_access_token()
             ).results()
 
-            logger.info(f"Successfully fetched {len(result)} fleet members " f"for fleet ID {fleet_id}")
+            logger.info(f"[ESI] Successfully fetched {len(result)} fleet members for fleet ID {fleet_id}")
             return result
 
         except Exception as e:
-            logger.error(f"Failed to fetch fleet members for fleet ID {fleet_id}: {e}")
+            logger.error(f"[ESI] Failed to fetch fleet members for fleet ID {fleet_id}: {e}")
+            logger.exception("[ESI] Full exception details:")
             return None
 
     @staticmethod
@@ -187,17 +198,24 @@ class ESIFleetService:
         Example error return:
         (None, "Failed to fetch fleet members from ESI")
         """
+        logger.info(f"[ESI] Starting fleet composition import for fleet ID {fleet_id}")
+
         # Fetch fleet members from ESI
         raw_members = cls.get_fleet_members(fleet_id, token)
 
         if raw_members is None:
+            logger.error(f"[ESI] get_fleet_members returned None for fleet ID {fleet_id}")
             return None, "Failed to fetch fleet members from ESI"
 
+        logger.info(f"[ESI] Retrieved {len(raw_members)} raw members from ESI")
+
         if len(raw_members) == 0:
+            logger.warning(f"[ESI] Fleet {fleet_id} is empty (no members found)")
             return None, "Fleet is empty (no members found)"
 
         # Process members and create/fetch character entities
         processed_members = []
+        logger.info(f"[ESI] Processing {len(raw_members)} fleet members")
 
         for member in raw_members:
             character_id = member.get("character_id")
@@ -229,7 +247,8 @@ class ESIFleetService:
 
             processed_members.append(member_data)
 
-        logger.info(f"Processed {len(processed_members)} out of " f"{len(raw_members)} fleet members")
+        logger.info(f"[ESI] Processed {len(processed_members)} out of {len(raw_members)} fleet members")
+        logger.info(f"[ESI] Fleet composition import completed successfully")
 
         return processed_members, None
 

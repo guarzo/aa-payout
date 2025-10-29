@@ -35,6 +35,11 @@
                     {% elif loot_pool.status == 'valuing' %}
                         <span class="badge bg-warning fs-5">{{ loot_pool.get_status_display }}</span>
                         <p class="mt-2 small text-muted">{% translate "Fetching prices from Janice API..." %}</p>
+                        {% if can_approve %}
+                            <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="btn btn-sm btn-outline-warning mt-2">
+                                <i class="fas fa-redo"></i> {% translate "Retry Valuation" %}
+                            </a>
+                        {% endif %}
                     {% elif loot_pool.status == 'valued' %}
                         <span class="badge bg-info fs-5">{{ loot_pool.get_status_display }}</span>
                         <p class="mt-2 small text-muted">{% translate "Ready for approval" %}</p>
