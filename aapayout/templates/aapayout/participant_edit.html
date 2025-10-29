@@ -5,7 +5,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>{% translate "Edit Participant" %}: {{ participant.character.character_name }}</h2>
+            <h2>{% translate "Edit Participant" %}: {{ participant.character.name }}</h2>
         </div>
     </div>
 
@@ -27,7 +27,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">{% translate "Character" %}</label>
-                            <input type="text" class="form-control" value="{{ participant.character.character_name }}" disabled>
+                            <input type="text" class="form-control" value="{{ participant.character.name }}" disabled>
                             <small class="form-text text-muted">{% translate "Character cannot be changed" %}</small>
                         </div>
 

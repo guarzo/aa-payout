@@ -21,7 +21,7 @@
                 <div class="card-body">
                     <dl class="row">
                         <dt class="col-sm-3">{% translate "Recipient" %}:</dt>
-                        <dd class="col-sm-9">{{ payout.recipient.character_name }}</dd>
+                        <dd class="col-sm-9">{{ payout.recipient.name }}</dd>
 
                         <dt class="col-sm-3">{% translate "Amount" %}:</dt>
                         <dd class="col-sm-9"><strong class="text-primary">{{ payout.amount|isk_format_full }}</strong></dd>

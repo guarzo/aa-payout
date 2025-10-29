@@ -8,6 +8,9 @@ Handles ESI fleet composition imports
 import logging
 from typing import Dict, List, Optional, Tuple
 
+# Third Party
+from bravado.exception import HTTPNotFound
+
 # Alliance Auth
 from esi.clients import EsiClientProvider
 from esi.models import Token
@@ -66,9 +69,15 @@ class ESIFleetService:
                 logger.info(f"[ESI] Character {character_id} is not in a fleet")
                 return None, None, "Character is not in a fleet"
 
+        except HTTPNotFound as e:
+            # This is expected when character is not in a fleet - not an error
+            logger.info(f"[ESI] Character {character_id} is not in a fleet (404 from ESI)")
+            return None, None, "Character is not in a fleet"
+
         except Exception as e:
+            # Unexpected error - log at error level
             error_msg = str(e)
-            logger.warning(f"[ESI] Character {character_id} is not in a fleet or error occurred: {error_msg}")
+            logger.error(f"[ESI] Unexpected error checking fleet status for character {character_id}: {error_msg}")
             logger.exception("[ESI] Full exception details:")
             return None, None, f"Failed to check fleet status: {error_msg}"
 

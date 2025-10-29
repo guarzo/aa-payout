@@ -207,7 +207,7 @@
                                 {% with main_char_id=participant.main_character.id|default:participant.character.id %}
                                 <tr class="{% if participant.excluded_from_payout %}table-secondary text-muted{% endif %}"
                                     id="participant-row-{{ participant.pk }}">
-                                    <td>{{ participant.character.character_name }}</td>
+                                    <td>{{ participant.character.name }}</td>
                                     <td>
                                         {% if participant.main_character %}
                                             {{ participant.main_character.name }}
@@ -263,7 +263,7 @@
                                                 {% if payout_obj.status == 'pending' %}
                                                     <div class="btn-group btn-group-sm" role="group">
                                                         <button class="btn btn-outline-primary copy-name-btn"
-                                                                data-character-name="{{ participant.main_character.name|default:participant.character.character_name }}"
+                                                                data-character-name="{{ participant.main_character.name|default:participant.character.name }}"
                                                                 title="{% translate 'Copy character name' %}">
                                                             <i class="fas fa-user"></i>
                                                         </button>

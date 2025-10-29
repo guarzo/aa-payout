@@ -211,11 +211,11 @@ def fleet_detail(request, pk):
                 payout_map[payout.recipient.id] = payout.amount
 
     # Check ESI fleet import status (Phase 2)
+    # Note: We only check if user has ESI scope here. The actual fleet membership
+    # check happens when they click the import button, not on every page view.
     esi_status = {
         "enabled": app_settings.AAPAYOUT_ESI_FLEET_IMPORT_ENABLED,
         "has_scope": False,
-        "in_fleet": False,
-        "fleet_role": None,
         "can_import": False,
         "message": None,
     }
@@ -228,30 +228,11 @@ def fleet_detail(request, pk):
 
         if token:
             esi_status["has_scope"] = True
-
-            # Get FC character ID from session or use main character
-            fc_character_id = request.session.get("fc_character_id")
-            if not fc_character_id and hasattr(request.user, "profile"):
-                fc_character = request.user.profile.main_character
-                if fc_character:
-                    fc_character_id = fc_character.character_id
-
-            if fc_character_id:
-                # Check if character is in a fleet and their role
-                esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
-
-                if esi_fleet_id and not check_error:
-                    esi_status["in_fleet"] = True
-                    esi_status["fleet_role"] = fleet_role
-
-                    # Can only import if fleet commander
-                    if fleet_role == "fleet_commander":
-                        esi_status["can_import"] = True
-                    else:
-                        esi_status["message"] = f"You need Fleet Boss role to import. Your current role: {fleet_role}"
-                else:
-                    esi_status["message"] = "Not currently in a fleet in EVE Online"
+            # User has the required ESI scope - they can attempt to import
+            # (actual fleet membership will be checked when they click the button)
+            esi_status["can_import"] = True
         else:
+            esi_status["has_scope"] = False
             esi_status["message"] = "ESI access required - click to grant permissions"
 
     context = {
