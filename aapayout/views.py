@@ -314,8 +314,8 @@ def participant_add(request, fleet_id):
             # Get character by name
             character_name = form.cleaned_data["character_name"]
             try:
-                # Filter by category name "character" (EveEntity uses ForeignKey to EveType)
-                character = EveEntity.objects.get(name=character_name, category__name="character")
+                # Filter by category (EveEntity.CATEGORY_CHARACTER constant)
+                character = EveEntity.objects.get(name=character_name, category=EveEntity.CATEGORY_CHARACTER)
             except EveEntity.DoesNotExist:
                 messages.error(request, f"Character '{character_name}' not found")
                 return render(
@@ -988,7 +988,7 @@ def character_search(request):
     # Search for characters
     characters = EveEntity.objects.filter(
         name__icontains=query,
-        category__name="character",  # Characters only (category is ForeignKey)
+        category=EveEntity.CATEGORY_CHARACTER,  # Characters only
     ).order_by("name")[:20]
 
     results = [{"id": char.id, "name": char.name} for char in characters]
