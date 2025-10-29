@@ -21,9 +21,8 @@ This is an Alliance Auth plugin following the standard AA plugin architecture:
 1. FC creates fleet and adds participants manually
 2. FC pastes raw loot from EVE client
 3. System values loot via **Janice API** (Jita buy prices)
-4. System calculates even split among participants + corporation share
-5. FC approves payouts
-6. FC marks payments as completed
+4. System **automatically calculates and creates payouts** (even split + corporation share)
+5. FC marks payments as completed via inline buttons
 
 ### Core Workflow (Phase 2 - PLANNED)
 1. **ESI Fleet Import**: FC imports fleet composition from ESI (auto-adds all participants)
@@ -31,10 +30,9 @@ This is an Alliance Auth plugin following the standard AA plugin architecture:
 3. **Scout Marking**: FC marks scouts manually (receives +10% ISK bonus)
 4. FC pastes raw loot from EVE client
 5. System values loot via Janice API
-6. System calculates payouts with scout bonuses and deduplication
-7. FC approves payouts
-8. **Express Mode Payment**: FC uses optimized payment interface with ESI window opening (~80% time savings)
-9. **Payment Verification**: System verifies payments via ESI wallet journal
+6. System **automatically calculates and creates payouts** with scout bonuses and deduplication
+7. **Inline Payment Actions**: FC uses integrated payment buttons (Copy Name, Copy Amount, Open Window, Mark Paid)
+8. **Payment Verification**: System verifies payments via ESI wallet journal (optional)
 
 ### Data Models (Phase 1 - COMPLETE)
 - **Fleet**: Fleet operations with FC, time, location, status (IMPLEMENTED)
@@ -178,7 +176,7 @@ Key settings to add when implementing features:
 ```python
 # Janice API Configuration (Phase 1)
 AAPAYOUT_JANICE_API_KEY = "your_api_key_here"
-AAPAYOUT_JANICE_MARKET = "jita"  # jita, amarr, perimeter, etc.
+AAPAYOUT_JANICE_MARKET = 2  # Market ID: 2=Jita, 1=Amarr, etc.
 AAPAYOUT_JANICE_PRICE_TYPE = "buy"  # buy or sell
 AAPAYOUT_JANICE_TIMEOUT = 30
 

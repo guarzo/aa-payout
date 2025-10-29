@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block details %}
 <div class="container-fluid">
@@ -23,7 +24,7 @@
                         <dd class="col-sm-9">{{ payout.recipient.character_name }}</dd>
 
                         <dt class="col-sm-3">{% translate "Amount" %}:</dt>
-                        <dd class="col-sm-9"><strong class="text-primary">{{ payout.amount|floatformat:2|intcomma }} ISK</strong></dd>
+                        <dd class="col-sm-9"><strong class="text-primary">{{ payout.amount|isk_format_full }}</strong></dd>
 
                         <dt class="col-sm-3">{% translate "Fleet" %}:</dt>
                         <dd class="col-sm-9">

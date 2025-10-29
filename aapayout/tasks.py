@@ -99,14 +99,28 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
         loot_pool.save()
         logger.info("[Task] Updated valued_at timestamp")
 
+        # Automatically create payouts (no manual approval needed)
+        logger.info("[Task] Auto-generating payouts after valuation")
+        from aapayout.helpers import create_payouts
+
+        payouts_created = create_payouts(loot_pool)
+        logger.info(f"[Task] Auto-created {payouts_created} payouts")
+
+        # Mark as approved since payouts are generated
+        loot_pool.status = constants.LOOT_STATUS_APPROVED
+        loot_pool.approved_at = timezone.now()
+        # Note: approved_by is None for auto-approval
+        loot_pool.save()
+
         logger.info(
             f"[Task] Successfully appraised loot pool {actual_loot_pool_id}: "
             f"{items_created} items, "
-            f"total value {loot_pool.total_value:,.2f} ISK"
+            f"total value {loot_pool.total_value:,.2f} ISK, "
+            f"{payouts_created} payouts auto-generated"
         )
 
         # DEBUGGING: Print success to stdout
-        print(f"[TASK] SUCCESS: Appraised {items_created} items, total {loot_pool.total_value:,.2f} ISK")
+        print(f"[TASK] SUCCESS: Appraised {items_created} items, total {loot_pool.total_value:,.2f} ISK, {payouts_created} payouts")
         print(f"=" * 80)
 
         return {
@@ -114,6 +128,7 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
             "loot_pool_id": actual_loot_pool_id,
             "items_created": items_created,
             "total_value": float(loot_pool.total_value),
+            "payouts_created": payouts_created,
         }
 
     except LootPool.DoesNotExist:

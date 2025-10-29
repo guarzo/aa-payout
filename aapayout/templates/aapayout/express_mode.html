@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block details %}
 <div class="container-fluid express-mode">
@@ -28,7 +29,7 @@
                         </div>
                         <div class="col-md-4">
                             <h6>{% translate "Total Amount" %}</h6>
-                            <h4 class="mb-0 text-primary">{{ total_amount|floatformat:2|intcomma }} ISK</h4>
+                            <h4 class="mb-0 text-primary">{{ total_amount|isk_format_full }}</h4>
                         </div>
                         <div class="col-md-4">
                             <h6>{% translate "Estimated Time" %}</h6>

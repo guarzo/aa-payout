@@ -13,3 +13,10 @@ class AaPayoutConfig(AppConfig):
     name = "aapayout"
     label = "aapayout"
     verbose_name = f"AA Payout v{__version__}"
+
+    def ready(self):
+        """
+        Import tasks when the app is ready to ensure Celery discovers them
+        """
+        # Import tasks to register them with Celery
+        import aapayout.tasks  # noqa: F401

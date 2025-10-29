@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block page_title %}{% trans "Payout History" %}{% endblock %}
 
@@ -74,7 +75,7 @@
                     <i class="fas fa-check-circle"></i> {% trans "Paid" %}
                 </h6>
                 <h4 class="card-title text-success">{{ count_paid|default:0 }}</h4>
-                <p class="small text-muted mb-0">{{ total_paid|floatformat:2|intcomma }} ISK</p>
+                <p class="small text-muted mb-0">{{ total_paid|isk_format_full }}</p>
             </div>
         </div>
     </div>
@@ -85,7 +86,7 @@
                     <i class="fas fa-clock"></i> {% trans "Pending" %}
                 </h6>
                 <h4 class="card-title text-warning">{{ count_pending|default:0 }}</h4>
-                <p class="small text-muted mb-0">{{ total_pending|floatformat:2|intcomma }} ISK</p>
+                <p class="small text-muted mb-0">{{ total_pending|isk_format_full }}</p>
             </div>
         </div>
     </div>
@@ -254,7 +255,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
-                                        <strong>{{ payout.amount|floatformat:2|intcomma }}</strong> ISK
+                                        <strong>{{ payout.amount|isk_format_full }}</strong>
                                     </td>
                                     <td>
                                         {% if payout.status == 'pending' %}

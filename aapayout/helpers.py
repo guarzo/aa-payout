@@ -388,9 +388,7 @@ def create_loot_items_from_appraisal(loot_pool: LootPool, appraisal_data: Dict) 
     # Update loot pool totals
     loot_pool.calculate_totals()
 
-    # Update status to valued
-    loot_pool.status = constants.LOOT_STATUS_VALUED
-    loot_pool.save()
+    # Note: Status is managed by the calling task (auto-approved after payout creation)
 
     logger.info(f"Created {items_created} loot items for pool {loot_pool.id}")
 

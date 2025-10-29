@@ -198,6 +198,18 @@ def fleet_detail(request, pk):
     # Calculate totals
     total_loot_value = fleet.get_total_loot_value()
 
+    # Calculate payout amounts for inline display (payouts auto-created after valuation)
+    payout_map = {}  # Maps main_character.id to payout amount
+    existing_payouts = {}  # Maps recipient.id to Payout instance (for status tracking)
+    if loot_pools.exists():
+        loot_pool = loot_pools.first()
+
+        # Payouts are automatically created when loot is valued (no approval step)
+        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_PAID]:
+            for payout in loot_pool.payouts.all():
+                existing_payouts[payout.recipient.id] = payout
+                payout_map[payout.recipient.id] = payout.amount
+
     # Check ESI fleet import status (Phase 2)
     esi_status = {
         "enabled": app_settings.AAPAYOUT_ESI_FLEET_IMPORT_ENABLED,
@@ -257,6 +269,8 @@ def fleet_detail(request, pk):
         "can_edit": fleet.can_edit(request.user),
         "can_delete": fleet.can_delete(request.user),
         "esi_status": esi_status,
+        "payout_map": payout_map,
+        "existing_payouts": existing_payouts,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -421,6 +435,11 @@ def loot_create(request, fleet_id):
     # Check permissions
     if not fleet.can_edit(request.user):
         messages.error(request, "You don't have permission to edit this fleet")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if fleet already has a loot pool (only one allowed per fleet)
+    if fleet.loot_pools.exists():
+        messages.error(request, "This fleet already has a loot pool. Only one loot pool is allowed per fleet.")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Warn if Janice API key is not configured
@@ -1229,7 +1248,7 @@ def fleet_import(request, pk):
             f"Skipped {characters_skipped} already in fleet.",
         )
 
-        return redirect("aapayout:fleet_import_results", import_id=esi_import.pk)
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # GET request - show import form
     context = {

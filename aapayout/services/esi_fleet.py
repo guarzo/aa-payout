@@ -305,7 +305,7 @@ class ESIUIService:
 
         Args:
             character_id: EVE character ID to open window for
-            token: ESI token with esi-ui.open_window.v1 scope
+            token: ESI token with esi-ui.open_window.v1 scope (already validated by view)
 
         Returns:
             Tuple of (success, error_message)
@@ -320,13 +320,7 @@ class ESIUIService:
                 print(f"Failed: {error}")
         """
         try:
-            # Validate token has required scope
-            required_scope = "esi-ui.open_window.v1"
-            if not token.has_scope(required_scope):
-                error_msg = f"Token does not have required scope: {required_scope}"
-                logger.error(error_msg)
-                return False, error_msg
-
+            # Token scope is already validated by the view before calling this service
             # Open character window via ESI
             esi.client.User_Interface.post_ui_openwindow_information(
                 target_id=character_id, token=token.valid_access_token()

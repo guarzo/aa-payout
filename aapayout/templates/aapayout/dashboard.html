@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block details %}
 <div class="container-fluid">
@@ -17,7 +18,7 @@
                 <div class="card-body">
                     <h5 class="card-title">{% translate "Pending Payouts" %}</h5>
                     <p class="card-text display-6">{{ pending_payouts|length }}</p>
-                    <p class="text-muted">{{ total_pending|floatformat:2|intcomma }} ISK</p>
+                    <p class="text-muted">{{ total_pending|isk_format_full }}</p>
                 </div>
             </div>
         </div>
@@ -49,8 +50,11 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h5>{% translate "Your Pending Payouts" %}</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">{% translate "Your Pending Payouts" %}</h5>
+                    <a href="{% url 'aapayout:payout_history' %}" class="btn btn-sm btn-info">
+                        <i class="fas fa-history"></i> {% translate "View All Payouts" %}
+                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -76,7 +80,7 @@
                                             {{ payout.loot_pool.name }}
                                         </a>
                                     </td>
-                                    <td class="text-end">{{ payout.amount|floatformat:2|intcomma }} ISK</td>
+                                    <td class="text-end">{{ payout.amount|isk_format_full }}</td>
                                     <td>
                                         <span class="badge bg-warning">{{ payout.get_status_display }}</span>
                                     </td>
@@ -85,6 +89,23 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Show payout history link even when no pending payouts -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>{% translate "Your Payouts" %}</h5>
+                </div>
+                <div class="card-body text-center">
+                    <p class="text-muted">{% translate "No pending payouts at the moment" %}</p>
+                    <a href="{% url 'aapayout:payout_history' %}" class="btn btn-info">
+                        <i class="fas fa-history"></i> {% translate "View Payout History" %}
+                    </a>
                 </div>
             </div>
         </div>
@@ -135,7 +156,7 @@
                                         {% endif %}
                                     </td>
                                     <td>{{ fleet.get_participant_count }}</td>
-                                    <td class="text-end">{{ fleet.get_total_loot_value|floatformat:2|intcomma }} ISK</td>
+                                    <td class="text-end">{{ fleet.get_total_loot_value|isk_format_full }}</td>
                                     <td>
                                         <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-sm btn-info">
                                             {% translate "View" %}

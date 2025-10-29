@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block details %}
 <div class="container-fluid">
@@ -42,7 +43,7 @@
                         <div class="mb-3">
                             <label class="form-label">{% translate "Current Unit Price" %}</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" value="{{ item.unit_price|floatformat:2|intcomma }}" disabled>
+                                <input type="text" class="form-control" value="{{ item.unit_price|isk_format }}" disabled>
                                 <span class="input-group-text">ISK</span>
                             </div>
                             <small class="text-muted">
@@ -53,7 +54,7 @@
                         <div class="mb-3">
                             <label class="form-label">{% translate "Current Total Value" %}</label>
                             <div class="input-group">
-                                <input type="text" class="form-control fw-bold" value="{{ item.total_value|floatformat:2|intcomma }}" disabled>
+                                <input type="text" class="form-control fw-bold" value="{{ item.total_value|isk_format }}" disabled>
                                 <span class="input-group-text">ISK</span>
                             </div>
                         </div>

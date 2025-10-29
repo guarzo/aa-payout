@@ -77,7 +77,7 @@ Add your Janice API key to your `local.py` settings file:
 ```python
 # Janice API Configuration (REQUIRED)
 AAPAYOUT_JANICE_API_KEY = "your-api-key-here"  # Get this from https://janice.e-351.com
-AAPAYOUT_JANICE_MARKET = "jita"          # Market hub: jita, amarr, dodixie, rens, hek
+AAPAYOUT_JANICE_MARKET = 2               # Market ID: 2=Jita, 1=Amarr, etc.
 AAPAYOUT_JANICE_PRICE_TYPE = "buy"      # Price type: buy or sell
 
 # Payout Configuration

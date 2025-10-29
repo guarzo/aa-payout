@@ -1,6 +1,7 @@
 {% extends 'aapayout/base.html' %}
 {% load i18n %}
 {% load humanize %}
+{% load aapayout_filters %}
 
 {% block details %}
 <div class="container-fluid">
@@ -29,7 +30,7 @@
                                 <dd class="col-sm-7">{{ loot_pool.items.count }}</dd>
 
                                 <dt class="col-sm-5">{% translate "Total Value" %}:</dt>
-                                <dd class="col-sm-7"><strong>{{ loot_pool.total_value|floatformat:2|intcomma }} ISK</strong></dd>
+                                <dd class="col-sm-7"><strong>{{ loot_pool.total_value|isk_format_full }}</strong></dd>
 
                                 <dt class="col-sm-5">{% translate "Pricing Method" %}:</dt>
                                 <dd class="col-sm-7">{{ loot_pool.get_pricing_method_display }}</dd>
@@ -47,10 +48,10 @@
                                 <dd class="col-sm-6">{{ loot_pool.corp_share_percentage }}%</dd>
 
                                 <dt class="col-sm-6">{% translate "Corp Amount" %}:</dt>
-                                <dd class="col-sm-6"><strong>{{ loot_pool.corp_share_amount|floatformat:2|intcomma }} ISK</strong></dd>
+                                <dd class="col-sm-6"><strong>{{ loot_pool.corp_share_amount|isk_format_full }}</strong></dd>
 
                                 <dt class="col-sm-6">{% translate "Participant Pool" %}:</dt>
-                                <dd class="col-sm-6"><strong>{{ loot_pool.participant_share_amount|floatformat:2|intcomma }} ISK</strong></dd>
+                                <dd class="col-sm-6"><strong>{{ loot_pool.participant_share_amount|isk_format_full }}</strong></dd>
                             </dl>
                         </div>
                     </div>
@@ -71,9 +72,9 @@
                     <div class="alert alert-info mb-3">
                         <strong>{% translate "Payout Structure" %}:</strong>
                         <ul class="mb-0 mt-2">
-                            <li>{% translate "Base Share" %}: <strong>{{ payout_preview.0.base_share|floatformat:2|intcomma }} ISK</strong></li>
-                            <li>{% translate "Scout Bonus" %}: <strong>+{{ payout_preview.0.scout_bonus|floatformat:2|intcomma }} ISK</strong> (+10%)</li>
-                            <li>{% translate "Scout Total" %}: <strong>{{ payout_preview.0.base_share|add:payout_preview.0.scout_bonus|floatformat:2|intcomma }} ISK</strong></li>
+                            <li>{% translate "Base Share" %}: <strong>{{ payout_preview.0.base_share|isk_format_full }}</strong></li>
+                            <li>{% translate "Scout Bonus" %}: <strong>+{{ payout_preview.0.scout_bonus|isk_format_full }}</strong> (+10%)</li>
+                            <li>{% translate "Scout Total" %}: <strong>{{ payout_preview.0.base_share|add:payout_preview.0.scout_bonus|isk_format_full }}</strong></li>
                         </ul>
                     </div>
                     {% endif %}
@@ -106,30 +107,30 @@
                                             </small>
                                         {% endif %}
                                     </td>
-                                    <td class="text-end">{{ payout.base_share|floatformat:2|intcomma }} ISK</td>
+                                    <td class="text-end">{{ payout.base_share|isk_format_full }}</td>
                                     <td class="text-end">
                                         {% if payout.scout_bonus > 0 %}
-                                            <span class="text-success">+{{ payout.scout_bonus|floatformat:2|intcomma }} ISK</span>
+                                            <span class="text-success">+{{ payout.scout_bonus|isk_format_full }}</span>
                                         {% else %}
                                             —
                                         {% endif %}
                                     </td>
-                                    <td class="text-end"><strong>{{ payout.amount|floatformat:2|intcomma }} ISK</strong></td>
+                                    <td class="text-end"><strong>{{ payout.amount|isk_format_full }}</strong></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             <tfoot>
                                 <tr class="table-active">
                                     <th colspan="4">{% translate "Total Participant Payouts" %}:</th>
-                                    <th class="text-end">{{ total_payouts|floatformat:2|intcomma }} ISK</th>
+                                    <th class="text-end">{{ total_payouts|isk_format_full }}</th>
                                 </tr>
                                 <tr class="table-active">
                                     <th colspan="4">{% translate "Corporation Share" %}:</th>
-                                    <th class="text-end">{{ loot_pool.corp_share_amount|floatformat:2|intcomma }} ISK</th>
+                                    <th class="text-end">{{ loot_pool.corp_share_amount|isk_format_full }}</th>
                                 </tr>
                                 <tr class="table-primary">
                                     <th colspan="4">{% translate "Grand Total" %}:</th>
-                                    <th class="text-end">{{ loot_pool.total_value|floatformat:2|intcomma }} ISK</th>
+                                    <th class="text-end">{{ loot_pool.total_value|isk_format_full }}</th>
                                 </tr>
                             </tfoot>
                         </table>

@@ -17,6 +17,8 @@
         initializeTooltips();
         initializeConfirmDialogs();
         initializeLootTextCounter();
+        initializeInlinePaymentActions();
+        initializeParticipantStatusToggles();
     });
 
     // ========================================
@@ -298,6 +300,250 @@
 
         lootTextArea.addEventListener('input', updateCounter);
         updateCounter();
+    }
+
+    // ========================================
+    // Inline Payment Actions (Integrated Express Mode)
+    // ========================================
+
+    function initializeInlinePaymentActions() {
+        // Copy Name buttons
+        document.querySelectorAll('.copy-name-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const characterName = this.dataset.characterName;
+                copyToClipboard(characterName);
+                showFeedback(this, 'Name copied!');
+            });
+        });
+
+        // Copy Amount buttons
+        document.querySelectorAll('.copy-amount-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const amount = this.dataset.amount;
+                // Remove decimals and commas for ISK transfer
+                const cleanAmount = Math.floor(parseFloat(amount)).toString();
+                copyToClipboard(cleanAmount);
+                showFeedback(this, 'Amount copied!');
+            });
+        });
+
+        // Open Window buttons (ESI)
+        document.querySelectorAll('.open-window-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const payoutId = this.dataset.payoutId;
+                const characterId = this.dataset.characterId;
+                openCharacterWindow(payoutId, this);
+            });
+        });
+
+        // Mark Paid buttons
+        document.querySelectorAll('.mark-paid-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const payoutId = this.dataset.payoutId;
+                markPayoutPaid(payoutId, this);
+            });
+        });
+    }
+
+    function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(function (err) {
+                console.error('Failed to copy:', err);
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+    }
+
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+        }
+        document.body.removeChild(textarea);
+    }
+
+    function showFeedback(element, message) {
+        const originalHTML = element.innerHTML;
+        element.innerHTML = '<i class="fas fa-check"></i>';
+        element.classList.add('btn-success');
+        element.classList.remove('btn-outline-primary', 'btn-outline-info');
+
+        setTimeout(function () {
+            element.innerHTML = originalHTML;
+            element.classList.remove('btn-success');
+            if (element.classList.contains('copy-name-btn') || element.classList.contains('copy-amount-btn')) {
+                element.classList.add('btn-outline-primary');
+            } else {
+                element.classList.add('btn-outline-info');
+            }
+        }, 1000);
+    }
+
+    function openCharacterWindow(payoutId, button) {
+        const csrftoken = getCookie('csrftoken');
+        const originalHTML = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch('/payout/api/payouts/' + payoutId + '/open-window/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+
+                if (result.ok && result.data.success) {
+                    showFeedback(button, 'Window opened!');
+                } else {
+                    alert('Failed to open window: ' + (result.data.error || 'Unknown error'));
+                }
+            })
+            .catch(function (error) {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                console.error('Error opening window:', error);
+                alert('Failed to open window: ' + error.message);
+            });
+    }
+
+    function markPayoutPaid(payoutId, button) {
+        if (!confirm('Mark this payout as paid?')) {
+            return;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+        const row = button.closest('tr');
+        const originalHTML = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch('/payout/api/payouts/' + payoutId + '/mark-paid-express/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (result.ok && result.data.success) {
+                    // Replace button group with "Paid" badge
+                    const actionsCell = button.closest('td');
+                    actionsCell.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Paid</span>';
+
+                    // Add success styling to row
+                    row.classList.add('table-success');
+
+                    // Show success message (optional)
+                    showNotification('Payment marked as paid!', 'success');
+                } else {
+                    button.innerHTML = originalHTML;
+                    button.disabled = false;
+                    alert('Failed to mark as paid: ' + (result.data.error || 'Unknown error'));
+                }
+            })
+            .catch(function (error) {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                console.error('Error marking payout as paid:', error);
+                alert('Failed to mark as paid: ' + error.message);
+            });
+    }
+
+    function showNotification(message, type) {
+        // Simple notification (you can replace with Bootstrap toast or similar)
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-' + type + ' position-fixed top-0 start-50 translate-middle-x mt-3';
+        notification.style.zIndex = '9999';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(function () {
+            notification.remove();
+        }, 3000);
+    }
+
+    // ========================================
+    // Participant Status Toggles (Scout/Exclude)
+    // ========================================
+
+    function initializeParticipantStatusToggles() {
+        // Scout checkboxes
+        document.querySelectorAll('.scout-checkbox').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                updateParticipantStatus(this.dataset.participantId, 'is_scout', this.checked);
+            });
+        });
+
+        // Exclude checkboxes
+        document.querySelectorAll('.exclude-checkbox').forEach(function (checkbox) {
+            checkbox.addEventListener('change', function () {
+                updateParticipantStatus(this.dataset.participantId, 'excluded_from_payout', this.checked);
+            });
+        });
+    }
+
+    function updateParticipantStatus(participantId, field, value) {
+        const csrftoken = getCookie('csrftoken');
+
+        const payload = {};
+        payload[field] = value;
+
+        fetch('/payout/api/participant/' + participantId + '/update/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.data.success) {
+                    alert('Failed to update participant: ' + (result.data.error || 'Unknown error'));
+                    // Revert checkbox
+                    const checkbox = document.querySelector('[data-participant-id="' + participantId + '"].' + (field === 'is_scout' ? 'scout-checkbox' : 'exclude-checkbox'));
+                    if (checkbox) {
+                        checkbox.checked = !value;
+                    }
+                }
+            })
+            .catch(function (error) {
+                console.error('Error updating participant:', error);
+                alert('Failed to update participant: ' + error.message);
+            });
     }
 
     // ========================================
