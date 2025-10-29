@@ -732,9 +732,20 @@ def verify_payments(request, pool_id):
         # Alliance Auth
         from esi.models import Token
 
+        # Get FC's main character ID
+        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+        if not fc_character:
+            messages.error(
+                request, "You need to set a main character in your profile to verify payments."
+            )
+            return redirect("aapayout:payout_list", pool_id=pool_id)
+
+        # Get token for the specific FC character
+        # IMPORTANT: ESI requires the token to match the character ID being queried
         token = (
             Token.objects.filter(
                 user=request.user,
+                character_id=fc_character.character_id,  # Token must match the FC character
             )
             .require_scopes("esi-wallet.read_character_journal.v1")
             .require_valid()
@@ -744,8 +755,8 @@ def verify_payments(request, pool_id):
         if not token:
             messages.error(
                 request,
-                "You need to link your ESI token with wallet journal access. "
-                "Please add the 'esi-wallet.read_character_journal.v1' scope.",
+                f"You need to link your main character's ESI token with wallet journal access. "
+                "Please add the 'esi-wallet.read_character_journal.v1' scope for your main character.",
             )
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
@@ -991,7 +1002,7 @@ def character_search(request):
         category=EveEntity.CATEGORY_CHARACTER,  # Characters only
     ).order_by("name")[:20]
 
-    results = [{"id": char.id, "name": char.name} for char in characters]
+    results = [{"character_id": char.id, "character_name": char.name} for char in characters]
 
     return JsonResponse({"results": results})
 
@@ -1077,30 +1088,6 @@ def fleet_import(request, pk):
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
-        # Get user's ESI token with required scope
-        try:
-            token = (
-                Token.objects.filter(
-                    user=request.user,
-                )
-                .require_scopes("esi-fleets.read_fleet.v1")
-                .require_valid()
-                .first()
-            )
-
-            if not token:
-                messages.error(
-                    request,
-                    "You need to add an ESI token with fleet read access. "
-                    "Please click 'Add/Update Character' below and authorize the 'esi-fleets.read_fleet.v1' scope.",
-                )
-                return redirect("aapayout:fleet_import", pk=fleet.pk)
-
-        except Exception as e:
-            logger.error(f"Failed to get ESI token for user {request.user.id}: {e}")
-            messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
-
         # Get FC character ID from session or use main character
         fc_character_id = request.session.get("fc_character_id")
 
@@ -1111,6 +1098,33 @@ def fleet_import(request, pk):
                 messages.error(request, "Please select an FC character from the dropdown in the top navigation bar.")
                 return redirect("aapayout:fleet_import", pk=fleet.pk)
             fc_character_id = fc_character.character_id
+
+        # Get ESI token for the specific FC character with required scope
+        # IMPORTANT: ESI requires the token to match the character ID being queried
+        try:
+            token = (
+                Token.objects.filter(
+                    user=request.user,
+                    character_id=fc_character_id,  # Token must match the FC character
+                )
+                .require_scopes("esi-fleets.read_fleet.v1")
+                .require_valid()
+                .first()
+            )
+
+            if not token:
+                messages.error(
+                    request,
+                    f"You need to add an ESI token for your FC character (ID: {fc_character_id}) with fleet read access. "
+                    "Please click 'Add/Update Character' below and authorize the 'esi-fleets.read_fleet.v1' scope "
+                    "for the character you want to use as Fleet Commander.",
+                )
+                return redirect("aapayout:fleet_import", pk=fleet.pk)
+
+        except Exception as e:
+            logger.error(f"Failed to get ESI token for character {fc_character_id}: {e}")
+            messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
+            return redirect("aapayout:fleet_import", pk=fleet.pk)
 
         # Get the fleet ID the FC is currently in
         logger.info(f"Checking if character {fc_character_id} is in a fleet")

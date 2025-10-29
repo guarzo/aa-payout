@@ -374,10 +374,12 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
         if not fc_character:
             raise ValueError("User has no main character set")
 
-        # Get user's ESI token with wallet journal scope
+        # Get user's ESI token with wallet journal scope for the specific FC character
+        # IMPORTANT: ESI requires the token to match the character ID being queried
         token = (
             Token.objects.filter(
                 user=user,
+                character_id=fc_character.character_id,  # Token must match the FC character
             )
             .require_scopes("esi-wallet.read_character_journal.v1")
             .require_valid()
@@ -386,8 +388,8 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
 
         if not token:
             raise ValueError(
-                "No valid ESI token found with wallet journal scope. "
-                "Please link your ESI token with the required scope."
+                f"No valid ESI token found for FC character {fc_character.character_id} with wallet journal scope. "
+                "Please link your FC character's ESI token with the required scope."
             )
 
         # Get all pending payouts for this loot pool
