@@ -2,6 +2,3 @@
 
 __version__ = "0.2.20"
 __title__ = "AA Payout"
-
-# Ensure Celery discovers tasks
-default_app_config = "aapayout.apps.AapayoutConfig"

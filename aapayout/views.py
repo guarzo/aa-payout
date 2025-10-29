@@ -735,9 +735,7 @@ def verify_payments(request, pool_id):
         # Get FC's main character ID
         fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
         if not fc_character:
-            messages.error(
-                request, "You need to set a main character in your profile to verify payments."
-            )
+            messages.error(request, "You need to set a main character in your profile to verify payments.")
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
         # Get token for the specific FC character
@@ -755,7 +753,7 @@ def verify_payments(request, pool_id):
         if not token:
             messages.error(
                 request,
-                f"You need to link your main character's ESI token with wallet journal access. "
+                "You need to link your main character's ESI token with wallet journal access. "
                 "Please add the 'esi-wallet.read_character_journal.v1' scope for your main character.",
             )
             return redirect("aapayout:payout_list", pool_id=pool_id)
