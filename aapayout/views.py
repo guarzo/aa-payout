@@ -56,14 +56,11 @@ def set_fc_character(request, character_id):
 
     # Verify the character belongs to the user
     try:
-        ownership = CharacterOwnership.objects.get(
-            user=request.user,
-            character__character_id=character_id
-        )
+        ownership = CharacterOwnership.objects.get(user=request.user, character__character_id=character_id)
 
         # Store in session
-        request.session['fc_character_id'] = ownership.character.character_id
-        request.session['fc_character_name'] = ownership.character.character_name
+        request.session["fc_character_id"] = ownership.character.character_id
+        request.session["fc_character_name"] = ownership.character.character_name
 
         logger.info(f"User {request.user.username} set FC character to {ownership.character.character_name}")
         messages.success(request, f"FC character set to {ownership.character.character_name}")
@@ -73,7 +70,7 @@ def set_fc_character(request, character_id):
         messages.error(request, "You don't own that character")
 
     # Redirect back to referrer or dashboard
-    return redirect(request.META.get('HTTP_REFERER', 'aapayout:dashboard'))
+    return redirect(request.META.get("HTTP_REFERER", "aapayout:dashboard"))
 
 
 # ============================================================================
@@ -403,7 +400,9 @@ def loot_create(request, fleet_id):
                 if result.get("success"):
                     messages.success(request, "Loot pool created and valued successfully!")
                 else:
-                    messages.error(request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}")
+                    messages.error(
+                        request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}"
+                    )
 
             return redirect("aapayout:loot_detail", pk=loot_pool.pk)
         else:
@@ -1005,16 +1004,13 @@ def fleet_import(request, pk):
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 
         # Get FC character ID from session or use main character
-        fc_character_id = request.session.get('fc_character_id')
+        fc_character_id = request.session.get("fc_character_id")
 
         if not fc_character_id:
             # Fall back to main character
             fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
             if not fc_character:
-                messages.error(
-                    request,
-                    "Please select an FC character from the dropdown in the top navigation bar."
-                )
+                messages.error(request, "Please select an FC character from the dropdown in the top navigation bar.")
                 return redirect("aapayout:fleet_import", pk=fleet.pk)
             fc_character_id = fc_character.character_id
 
@@ -1025,8 +1021,7 @@ def fleet_import(request, pk):
         if not esi_fleet_id:
             messages.error(
                 request,
-                "You are not currently in a fleet in EVE Online. "
-                "Please join a fleet and try again.",
+                "You are not currently in a fleet in EVE Online. " "Please join a fleet and try again.",
             )
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 

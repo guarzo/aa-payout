@@ -103,7 +103,9 @@ class JaniceService:
 
             # Parse response
             items_data = response.json()
-            logger.info(f"[Janice] Received response with {len(items_data) if isinstance(items_data, list) else 0} items")
+            logger.info(
+                f"[Janice] Received response with {len(items_data) if isinstance(items_data, list) else 0} items"
+            )
 
             if not isinstance(items_data, list):
                 logger.error(f"[Janice] Unexpected response format: {type(items_data)}")
@@ -158,7 +160,8 @@ class JaniceService:
             logger.debug(f"[Janice] Cached result for {cache_seconds} seconds")
 
             logger.info(
-                f"[Janice] Successfully appraised {len(processed_items)} items " f"(total value: {total_value:,.2f} ISK)"
+                f"[Janice] Successfully appraised {len(processed_items)} items "
+                f"(total value: {total_value:,.2f} ISK)"
             )
 
             return result

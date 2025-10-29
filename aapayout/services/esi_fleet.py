@@ -41,7 +41,7 @@ class ESIFleetService:
                 character_id=character_id, token=token.valid_access_token()
             ).results()
 
-            fleet_id = result.get('fleet_id')
+            fleet_id = result.get("fleet_id")
             if fleet_id:
                 logger.info(f"Character {character_id} is in fleet {fleet_id}")
             else:

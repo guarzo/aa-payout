@@ -57,12 +57,17 @@ pip install git+https://github.com/guarzo/aa-payout.git
 
 ### Step 2: Configure Alliance Auth
 
-Add `aapayout` to your `INSTALLED_APPS` in your Alliance Auth settings file (usually `myauth/settings/local.py`):
+Add `aapayout` to your `INSTALLED_APPS` and add the context processor in your Alliance Auth settings file (usually `myauth/settings/local.py`):
 
 ```python
 INSTALLED_APPS += [
     'aapayout',
 ]
+
+# Add context processor for FC character selection
+TEMPLATES[0]['OPTIONS']['context_processors'].append(
+    'aapayout.context_processors.fc_character'
+)
 ```
 
 ### Step 3: Configure Settings
@@ -124,6 +129,20 @@ The following permissions are available:
 
 ## Basic Usage
 
+### Selecting FC Character
+
+Before creating fleets or importing from ESI, select which character to use as the FC:
+
+1. Look for the **FC character dropdown** in the top navigation bar
+2. Click the dropdown (shows "FC: [Character Name]")
+3. Select the character you want to use for FC operations
+4. The selected character will be used for:
+   - ESI fleet detection and import
+   - Payment operations
+   - Fleet commander assignment
+
+**Note**: The system defaults to your main character. You can change this at any time.
+
 ### Creating a Fleet
 
 1. Navigate to **Fleet Payouts** in the Alliance Auth sidebar
@@ -144,12 +163,16 @@ The following permissions are available:
 4. Optionally mark as scout or exclude from payout
 5. Click **Add**
 
-**Option 2: ESI Fleet Import**
-1. Open your fleet
-2. Click **Import from ESI**
-3. Enter your ESI fleet ID (visible in EVE client fleet window)
-4. Click **Import**
-5. System will automatically add all fleet members and deduplicate alts
+**Option 2: ESI Fleet Import** (Recommended)
+1. Make sure you're in a fleet in EVE Online
+2. Select the correct FC character from the dropdown (top navigation)
+3. Open your fleet in the payout system
+4. Click **Import from ESI**
+5. Click **Import Current Fleet**
+6. System will automatically:
+   - Detect which fleet you're in
+   - Add all fleet members
+   - Deduplicate alts (one payout per player)
 
 ### Adding Loot
 
@@ -265,10 +288,16 @@ AAPAYOUT_AUTO_VERIFY_AFTER_PAYMENT = True     # Auto-verify after Express Mode
 
 ### ESI Import Issues
 
+**Problem**: "You are not currently in a fleet" error
+- **Solution**: Make sure you're actually in a fleet in EVE Online
+- **Solution**: Verify the correct FC character is selected in the dropdown (top navigation)
+- **Solution**: Ensure you have added an ESI token with `esi-fleets.read_fleet.v1` scope for that character
+- **Solution**: Try refreshing your ESI token by re-adding your character
+
 **Problem**: "ESI fleet import failed" error
-- **Solution**: Ensure you have added an ESI token with `esi-fleets.read_fleet.v1` scope
-- **Solution**: Verify your ESI fleet ID is correct (visible in EVE fleet window)
 - **Solution**: Ensure you are the fleet commander or have fleet boss role
+- **Solution**: Check your ESI token is valid and not expired
+- **Solution**: Verify network connectivity to ESI
 
 ### Express Mode Issues
 

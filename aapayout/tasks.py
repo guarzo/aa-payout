@@ -66,14 +66,14 @@ def appraise_loot_pool(loot_pool_id: int):
         logger.info(f"[Task] Janice API returned {len(appraisal_data.get('items', []))} items")
 
         # Create LootItem records
-        logger.info(f"[Task] Creating loot items from appraisal data")
+        logger.info("[Task] Creating loot items from appraisal data")
         items_created = create_loot_items_from_appraisal(loot_pool, appraisal_data)
         logger.info(f"[Task] Created {items_created} loot items")
 
         # Update valued_at timestamp
         loot_pool.valued_at = timezone.now()
         loot_pool.save()
-        logger.info(f"[Task] Updated valued_at timestamp")
+        logger.info("[Task] Updated valued_at timestamp")
 
         logger.info(
             f"[Task] Successfully appraised loot pool {loot_pool_id}: "
