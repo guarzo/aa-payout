@@ -248,7 +248,7 @@ class ESIFleetService:
             processed_members.append(member_data)
 
         logger.info(f"[ESI] Processed {len(processed_members)} out of {len(raw_members)} fleet members")
-        logger.info(f"[ESI] Fleet composition import completed successfully")
+        logger.info("[ESI] Fleet composition import completed successfully")
 
         return processed_members, None
 
