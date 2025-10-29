@@ -455,7 +455,7 @@ def loot_create(request, fleet_id):
                 )
                 messages.info(request, "You can retry valuation from the loot pool detail page.")
 
-            return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
         else:
             logger.warning(f"Loot pool form validation failed for fleet {fleet.id}: {form.errors}")
     else:
@@ -506,12 +506,12 @@ def loot_reappraise(request, pk):
         messages.success(
             request,
             f"Loot reappraised successfully! {result.get('items_created')} items valued at "
-            f"{result.get('total_value'):,.2f} ISK",
+            f"{result.get('total_value'):,.2f} ISK. {result.get('payouts_created')} payouts created.",
         )
     else:
         messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
 
-    return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+    return redirect("aapayout:fleet_detail", pk=loot_pool.fleet.pk)
 
 
 @login_required
