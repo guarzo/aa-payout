@@ -187,13 +187,6 @@ class ESIFleetService:
         Example error return:
         (None, "Failed to fetch fleet members from ESI")
         """
-        # Validate token has required scope
-        required_scope = "esi-fleets.read_fleet.v1"
-        if not token.has_scope(required_scope):
-            error_msg = f"Token does not have required scope: {required_scope}"
-            logger.error(error_msg)
-            return None, error_msg
-
         # Fetch fleet members from ESI
         raw_members = cls.get_fleet_members(fleet_id, token)
 

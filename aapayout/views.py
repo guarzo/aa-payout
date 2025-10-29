@@ -38,6 +38,45 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# FC Character Selection
+# ============================================================================
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+def set_fc_character(request, character_id):
+    """
+    Set the FC character for the current session
+
+    This allows users to select which of their characters to use as the FC
+    for fleet operations and ESI interactions.
+    """
+    # Alliance Auth
+    from allianceauth.authentication.models import CharacterOwnership
+
+    # Verify the character belongs to the user
+    try:
+        ownership = CharacterOwnership.objects.get(
+            user=request.user,
+            character__character_id=character_id
+        )
+
+        # Store in session
+        request.session['fc_character_id'] = ownership.character.character_id
+        request.session['fc_character_name'] = ownership.character.character_name
+
+        logger.info(f"User {request.user.username} set FC character to {ownership.character.character_name}")
+        messages.success(request, f"FC character set to {ownership.character.character_name}")
+
+    except CharacterOwnership.DoesNotExist:
+        logger.warning(f"User {request.user.username} tried to set FC character {character_id} they don't own")
+        messages.error(request, "You don't own that character")
+
+    # Redirect back to referrer or dashboard
+    return redirect(request.META.get('HTTP_REFERER', 'aapayout:dashboard'))
+
+
+# ============================================================================
 # Dashboard
 # ============================================================================
 
@@ -956,7 +995,7 @@ def fleet_import(request, pk):
                 messages.error(
                     request,
                     "You need to add an ESI token with fleet read access. "
-                    "Please add your character and authorize the required scopes.",
+                    "Please click 'Add/Update Character' below and authorize the 'esi-fleets.read_fleet.v1' scope.",
                 )
                 return redirect("aapayout:fleet_import", pk=fleet.pk)
 
@@ -965,15 +1004,23 @@ def fleet_import(request, pk):
             messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
             return redirect("aapayout:fleet_import", pk=fleet.pk)
 
-        # Get FC's main character ID
-        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
-        if not fc_character:
-            messages.error(request, "You don't have a main character set.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
+        # Get FC character ID from session or use main character
+        fc_character_id = request.session.get('fc_character_id')
+
+        if not fc_character_id:
+            # Fall back to main character
+            fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+            if not fc_character:
+                messages.error(
+                    request,
+                    "Please select an FC character from the dropdown in the top navigation bar."
+                )
+                return redirect("aapayout:fleet_import", pk=fleet.pk)
+            fc_character_id = fc_character.character_id
 
         # Get the fleet ID the FC is currently in
-        logger.info(f"Checking if character {fc_character.character_id} is in a fleet")
-        esi_fleet_id = esi_fleet_service.get_character_fleet_id(fc_character.character_id, token)
+        logger.info(f"Checking if character {fc_character_id} is in a fleet")
+        esi_fleet_id = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
 
         if not esi_fleet_id:
             messages.error(

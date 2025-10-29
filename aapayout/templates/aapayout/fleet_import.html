@@ -59,6 +59,20 @@
                             </button>
                         </div>
                     </form>
+
+                    <hr class="my-4">
+
+                    <div class="alert alert-info mb-0">
+                        <h6><i class="fas fa-key"></i> {% translate "Need ESI Access?" %}</h6>
+                        <p class="mb-2">{% translate "If you haven't added your character with ESI fleet access yet, you'll need to:" %}</p>
+                        <ol class="mb-2">
+                            <li>{% translate "Go to your profile and add/update your character" %}</li>
+                            <li>{% translate "Make sure to authorize the 'esi-fleets.read_fleet.v1' scope" %}</li>
+                        </ol>
+                        <a href="/account/characters/add/" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-user-plus"></i> {% translate "Add/Update Character" %}
+                        </a>
+                    </div>
                 </div>
             </div>
 

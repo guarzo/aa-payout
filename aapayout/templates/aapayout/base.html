@@ -11,6 +11,34 @@
     {% translate "Fleet Payouts" %}
 {% endblock header_nav_brand %}
 
+{% block header_nav_collapse_right %}
+    {{ block.super }}
+    {% if user.is_authenticated %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="fcCharacterDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-user-astronaut"></i>
+                <span class="d-none d-md-inline">FC:</span> <span id="current-fc-name">{{ fc_character_name|default:"Select" }}</span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fcCharacterDropdown">
+                <li><h6 class="dropdown-header">{% translate "Select FC Character" %}</h6></li>
+                {% for char in user.character_ownerships.all %}
+                    <li>
+                        <a class="dropdown-item {% if fc_character_id == char.character.character_id %}active{% endif %}"
+                           href="{% url 'aapayout:set_fc_character' char.character.character_id %}">
+                            {{ char.character.character_name }}
+                            {% if user.profile.main_character and char.character.character_id == user.profile.main_character.character_id %}
+                                <span class="badge bg-primary">Main</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                {% empty %}
+                    <li><span class="dropdown-item text-muted">{% translate "No characters available" %}</span></li>
+                {% endfor %}
+            </ul>
+        </li>
+    {% endif %}
+{% endblock %}
+
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'aapayout/css/aapayout.css' %}">
 {% endblock %}

@@ -11,6 +11,8 @@ app_name: str = "aapayout"
 urlpatterns = [
     # Dashboard
     path("", views.dashboard, name="dashboard"),
+    # FC Character Selection
+    path("set-fc/<int:character_id>/", views.set_fc_character, name="set_fc_character"),
     # Fleet Management
     path("fleets/", views.fleet_list, name="fleet_list"),
     path("fleets/create/", views.fleet_create, name="fleet_create"),
