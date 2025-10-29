@@ -41,22 +41,22 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
     if loot_pool_id is None:
         # Direct call: self is actually the loot_pool_id
         actual_loot_pool_id = self
-        task_id = 'sync'
+        task_id = "sync"
         is_celery = False
     else:
         # Celery call: self is task instance
         actual_loot_pool_id = loot_pool_id
-        task_id = self.request.id if hasattr(self, 'request') else 'unknown'
+        task_id = self.request.id if hasattr(self, "request") else "unknown"
         is_celery = True
 
     # DEBUGGING: Print to stdout (will show in worker logs if Celery)
-    print(f"=" * 80)
+    print("=" * 80)
     print(f"[TASK] Starting appraise_loot_pool for loot_pool_id={actual_loot_pool_id}")
     print(f"[TASK] Task ID: {task_id} (Celery: {is_celery})")
-    print(f"=" * 80)
+    print("=" * 80)
 
     logger.info(f"[Task {task_id}] TASK STARTED for loot pool {actual_loot_pool_id}")
-    if is_celery and hasattr(self, 'name'):
+    if is_celery and hasattr(self, "name"):
         logger.info(f"[Task {task_id}] Task name: {self.name}")
 
     try:
@@ -101,6 +101,7 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
 
         # Automatically create payouts (no manual approval needed)
         logger.info("[Task] Auto-generating payouts after valuation")
+        # AA Payout
         from aapayout.helpers import create_payouts
 
         payouts_created = create_payouts(loot_pool)
@@ -120,8 +121,10 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
         )
 
         # DEBUGGING: Print success to stdout
-        print(f"[TASK] SUCCESS: Appraised {items_created} items, total {loot_pool.total_value:,.2f} ISK, {payouts_created} payouts")
-        print(f"=" * 80)
+        print(
+            f"[TASK] SUCCESS: Appraised {items_created} items, total {loot_pool.total_value:,.2f} ISK, {payouts_created} payouts"
+        )
+        print("=" * 80)
 
         return {
             "success": True,
@@ -157,7 +160,9 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
         error_msg = f"Unexpected error appraising loot pool {actual_loot_pool_id}: {str(e)}"
         print(f"[TASK] UNEXPECTED ERROR: {error_msg}")
         print(f"[TASK] Exception type: {type(e)}")
+        # Standard Library
         import traceback
+
         print(traceback.format_exc())
         logger.exception(f"[Task] {error_msg}")
 

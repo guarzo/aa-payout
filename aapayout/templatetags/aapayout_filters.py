@@ -131,7 +131,11 @@ def isk_detailed(value):
         full_value = f"{amount:,.2f}"
 
         # Create tooltip HTML
-        html = f'<span title="{full_value} ISK" style="cursor: help; border-bottom: 1px dotted currentColor;">{formatted} ISK</span>'
+        html = (
+            f'<span title="{full_value} ISK" '
+            f'style="cursor: help; border-bottom: 1px dotted currentColor;">'
+            f"{formatted} ISK</span>"
+        )
 
         return mark_safe(html)
 

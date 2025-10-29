@@ -19,4 +19,5 @@ class AaPayoutConfig(AppConfig):
         Import tasks when the app is ready to ensure Celery discovers them
         """
         # Import tasks to register them with Celery
+        # AA Payout
         import aapayout.tasks  # noqa: F401

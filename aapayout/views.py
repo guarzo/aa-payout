@@ -223,10 +223,7 @@ def fleet_detail(request, pk):
     if esi_status["enabled"] and fleet.can_edit(request.user):
         # Check if user has ESI scope
         token = (
-            Token.objects.filter(user=request.user)
-            .require_scopes("esi-fleets.read_fleet.v1")
-            .require_valid()
-            .first()
+            Token.objects.filter(user=request.user).require_scopes("esi-fleets.read_fleet.v1").require_valid().first()
         )
 
         if token:
@@ -241,9 +238,7 @@ def fleet_detail(request, pk):
 
             if fc_character_id:
                 # Check if character is in a fleet and their role
-                esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(
-                    fc_character_id, token
-                )
+                esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
 
                 if esi_fleet_id and not check_error:
                     esi_status["in_fleet"] = True
@@ -253,9 +248,7 @@ def fleet_detail(request, pk):
                     if fleet_role == "fleet_commander":
                         esi_status["can_import"] = True
                     else:
-                        esi_status["message"] = (
-                            f"You need Fleet Boss role to import. Your current role: {fleet_role}"
-                        )
+                        esi_status["message"] = f"You need Fleet Boss role to import. Your current role: {fleet_role}"
                 else:
                     esi_status["message"] = "Not currently in a fleet in EVE Online"
         else:
@@ -532,7 +525,7 @@ def loot_reappraise(request, pk):
         messages.success(
             request,
             f"Loot reappraised successfully! {result.get('items_created')} items valued at "
-            f"{result.get('total_value'):,.2f} ISK"
+            f"{result.get('total_value'):,.2f} ISK",
         )
     else:
         messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")

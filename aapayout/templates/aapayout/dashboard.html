@@ -126,7 +126,6 @@
                             <thead>
                                 <tr>
                                     <th>{% translate "Fleet Name" %}</th>
-                                    <th>{% translate "Location" %}</th>
                                     <th>{% translate "Fleet Time" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     <th>{% translate "Participants" %}</th>
@@ -142,7 +141,6 @@
                                             {{ fleet.name }}
                                         </a>
                                     </td>
-                                    <td>{{ fleet.location }}</td>
                                     <td>{{ fleet.fleet_time|date:"Y-m-d H:i" }}</td>
                                     <td>
                                         {% if fleet.status == 'draft' %}

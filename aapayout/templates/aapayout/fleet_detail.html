@@ -11,7 +11,6 @@
             <p class="text-muted">
                 <i class="fas fa-user"></i> {{ fleet.fleet_commander.username }}
                 | <i class="fas fa-calendar"></i> {{ fleet.fleet_time|date:"Y-m-d H:i" }}
-                | <i class="fas fa-map-marker-alt"></i> {{ fleet.location }}
             </p>
         </div>
         <div class="col-md-4 text-end">
@@ -52,10 +51,6 @@
                                     <span class="badge bg-info">{{ fleet.get_status_display }}</span>
                                 {% endif %}
                             </td>
-                        </tr>
-                        <tr>
-                            <th>{% translate "Doctrine" %}:</th>
-                            <td>{{ fleet.doctrine|default:"—" }}</td>
                         </tr>
                         <tr>
                             <th>{% translate "Participants" %}:</th>
@@ -210,8 +205,6 @@
                             <tbody>
                                 {% for participant in participants %}
                                 {% with main_char_id=participant.main_character.id|default:participant.character.id %}
-                                {% with is_main=participant.main_character.id == participant.character.id or not participant.main_character %}
-                                {% with payout=existing_payouts|default_if_none:None %}
                                 <tr class="{% if participant.excluded_from_payout %}table-secondary text-muted{% endif %}"
                                     id="participant-row-{{ participant.pk }}">
                                     <td>{{ participant.character.character_name }}</td>
@@ -238,15 +231,17 @@
                                     </td>
                                     {% if payout_map %}
                                         <td class="text-end">
-                                            {% if is_main and main_char_id in payout_map %}
-                                                <strong>{{ payout_map|get_item:main_char_id|isk_format_full }}</strong>
-                                                {% if participant.is_scout %}
-                                                    <span class="badge bg-success ms-1">{% translate "Scout" %}</span>
+                                            {% if participant.main_character.id == participant.character.id or not participant.main_character %}
+                                                {% if main_char_id in payout_map %}
+                                                    <strong>{{ payout_map|get_item:main_char_id|isk_format_full }}</strong>
+                                                    {% if participant.is_scout %}
+                                                        <span class="badge bg-success ms-1">{% translate "Scout" %}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
                                                 {% endif %}
-                                            {% elif not is_main %}
-                                                <span class="text-muted small">{% translate "(grouped with main)" %}</span>
                                             {% else %}
-                                                <span class="text-muted">—</span>
+                                                <span class="text-muted small">{% translate "(grouped with main)" %}</span>
                                             {% endif %}
                                         </td>
                                     {% endif %}
@@ -262,38 +257,53 @@
                                                {% if participant.excluded_from_payout %}checked{% endif %}>
                                     </td>
                                     <td>
-                                        {% if is_main and main_char_id in existing_payouts %}
-                                            {% with payout_obj=existing_payouts|get_item:main_char_id %}
-                                            {% if payout_obj.status == 'pending' %}
-                                                <div class="btn-group btn-group-sm" role="group">
-                                                    <button class="btn btn-outline-primary copy-name-btn"
-                                                            data-character-name="{{ participant.main_character.name }}"
-                                                            title="{% translate 'Copy character name' %}">
-                                                        <i class="fas fa-user"></i>
-                                                    </button>
-                                                    <button class="btn btn-outline-primary copy-amount-btn"
-                                                            data-amount="{{ payout_map|get_item:main_char_id }}"
-                                                            title="{% translate 'Copy ISK amount (no decimals)' %}">
-                                                        <i class="fas fa-coins"></i>
-                                                    </button>
-                                                    <button class="btn btn-outline-info open-window-btn"
-                                                            data-payout-id="{{ payout_obj.pk }}"
-                                                            data-character-id="{{ participant.main_character.id }}"
-                                                            title="{% translate 'Open character window in EVE' %}">
-                                                        <i class="fas fa-external-link-alt"></i>
-                                                    </button>
-                                                    <button class="btn btn-success mark-paid-btn"
-                                                            data-payout-id="{{ payout_obj.pk }}"
-                                                            title="{% translate 'Mark as paid' %}">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
+                                        {% if participant.main_character.id == participant.character.id or not participant.main_character %}
+                                            {% if main_char_id in existing_payouts %}
+                                                {% with payout_obj=existing_payouts|get_item:main_char_id %}
+                                                {% if payout_obj.status == 'pending' %}
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <button class="btn btn-outline-primary copy-name-btn"
+                                                                data-character-name="{{ participant.main_character.name|default:participant.character.character_name }}"
+                                                                title="{% translate 'Copy character name' %}">
+                                                            <i class="fas fa-user"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-primary copy-amount-btn"
+                                                                data-amount="{{ payout_map|get_item:main_char_id }}"
+                                                                title="{% translate 'Copy ISK amount (no decimals)' %}">
+                                                            <i class="fas fa-coins"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-info open-window-btn"
+                                                                data-payout-id="{{ payout_obj.pk }}"
+                                                                data-character-id="{{ main_char_id }}"
+                                                                title="{% translate 'Open character window in EVE' %}">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </button>
+                                                        <button class="btn btn-success mark-paid-btn"
+                                                                data-payout-id="{{ payout_obj.pk }}"
+                                                                title="{% translate 'Mark as paid' %}">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </div>
+                                                {% elif payout_obj.status == 'paid' %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> {% translate "Paid" %}
+                                                    </span>
+                                                {% endif %}
+                                                {% endwith %}
+                                            {% else %}
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'aapayout:participant_edit' participant.pk %}" class="btn btn-warning" title="{% translate 'Edit' %}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <form method="post" action="{% url 'aapayout:participant_remove' participant.pk %}" style="display: inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-danger btn-sm" title="{% translate 'Remove' %}"
+                                                                onclick="return confirm('{% translate "Remove this participant?" %}')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
                                                 </div>
-                                            {% elif payout_obj.status == 'paid' %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check"></i> {% translate "Paid" %}
-                                                </span>
                                             {% endif %}
-                                            {% endwith %}
                                         {% else %}
                                             <div class="btn-group btn-group-sm">
                                                 <a href="{% url 'aapayout:participant_edit' participant.pk %}" class="btn btn-warning" title="{% translate 'Edit' %}">
@@ -311,8 +321,6 @@
                                     </td>
                                     {% endif %}
                                 </tr>
-                                {% endwith %}
-                                {% endwith %}
                                 {% endwith %}
                                 {% endfor %}
                             </tbody>

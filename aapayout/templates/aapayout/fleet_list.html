@@ -29,8 +29,6 @@
                                 <tr>
                                     <th>{% translate "Fleet Name" %}</th>
                                     <th>{% translate "FC" %}</th>
-                                    <th>{% translate "Doctrine" %}</th>
-                                    <th>{% translate "Location" %}</th>
                                     <th>{% translate "Fleet Time" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     <th>{% translate "Participants" %}</th>
@@ -47,8 +45,6 @@
                                         </a>
                                     </td>
                                     <td>{{ fleet.fleet_commander.username }}</td>
-                                    <td>{{ fleet.doctrine|default:"—" }}</td>
-                                    <td>{{ fleet.location }}</td>
                                     <td>{{ fleet.fleet_time|date:"Y-m-d H:i" }}</td>
                                     <td>
                                         {% if fleet.status == 'draft' %}
