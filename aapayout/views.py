@@ -376,7 +376,7 @@ def fleet_finalize(request, pk):
             f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification is not available. "
             f"You need to add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
             f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification. "
-            f"Payouts will remain as 'Pending' until verified manually or via ESI."
+            f"Payouts will remain as 'Pending' until verified manually or via ESI.",
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
@@ -393,14 +393,14 @@ def fleet_finalize(request, pk):
             f"Fleet '{fleet.name}' has been finalized! "
             f"Wallet verification is running in the background. "
             f"Verified payments will be marked automatically within a few moments. "
-            f"({total_payouts} payout{'s' if total_payouts != 1 else ''} to verify)"
+            f"({total_payouts} payout{'s' if total_payouts != 1 else ''} to verify)",
         )
     except Exception as e:
         logger.error(f"Failed to start verification task for fleet {fleet.pk}: {e}")
         messages.warning(
             request,
             f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification could not be started. "
-            f"Error: {str(e)}"
+            f"Error: {str(e)}",
         )
 
     return redirect("aapayout:fleet_detail", pk=fleet.pk)

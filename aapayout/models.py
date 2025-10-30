@@ -59,7 +59,9 @@ class Fleet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Finalization tracking
-    finalized = models.BooleanField(default=False, help_text="Whether this fleet has been finalized (triggers wallet verification)")
+    finalized = models.BooleanField(
+        default=False, help_text="Whether this fleet has been finalized (triggers wallet verification)"
+    )
     finalized_at = models.DateTimeField(null=True, blank=True, help_text="When this fleet was finalized")
     finalized_by = models.ForeignKey(
         User,
