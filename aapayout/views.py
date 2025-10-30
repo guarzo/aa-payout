@@ -1173,8 +1173,7 @@ def fleet_import(request, pk):
             fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
             if not fc_character:
                 messages.error(
-                    request,
-                    "Please select an FC character from the dropdown in the navigation bar before importing."
+                    request, "Please select an FC character from the dropdown in the navigation bar before importing."
                 )
                 return redirect("aapayout:fleet_detail", pk=fleet.pk)
             fc_character_id = fc_character.character_id
@@ -1199,7 +1198,7 @@ def fleet_import(request, pk):
                     f"No ESI token found for character '{fc_character_name}' (ID: {fc_character_id}). "
                     f"Please add/update your ESI token for this specific character in Alliance Auth. "
                     f"Go to: Services → EVE Online → Add/Update Character → Select '{fc_character_name}' → "
-                    f"Authorize with 'esi-fleets.read_fleet.v1' scope."
+                    f"Authorize with 'esi-fleets.read_fleet.v1' scope.",
                 )
                 return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
