@@ -447,3 +447,125 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
         error_msg = f"Unexpected error verifying payments for loot pool {loot_pool_id}: {str(e)}"
         logger.exception(error_msg)
         return {"success": False, "error": str(e)}
+
+
+@shared_task
+def verify_fleet_payments(fleet_id: int, user_id: int, time_window_hours: int = 24):
+    """
+    Verify all payments for a fleet via ESI wallet journal
+
+    This task is triggered when a fleet is finalized. It verifies all pending
+    payouts across all loot pools in the fleet by checking the FC's wallet journal.
+
+    Args:
+        fleet_id: ID of Fleet to verify payments for
+        user_id: ID of User (FC) who made the payments
+        time_window_hours: Time window to search for payments (default 24 hours)
+
+    Returns:
+        Dict with verification results or error information
+    """
+    # Django
+    from django.contrib.auth.models import User
+
+    # Alliance Auth
+    from esi.models import Token
+
+    # AA Payout
+    from aapayout.models import Fleet, Payout
+    from aapayout.services.esi_wallet import esi_wallet_service
+
+    try:
+        logger.info(f"Starting fleet payment verification for fleet {fleet_id}")
+
+        # Get fleet
+        fleet = Fleet.objects.get(id=fleet_id)
+
+        # Get user
+        user = User.objects.get(id=user_id)
+
+        # Get FC's main character
+        fc_character = user.profile.main_character
+        if not fc_character:
+            raise ValueError("User has no main character set")
+
+        # Get user's ESI token with wallet journal scope for the FC character
+        token = (
+            Token.objects.filter(
+                user=user,
+                character_id=fc_character.character_id,
+            )
+            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_valid()
+            .first()
+        )
+
+        if not token:
+            error_msg = (
+                f"No valid ESI token found for FC character {fc_character.character_name} "
+                f"with wallet journal scope. Please link your FC character's ESI token "
+                f"with scope 'esi-wallet.read_character_journal.v1' in the Alliance Auth dashboard."
+            )
+            logger.warning(error_msg)
+            return {
+                "success": False,
+                "error": error_msg,
+                "requires_esi": True,
+            }
+
+        # Get all pending payouts for this fleet (across all loot pools)
+        pending_payouts = Payout.objects.filter(
+            loot_pool__fleet=fleet,
+            status=constants.PAYOUT_STATUS_PENDING,
+        )
+
+        total_payouts = pending_payouts.count()
+
+        if total_payouts == 0:
+            logger.info(f"No pending payouts found for fleet {fleet_id}")
+            return {
+                "success": True,
+                "fleet_id": fleet_id,
+                "total_payouts": 0,
+                "verified_count": 0,
+                "pending_count": 0,
+                "message": "No pending payouts to verify",
+            }
+
+        # Verify payouts via wallet journal
+        verified_count, pending_count, errors = esi_wallet_service.verify_payouts(
+            payouts=list(pending_payouts),
+            fc_character_id=fc_character.character_id,
+            token=token,
+            time_window_hours=time_window_hours,
+        )
+
+        logger.info(
+            f"Fleet payment verification complete for fleet {fleet_id}: "
+            f"{verified_count}/{total_payouts} verified, {pending_count} still pending"
+        )
+
+        return {
+            "success": True,
+            "fleet_id": fleet_id,
+            "total_payouts": total_payouts,
+            "verified_count": verified_count,
+            "pending_count": pending_count,
+            "errors": errors,
+            "verification_rate": f"{(verified_count / total_payouts * 100):.1f}%" if total_payouts > 0 else "0%",
+        }
+
+    except Fleet.DoesNotExist:
+        error_msg = f"Fleet {fleet_id} does not exist"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg}
+
+    except User.DoesNotExist:
+        error_msg = f"User {user_id} does not exist"
+        logger.error(error_msg)
+        return {"success": False, "error": error_msg}
+
+    except Exception as e:
+        error_msg = f"Unexpected error verifying fleet payments for fleet {fleet_id}: {str(e)}"
+        logger.exception(error_msg)
+        return {"success": False, "error": str(e)}

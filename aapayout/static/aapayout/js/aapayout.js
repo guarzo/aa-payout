@@ -19,7 +19,6 @@
         initializeLootTextCounter();
         initializeInlinePaymentActions();
         initializeParticipantStatusToggles();
-        initializeFleetInlineEdit();
         initializeModalAutocomplete();
     });
 
@@ -371,15 +370,6 @@
                 openCharacterWindow(payoutId, this);
             });
         });
-
-        // Mark Paid buttons
-        document.querySelectorAll('.mark-paid-btn').forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                const payoutId = this.dataset.payoutId;
-                markPayoutPaid(payoutId, this);
-            });
-        });
     }
 
     function copyToClipboard(text) {
@@ -462,68 +452,6 @@
             });
     }
 
-    function markPayoutPaid(payoutId, button) {
-        if (!confirm('Mark this payout as paid?')) {
-            return;
-        }
-
-        const csrftoken = getCookie('csrftoken');
-        const row = button.closest('tr');
-        const originalHTML = button.innerHTML;
-
-        button.disabled = true;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-        fetch('/payout/api/payouts/' + payoutId + '/mark-paid-express/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken,
-                'Content-Type': 'application/json',
-            },
-        })
-            .then(function (response) {
-                return response.json().then(function (data) {
-                    return { ok: response.ok, data: data };
-                });
-            })
-            .then(function (result) {
-                if (result.ok && result.data.success) {
-                    // Replace button group with "Paid" badge
-                    const actionsCell = button.closest('td');
-                    actionsCell.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Paid</span>';
-
-                    // Add success styling to row
-                    row.classList.add('table-success');
-
-                    // Show success message (optional)
-                    showNotification('Payment marked as paid!', 'success');
-                } else {
-                    button.innerHTML = originalHTML;
-                    button.disabled = false;
-                    alert('Failed to mark as paid: ' + (result.data.error || 'Unknown error'));
-                }
-            })
-            .catch(function (error) {
-                button.innerHTML = originalHTML;
-                button.disabled = false;
-                console.error('Error marking payout as paid:', error);
-                alert('Failed to mark as paid: ' + error.message);
-            });
-    }
-
-    function showNotification(message, type) {
-        // Simple notification (you can replace with Bootstrap toast or similar)
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-' + type + ' position-fixed top-0 start-50 translate-middle-x mt-3';
-        notification.style.zIndex = '9999';
-        notification.textContent = message;
-        document.body.appendChild(notification);
-
-        setTimeout(function () {
-            notification.remove();
-        }, 3000);
-    }
-
     // ========================================
     // Participant Status Toggles (Scout/Exclude)
     // ========================================
@@ -577,48 +505,6 @@
                 console.error('Error updating participant:', error);
                 alert('Failed to update participant: ' + error.message);
             });
-    }
-
-    // ========================================
-    // Fleet Inline Edit
-    // ========================================
-
-    function initializeFleetInlineEdit() {
-        const toggleBtn = document.querySelector('.toggle-edit-btn');
-        const saveBtn = document.querySelector('.save-edit-btn');
-        const cancelBtn = document.querySelector('.cancel-edit-btn');
-        const editableFields = document.querySelectorAll('.fleet-editable');
-
-        if (!toggleBtn || !saveBtn || !cancelBtn) return;
-
-        // Store original values for cancel functionality
-        const originalValues = {};
-        editableFields.forEach(function (field) {
-            originalValues[field.name] = field.value;
-        });
-
-        // Toggle edit mode
-        toggleBtn.addEventListener('click', function () {
-            editableFields.forEach(function (field) {
-                field.readOnly = false;
-                field.classList.add('border-warning');
-            });
-            saveBtn.style.display = 'inline-block';
-            cancelBtn.style.display = 'inline-block';
-            toggleBtn.style.display = 'none';
-        });
-
-        // Cancel edit
-        cancelBtn.addEventListener('click', function () {
-            editableFields.forEach(function (field) {
-                field.value = originalValues[field.name];
-                field.readOnly = true;
-                field.classList.remove('border-warning');
-            });
-            saveBtn.style.display = 'none';
-            cancelBtn.style.display = 'none';
-            toggleBtn.style.display = 'inline-block';
-        });
     }
 
     // ========================================

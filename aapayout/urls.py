@@ -19,6 +19,7 @@ urlpatterns = [
     path("fleets/<int:pk>/", views.fleet_detail, name="fleet_detail"),
     path("fleets/<int:pk>/edit/", views.fleet_edit, name="fleet_edit"),
     path("fleets/<int:pk>/delete/", views.fleet_delete, name="fleet_delete"),
+    path("fleets/<int:pk>/finalize/", views.fleet_finalize, name="fleet_finalize"),
     # Participant Management
     path("fleets/<int:fleet_id>/participants/add/", views.participant_add, name="participant_add"),
     path("participants/<int:pk>/edit/", views.participant_edit, name="participant_edit"),

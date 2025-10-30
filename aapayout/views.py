@@ -319,6 +319,93 @@ def fleet_delete(request, pk):
     return redirect("aapayout:fleet_list")
 
 
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def fleet_finalize(request, pk):
+    """Finalize a fleet and trigger ESI wallet verification for all payouts"""
+    # Alliance Auth
+    from esi.models import Token
+
+    fleet = get_object_or_404(Fleet, pk=pk)
+
+    # Check permissions
+    if not fleet.can_edit(request.user):
+        messages.error(request, "You don't have permission to finalize this fleet")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if already finalized
+    if fleet.finalized:
+        messages.warning(request, "This fleet has already been finalized")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if there are any payouts
+    total_payouts = 0
+    for loot_pool in fleet.loot_pools.all():
+        total_payouts += loot_pool.payouts.count()
+
+    if total_payouts == 0:
+        messages.error(request, "Cannot finalize fleet: no payouts found")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if user has ESI token with wallet journal scope (pre-check for better UX)
+    fc_character = request.user.profile.main_character
+    has_esi_token = False
+    if fc_character:
+        token = (
+            Token.objects.filter(
+                user=request.user,
+                character_id=fc_character.character_id,
+            )
+            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_valid()
+            .first()
+        )
+        has_esi_token = token is not None
+
+    # Mark fleet as finalized
+    fleet.finalized = True
+    fleet.finalized_at = timezone.now()
+    fleet.finalized_by = request.user
+    fleet.save()
+
+    # Trigger ESI wallet verification for all payouts
+    if not has_esi_token:
+        messages.warning(
+            request,
+            f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification is not available. "
+            f"You need to add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
+            f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification. "
+            f"Payouts will remain as 'Pending' until verified manually or via ESI."
+        )
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # AA Payout
+    from aapayout.tasks import verify_fleet_payments
+
+    try:
+        # Launch verification task asynchronously
+        task = verify_fleet_payments.delay(fleet_id=fleet.pk, user_id=request.user.pk, time_window_hours=24)
+        logger.info(f"Started wallet verification task {task.id} for fleet {fleet.pk}")
+
+        messages.success(
+            request,
+            f"Fleet '{fleet.name}' has been finalized! "
+            f"Wallet verification is running in the background. "
+            f"Verified payments will be marked automatically within a few moments. "
+            f"({total_payouts} payout{'s' if total_payouts != 1 else ''} to verify)"
+        )
+    except Exception as e:
+        logger.error(f"Failed to start verification task for fleet {fleet.pk}: {e}")
+        messages.warning(
+            request,
+            f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification could not be started. "
+            f"Error: {str(e)}"
+        )
+
+    return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+
 # ============================================================================
 # Participant Management
 # ============================================================================

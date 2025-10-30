@@ -58,11 +58,24 @@ class Fleet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Finalization tracking
+    finalized = models.BooleanField(default=False, help_text="Whether this fleet has been finalized (triggers wallet verification)")
+    finalized_at = models.DateTimeField(null=True, blank=True, help_text="When this fleet was finalized")
+    finalized_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_fleets",
+        help_text="User who finalized this fleet",
+    )
+
     class Meta:
         ordering = ["-fleet_time"]
         indexes = [
             models.Index(fields=["-fleet_time"]),
             models.Index(fields=["fleet_commander", "status"]),
+            models.Index(fields=["finalized"]),
         ]
 
     def __str__(self):

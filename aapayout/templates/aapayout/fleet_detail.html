@@ -42,7 +42,7 @@
                                 <td>
                                     {% if can_edit %}
                                     <input type="text" name="name" value="{{ fleet.name }}"
-                                           class="form-control form-control-sm fleet-editable" readonly>
+                                           class="form-control form-control-sm">
                                     {% else %}
                                     {{ fleet.name }}
                                     {% endif %}
@@ -54,7 +54,7 @@
                                     {% if can_edit %}
                                     <input type="datetime-local" name="fleet_time"
                                            value="{{ fleet.fleet_time|date:'Y-m-d\TH:i' }}"
-                                           class="form-control form-control-sm fleet-editable" readonly>
+                                           class="form-control form-control-sm">
                                     {% else %}
                                     {{ fleet.fleet_time|date:"Y-m-d H:i" }}
                                     {% endif %}
@@ -66,8 +66,8 @@
                                     {% if can_edit %}
                                     <input type="url" name="battle_report"
                                            value="{{ fleet.battle_report|default:'' }}"
-                                           class="form-control form-control-sm fleet-editable"
-                                           placeholder="https://" readonly>
+                                           class="form-control form-control-sm"
+                                           placeholder="https://">
                                     {% else %}
                                     {% if fleet.battle_report %}
                                         <a href="{{ fleet.battle_report }}" target="_blank">{{ fleet.battle_report }}</a>
@@ -107,7 +107,7 @@
                         <div class="mt-3">
                             <strong>{% translate "Notes" %}:</strong>
                             {% if can_edit %}
-                            <textarea name="notes" class="form-control fleet-editable mt-2" rows="3" readonly>{{ fleet.notes|default:'' }}</textarea>
+                            <textarea name="notes" class="form-control mt-2" rows="3">{{ fleet.notes|default:'' }}</textarea>
                             {% else %}
                             {% if fleet.notes %}
                                 <p>{{ fleet.notes|linebreaks }}</p>
@@ -118,14 +118,8 @@
                         </div>
                         {% if can_edit %}
                         <div class="mt-3">
-                            <button type="button" class="btn btn-warning btn-sm toggle-edit-btn">
-                                <i class="fas fa-edit"></i> {% translate "Edit" %}
-                            </button>
-                            <button type="submit" class="btn btn-success btn-sm save-edit-btn" style="display: none;">
-                                <i class="fas fa-save"></i> {% translate "Save" %}
-                            </button>
-                            <button type="button" class="btn btn-secondary btn-sm cancel-edit-btn" style="display: none;">
-                                <i class="fas fa-times"></i> {% translate "Cancel" %}
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-save"></i> {% translate "Save Changes" %}
                             </button>
                         </div>
                         {% endif %}
@@ -146,7 +140,7 @@
                             <strong>{{ loot_pool.items.count }} {% translate "items" %}</strong> {% translate "valued at" %}
                             <strong class="text-primary">{{ loot_pool.total_value|isk_format_full }}</strong>
                         </p>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
                             <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i> {% translate "View Details" %}
                             </a>
@@ -154,7 +148,7 @@
                             <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-sync"></i> {% translate "Reappraise" %}
                             </a>
-                            {% if loot_pool.status == 'approved' or loot_pool.status == 'valued' %}
+                            {% if loot_pool.payouts.count > 0 %}
                             <form method="post" action="{% url 'aapayout:regenerate_payouts' loot_pool.pk %}" style="display: inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-secondary"
@@ -162,6 +156,20 @@
                                     <i class="fas fa-calculator"></i> {% translate "Recalculate Payouts" %}
                                 </button>
                             </form>
+                            {% endif %}
+                            {% if loot_pool.payouts.count > 0 and not fleet.finalized %}
+                            <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        onclick="return confirm('{% translate "Finalize this fleet and verify all payments via ESI wallet? This action cannot be undone." %}')"
+                                        title="{% translate 'Finalize fleet and verify payments via ESI wallet journal' %}">
+                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize Fleet" %}
+                                </button>
+                            </form>
+                            {% elif fleet.finalized %}
+                            <span class="badge bg-success" title="{% translate 'Finalized at' %} {{ fleet.finalized_at|date:'Y-m-d H:i' }} {% translate 'by' %} {{ fleet.finalized_by.username }}">
+                                <i class="fas fa-check-circle"></i> {% translate "Finalized" %}
+                            </span>
                             {% endif %}
                             {% endif %}
                         </div>
@@ -187,7 +195,22 @@
     <!-- User Guidance Messages -->
     {% if loot_pools %}
         {% with loot_pool=loot_pools.first %}
-            {% if loot_pool.payouts.count > 0 %}
+            {% if fleet.finalized %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check-circle"></i> {% translate "Fleet Finalized" %}</h6>
+                            <p class="mb-2">
+                                {% translate "This fleet was finalized by" %} <strong>{{ fleet.finalized_by.username }}</strong>
+                                {% translate "on" %} {{ fleet.finalized_at|date:"Y-m-d H:i" }}.
+                            </p>
+                            <p class="small mb-0">
+                                {% translate "Wallet verification has been run to automatically verify payments. Check the 'Verified' badges in the Participants table below to see verification status." %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% elif loot_pool.payouts.count > 0 %}
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-info">
@@ -197,10 +220,13 @@
                                 <li><strong>{% translate "Copy Name" %}:</strong> {% translate "Copy character name to clipboard" %}</li>
                                 <li><strong>{% translate "Copy Amount" %}:</strong> {% translate "Copy ISK amount (whole number, no decimals)" %}</li>
                                 <li><strong>{% translate "Open Window" %}:</strong> {% translate "Open character window in EVE client (requires ESI)" %}</li>
-                                <li><strong>{% translate "Mark Paid" %}:</strong> {% translate "Mark the payout as complete after transferring ISK" %}</li>
                             </ul>
-                            <p class="small text-muted mb-0 mt-2">
+                            <p class="small text-muted mb-2 mt-2">
                                 <strong>{% translate "Note:" %}</strong> {% translate "Payouts are automatically recalculated when you add, remove, or change participants." %}
+                            </p>
+                            <p class="small mb-0 mt-2">
+                                <strong>{% translate "Finalize Fleet:" %}</strong>
+                                {% translate "When you're done making payments in EVE, click 'Finalize Fleet' above to automatically verify all payments via ESI wallet journal." %}
                             </p>
                         </div>
                     </div>
@@ -356,7 +382,7 @@
                                     <td>
                                         {% if main_char_id in existing_payouts %}
                                             {% with payout_obj=existing_payouts|get_item:main_char_id %}
-                                            {% if payout_obj.status == 'pending' %}
+                                            <div class="d-flex align-items-center gap-2">
                                                 <div class="btn-group btn-group-sm" role="group">
                                                     <button class="btn btn-outline-primary copy-name-btn"
                                                             data-character-name="{{ main_char.name }}"
@@ -374,17 +400,17 @@
                                                             title="{% translate 'Open character window in EVE' %}">
                                                         <i class="fas fa-external-link-alt"></i>
                                                     </button>
-                                                    <button class="btn btn-success mark-paid-btn"
-                                                            data-payout-id="{{ payout_obj.pk }}"
-                                                            title="{% translate 'Mark as paid' %}">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
                                                 </div>
-                                            {% elif payout_obj.status == 'paid' %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check"></i> {% translate "Paid" %}
-                                                </span>
-                                            {% endif %}
+                                                {% if payout_obj.verified %}
+                                                    <span class="badge bg-success" title="{% translate 'Verified via ESI wallet at' %} {{ payout_obj.verified_at|date:'Y-m-d H:i' }}">
+                                                        <i class="fas fa-check-circle"></i> {% translate "Verified" %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary" title="{% translate 'Not yet verified via ESI wallet' %}">
+                                                        <i class="fas fa-clock"></i> {% translate "Pending" %}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
                                             {% endwith %}
                                         {% else %}
                                             <div class="btn-group btn-group-sm">
