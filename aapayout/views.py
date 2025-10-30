@@ -191,6 +191,11 @@ def fleet_detail(request, pk):
             participant.save()
         updated_participants.append(participant)
 
+    # Deduplicate participants for display (group by main character)
+    from aapayout.helpers import deduplicate_participants
+
+    participant_groups = deduplicate_participants(updated_participants)
+
     # Get loot pools
     loot_pools = fleet.loot_pools.all().order_by("-created_at")
 
@@ -260,6 +265,7 @@ def fleet_detail(request, pk):
     context = {
         "fleet": fleet,
         "participants": updated_participants,
+        "participant_groups": participant_groups,  # Deduplicated groups for display
         "loot_pools": loot_pools,
         "total_loot_value": total_loot_value,
         "can_edit": fleet.can_edit(request.user),
