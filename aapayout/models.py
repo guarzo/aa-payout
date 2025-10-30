@@ -203,6 +203,12 @@ class LootPool(models.Model):
     def __str__(self):
         return f"{self.name} - {self.fleet.name}"
 
+    def save(self, *args, **kwargs):
+        """Auto-generate name if not provided"""
+        if not self.name or self.name == "Fleet Loot":
+            self.name = f"Loot for {self.fleet.name}"
+        super().save(*args, **kwargs)
+
     def calculate_totals(self):
         """Calculate total value from all loot items"""
         total = self.items.aggregate(total=models.Sum("total_value"))["total"] or 0

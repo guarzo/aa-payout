@@ -26,16 +26,6 @@
                         {% endif %}
 
                         <div class="mb-3">
-                            <label for="{{ form.name.id_for_label }}" class="form-label">
-                                {{ form.name.label }} <span class="text-danger">*</span>
-                            </label>
-                            {{ form.name }}
-                            {% if form.name.errors %}
-                                <div class="text-danger">{{ form.name.errors }}</div>
-                            {% endif %}
-                        </div>
-
-                        <div class="mb-3">
                             <label for="{{ form.pricing_method.id_for_label }}" class="form-label">
                                 {{ form.pricing_method.label }} <span class="text-danger">*</span>
                             </label>

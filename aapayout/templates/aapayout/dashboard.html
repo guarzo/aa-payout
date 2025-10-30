@@ -22,24 +22,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card border-success">
                 <div class="card-body">
                     <h5 class="card-title">{% translate "Recent Fleets" %}</h5>
                     <p class="card-text display-6">{{ recent_fleets|length }}</p>
-                    <a href="{% url 'aapayout:fleet_list' %}" class="btn btn-sm btn-success">{% translate "View All" %}</a>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card border-info">
-                <div class="card-body">
-                    <h5 class="card-title">{% translate "Quick Actions" %}</h5>
-                    {% if perms.aapayout.create_fleet %}
-                        <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> {% translate "New Fleet" %}
-                        </a>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -178,11 +165,48 @@
                 <h4>{% translate "Welcome to Fleet Payouts!" %}</h4>
                 <p>{% translate "You don't have any pending payouts or fleets yet." %}</p>
                 {% if perms.aapayout.create_fleet %}
-                <p>{% translate "Use the Quick Actions button above to create your first fleet." %}</p>
+                <p>{% translate "Click the 'Create Fleet' button in the top navigation bar to create your first fleet." %}</p>
                 {% endif %}
             </div>
         </div>
     </div>
     {% endif %}
 </div>
+
+<!-- Fleet Creation Modal -->
+{% if perms.aapayout.create_fleet %}
+<div class="modal fade" id="createFleetModal" tabindex="-1" aria-labelledby="createFleetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createFleetModalLabel">{% translate "Create New Fleet" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'aapayout:fleet_create' %}" id="fleet-create-form">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="fleet_name" class="form-label">{% translate "Fleet Name" %} <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="fleet_name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="battle_report" class="form-label">{% translate "Battle Report URL" %}</label>
+                        <input type="url" name="battle_report" id="battle_report" class="form-control" placeholder="https://">
+                    </div>
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">{% translate "Notes" %}</label>
+                        <textarea name="notes" id="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Cancel" %}</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> {% translate "Create Fleet" %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

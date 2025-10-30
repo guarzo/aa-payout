@@ -14,7 +14,7 @@ urlpatterns = [
     # FC Character Selection
     path("set-fc/<int:character_id>/", views.set_fc_character, name="set_fc_character"),
     # Fleet Management
-    path("fleets/", views.fleet_list, name="fleet_list"),
+    path("fleets/", views.dashboard, name="fleet_list"),  # Redirect to dashboard
     path("fleets/create/", views.fleet_create, name="fleet_create"),
     path("fleets/<int:pk>/", views.fleet_detail, name="fleet_detail"),
     path("fleets/<int:pk>/edit/", views.fleet_edit, name="fleet_edit"),
@@ -29,6 +29,7 @@ urlpatterns = [
     path("loot/<int:pk>/reappraise/", views.loot_reappraise, name="loot_reappraise"),
     path("loot/<int:pool_id>/items/<int:item_id>/edit/", views.loot_edit_item, name="loot_edit_item"),
     path("loot/<int:pk>/approve/", views.loot_approve, name="loot_approve"),
+    path("loot/<int:pool_id>/regenerate-payouts/", views.regenerate_payouts, name="regenerate_payouts"),
     # Payout Management
     path("loot/<int:pool_id>/payouts/", views.payout_list, name="payout_list"),
     path("payouts/<int:pk>/mark-paid/", views.payout_mark_paid, name="payout_mark_paid"),

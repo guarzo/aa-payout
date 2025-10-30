@@ -90,19 +90,38 @@ textarea.font-monospace {
    Character Autocomplete
    ======================================== */
 
-#character-suggestions {
-    max-width: 100%;
+#character-suggestions,
+#participant-suggestions {
+    position: absolute;
+    z-index: 9999;
     max-height: 300px;
     overflow-y: auto;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
 }
 
-#character-suggestions .list-group-item {
+#character-suggestions .list-group-item,
+#participant-suggestions .list-group-item {
     cursor: pointer;
+    border-left: none;
+    border-right: none;
 }
 
-#character-suggestions .list-group-item:hover {
+#character-suggestions .list-group-item:hover,
+#participant-suggestions .list-group-item:hover {
     background-color: #f8f9fa;
+}
+
+#character-suggestions .list-group-item:first-child,
+#participant-suggestions .list-group-item:first-child {
+    border-top: none;
+}
+
+#character-suggestions .list-group-item:last-child,
+#participant-suggestions .list-group-item:last-child {
+    border-bottom: none;
 }
 
 /* ========================================

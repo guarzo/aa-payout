@@ -210,29 +210,52 @@ def fleet_detail(request, pk):
                 payout_map[payout.recipient.id] = payout.amount
 
     # Check ESI fleet import status (Phase 2)
-    # Note: We only check if user has ESI scope here. The actual fleet membership
-    # check happens when they click the import button, not on every page view.
+    # CRITICAL: Token must belong to the specific FC character, not just any character
     esi_status = {
         "enabled": app_settings.AAPAYOUT_ESI_FLEET_IMPORT_ENABLED,
         "has_scope": False,
         "can_import": False,
         "message": None,
+        "fc_character_id": None,
+        "fc_character_name": None,
     }
 
     if esi_status["enabled"] and fleet.can_edit(request.user):
-        # Check if user has ESI scope
-        token = (
-            Token.objects.filter(user=request.user).require_scopes("esi-fleets.read_fleet.v1").require_valid().first()
-        )
+        # Get FC character ID from session or use main character
+        fc_character_id = request.session.get("fc_character_id")
+        fc_character_name = request.session.get("fc_character_name", "Unknown")
 
-        if token:
-            esi_status["has_scope"] = True
-            # User has the required ESI scope - they can attempt to import
-            # (actual fleet membership will be checked when they click the button)
-            esi_status["can_import"] = True
-        else:
-            esi_status["has_scope"] = False
-            esi_status["message"] = "ESI access required - click to grant permissions"
+        if not fc_character_id:
+            # Fall back to main character
+            fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+            if fc_character:
+                fc_character_id = fc_character.character_id
+                fc_character_name = fc_character.character_name
+            else:
+                esi_status["message"] = "Select FC character from dropdown above"
+                fc_character_id = None
+
+        esi_status["fc_character_id"] = fc_character_id
+        esi_status["fc_character_name"] = fc_character_name
+
+        if fc_character_id:
+            # CRITICAL: Check if user has valid token for THIS specific character
+            token = (
+                Token.objects.filter(
+                    user=request.user,
+                    character_id=fc_character_id,  # Must match exactly!
+                )
+                .require_scopes("esi-fleets.read_fleet.v1")
+                .require_valid()
+                .first()
+            )
+
+            if token:
+                esi_status["has_scope"] = True
+                esi_status["can_import"] = True
+            else:
+                esi_status["has_scope"] = False
+                esi_status["message"] = f"ESI token required for {fc_character_name}"
 
     context = {
         "fleet": fleet,
@@ -310,41 +333,50 @@ def participant_add(request, fleet_id):
 
     if request.method == "POST":
         form = ParticipantAddForm(request.POST)
-        if form.is_valid():
-            # Get character by name
-            character_name = form.cleaned_data["character_name"]
-            try:
-                # Filter by category (EveEntity.CATEGORY_CHARACTER constant)
-                character = EveEntity.objects.get(name=character_name, category=EveEntity.CATEGORY_CHARACTER)
-            except EveEntity.DoesNotExist:
-                messages.error(request, f"Character '{character_name}' not found")
-                return render(
-                    request,
-                    "aapayout/participant_add.html",
-                    {
-                        "form": form,
-                        "fleet": fleet,
-                    },
-                )
-
-            # Check if already a participant
-            if FleetParticipant.objects.filter(fleet=fleet, character=character).exists():
-                messages.warning(request, f"{character.name} is already in this fleet")
-                return redirect("aapayout:fleet_detail", pk=fleet.pk)
-
-            # Create participant
-            participant = form.save(commit=False)
-            participant.fleet = fleet
-            participant.character = character
-            participant.save()
-
-            messages.success(request, f"Added {character.name} to the fleet")
+        if not form.is_valid():
+            # Form validation errors - show error and redirect back
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
-    else:
-        form = ParticipantAddForm()
 
-    context = {"form": form, "fleet": fleet}
-    return render(request, "aapayout/participant_add.html", context)
+        # Get character by name
+        character_name = form.cleaned_data["character_name"]
+        try:
+            # Filter by category (EveEntity.CATEGORY_CHARACTER constant)
+            character = EveEntity.objects.get(name=character_name, category=EveEntity.CATEGORY_CHARACTER)
+        except EveEntity.DoesNotExist:
+            messages.error(request, f"Character '{character_name}' not found")
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+        # Check if already a participant
+        if FleetParticipant.objects.filter(fleet=fleet, character=character).exists():
+            messages.warning(request, f"{character.name} is already in this fleet")
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+        # Create participant
+        participant = form.save(commit=False)
+        participant.fleet = fleet
+        participant.character = character
+        participant.save()
+
+        # Auto-recalculate payouts if loot exists
+        if fleet.loot_pools.exists():
+            loot_pool = fleet.loot_pools.first()
+            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+                # AA Payout
+                from aapayout.helpers import create_payouts
+
+                payouts_created = create_payouts(loot_pool)
+                logger.info(f"Auto-regenerated {payouts_created} payouts after adding participant")
+                if payouts_created > 0:
+                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts updated")
+
+        messages.success(request, f"Added {character.name} to the fleet")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # GET request - redirect to fleet detail (modal is used instead)
+    return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
 
 @login_required
@@ -386,6 +418,19 @@ def participant_remove(request, pk):
     fleet_pk = participant.fleet.pk
     character_name = participant.character.name
     participant.delete()
+
+    # Auto-recalculate payouts if loot exists
+    fleet = Fleet.objects.get(pk=fleet_pk)  # Re-fetch after delete
+    if fleet.loot_pools.exists():
+        loot_pool = fleet.loot_pools.first()
+        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            # AA Payout
+            from aapayout.helpers import create_payouts
+
+            payouts_created = create_payouts(loot_pool)
+            logger.info(f"Auto-regenerated {payouts_created} payouts after removing participant")
+            if payouts_created > 0:
+                messages.info(request, f"Payouts recalculated: {payouts_created} payouts updated")
 
     messages.success(request, f"Removed {character_name} from the fleet")
     return redirect("aapayout:fleet_detail", pk=fleet_pk)
@@ -630,6 +675,27 @@ def loot_approve(request, pk):
         "regular_count": regular_count,
     }
     return render(request, "aapayout/loot_approve.html", context)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def regenerate_payouts(request, pool_id):
+    """Manually regenerate payouts for a loot pool"""
+    # AA Payout
+    from aapayout.helpers import create_payouts
+
+    loot_pool = get_object_or_404(LootPool, pk=pool_id)
+
+    if not loot_pool.fleet.can_edit(request.user):
+        messages.error(request, "Permission denied")
+        return redirect("aapayout:fleet_detail", pk=loot_pool.fleet.pk)
+
+    payouts_created = create_payouts(loot_pool)
+    messages.success(request, f"Recalculated {payouts_created} payouts")
+    logger.info(f"Manual payout recalculation by {request.user.username}: {payouts_created} payouts")
+
+    return redirect("aapayout:fleet_detail", pk=loot_pool.fleet.pk)
 
 
 # ============================================================================
@@ -1035,11 +1101,23 @@ def participant_update_status(request, pk):
 
         participant.save()
 
+        # Auto-recalculate payouts if loot exists
+        payouts_recalculated = 0
+        if participant.fleet.loot_pools.exists():
+            loot_pool = participant.fleet.loot_pools.first()
+            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+                # AA Payout
+                from aapayout.helpers import create_payouts
+
+                payouts_recalculated = create_payouts(loot_pool)
+                logger.info(f"Auto-regenerated {payouts_recalculated} payouts after status update for participant {pk}")
+
         return JsonResponse(
             {
                 "success": True,
                 "is_scout": participant.is_scout,
                 "excluded_from_payout": participant.excluded_from_payout,
+                "payouts_recalculated": payouts_recalculated,
             }
         )
 
@@ -1088,17 +1166,22 @@ def fleet_import(request, pk):
     if request.method == "POST":
         # Get FC character ID from session or use main character
         fc_character_id = request.session.get("fc_character_id")
+        fc_character_name = request.session.get("fc_character_name", "Unknown")
 
         if not fc_character_id:
             # Fall back to main character
             fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
             if not fc_character:
-                messages.error(request, "Please select an FC character from the dropdown in the top navigation bar.")
-                return redirect("aapayout:fleet_import", pk=fleet.pk)
+                messages.error(
+                    request,
+                    "Please select an FC character from the dropdown in the navigation bar before importing."
+                )
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
             fc_character_id = fc_character.character_id
+            fc_character_name = fc_character.character_name
 
         # Get ESI token for the specific FC character with required scope
-        # IMPORTANT: ESI requires the token to match the character ID being queried
+        # CRITICAL: ESI requires the token to match the character ID being queried
         try:
             token = (
                 Token.objects.filter(
@@ -1113,16 +1196,19 @@ def fleet_import(request, pk):
             if not token:
                 messages.error(
                     request,
-                    f"You need to add an ESI token for your FC character (ID: {fc_character_id}) with fleet read access. "
-                    "Please click 'Add/Update Character' below and authorize the 'esi-fleets.read_fleet.v1' scope "
-                    "for the character you want to use as Fleet Commander.",
+                    f"No ESI token found for character '{fc_character_name}' (ID: {fc_character_id}). "
+                    f"Please add/update your ESI token for this specific character in Alliance Auth. "
+                    f"Go to: Services → EVE Online → Add/Update Character → Select '{fc_character_name}' → "
+                    f"Authorize with 'esi-fleets.read_fleet.v1' scope."
                 )
-                return redirect("aapayout:fleet_import", pk=fleet.pk)
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         except Exception as e:
             logger.error(f"Failed to get ESI token for character {fc_character_id}: {e}")
             messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+        logger.info(f"Using ESI token for character {fc_character_id} ({fc_character_name})")
 
         # Get the fleet ID the FC is currently in
         logger.info(f"Checking if character {fc_character_id} is in a fleet")
@@ -1131,7 +1217,7 @@ def fleet_import(request, pk):
         if check_error or not esi_fleet_id:
             error_msg = check_error or "You are not currently in a fleet in EVE Online."
             messages.error(request, f"{error_msg} Please join a fleet and try again.")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         # Validate fleet role - must be fleet commander to import members
         if fleet_role != "fleet_commander":
@@ -1141,7 +1227,7 @@ def fleet_import(request, pk):
                 f"Your current role is '{fleet_role}'. "
                 f"Please ask the FC to promote you to Fleet Boss or use their character to import.",
             )
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         logger.info(f"FC is in fleet {esi_fleet_id} with role '{fleet_role}', importing members")
 
@@ -1150,7 +1236,7 @@ def fleet_import(request, pk):
 
         if error:
             messages.error(request, f"Failed to import fleet: {error}")
-            return redirect("aapayout:fleet_import", pk=fleet.pk)
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         # Create ESI import record
         # Convert member_data to JSON-serializable format
@@ -1234,15 +1320,22 @@ def fleet_import(request, pk):
             f"Skipped {characters_skipped} already in fleet.",
         )
 
+        # Auto-recalculate payouts if loot exists
+        if fleet.loot_pools.exists():
+            loot_pool = fleet.loot_pools.first()
+            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+                # AA Payout
+                from aapayout.helpers import create_payouts
+
+                payouts_created = create_payouts(loot_pool)
+                logger.info(f"Auto-regenerated {payouts_created} payouts after ESI fleet import")
+                if payouts_created > 0:
+                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts created/updated")
+
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # GET request - show import form
-    context = {
-        "fleet": fleet,
-        "recent_imports": fleet.esi_imports.all()[:5],
-    }
-
-    return render(request, "aapayout/fleet_import.html", context)
+    # GET request - redirect to fleet detail (import is now inline via POST button)
+    return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
 
 @login_required

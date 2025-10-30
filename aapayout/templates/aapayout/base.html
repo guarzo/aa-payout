@@ -14,6 +14,13 @@
 {% block header_nav_collapse_right %}
     {{ block.super }}
     {% if user.is_authenticated %}
+        {% if perms.aapayout.create_fleet %}
+        <li class="nav-item">
+            <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createFleetModal">
+                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">{% translate "Create Fleet" %}</span>
+            </button>
+        </li>
+        {% endif %}
         <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="fcCharacterDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <i class="fas fa-user-astronaut"></i>

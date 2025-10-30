@@ -19,7 +19,36 @@
         initializeLootTextCounter();
         initializeInlinePaymentActions();
         initializeParticipantStatusToggles();
+        initializeFleetInlineEdit();
+        initializeModalAutocomplete();
     });
+
+    // ========================================
+    // Modal Autocomplete Initialization
+    // ========================================
+
+    function initializeModalAutocomplete() {
+        // Re-initialize autocomplete when participant modal is shown
+        const participantModal = document.getElementById('addParticipantModal');
+        if (participantModal) {
+            participantModal.addEventListener('shown.bs.modal', function () {
+                initializeCharacterAutocomplete();
+            });
+
+            // Clear the form when modal is hidden
+            participantModal.addEventListener('hidden.bs.modal', function () {
+                const form = document.getElementById('participant-add-form');
+                if (form) {
+                    form.reset();
+                }
+                const suggestionsDiv = document.getElementById('participant-suggestions');
+                if (suggestionsDiv) {
+                    suggestionsDiv.style.display = 'none';
+                    suggestionsDiv.innerHTML = '';
+                }
+            });
+        }
+    }
 
     // ========================================
     // Character Autocomplete
@@ -29,7 +58,11 @@
         const charInputs = document.querySelectorAll('input[name="character_name"]');
 
         charInputs.forEach(function (input) {
-            const suggestionsDiv = document.getElementById('character-suggestions');
+            // Try to find suggestions div - could be #character-suggestions or #participant-suggestions
+            let suggestionsDiv = input.parentElement.querySelector('#participant-suggestions');
+            if (!suggestionsDiv) {
+                suggestionsDiv = document.getElementById('character-suggestions');
+            }
             if (!suggestionsDiv) return;
 
             let debounceTimer;
@@ -544,6 +577,48 @@
                 console.error('Error updating participant:', error);
                 alert('Failed to update participant: ' + error.message);
             });
+    }
+
+    // ========================================
+    // Fleet Inline Edit
+    // ========================================
+
+    function initializeFleetInlineEdit() {
+        const toggleBtn = document.querySelector('.toggle-edit-btn');
+        const saveBtn = document.querySelector('.save-edit-btn');
+        const cancelBtn = document.querySelector('.cancel-edit-btn');
+        const editableFields = document.querySelectorAll('.fleet-editable');
+
+        if (!toggleBtn || !saveBtn || !cancelBtn) return;
+
+        // Store original values for cancel functionality
+        const originalValues = {};
+        editableFields.forEach(function (field) {
+            originalValues[field.name] = field.value;
+        });
+
+        // Toggle edit mode
+        toggleBtn.addEventListener('click', function () {
+            editableFields.forEach(function (field) {
+                field.readOnly = false;
+                field.classList.add('border-warning');
+            });
+            saveBtn.style.display = 'inline-block';
+            cancelBtn.style.display = 'inline-block';
+            toggleBtn.style.display = 'none';
+        });
+
+        // Cancel edit
+        cancelBtn.addEventListener('click', function () {
+            editableFields.forEach(function (field) {
+                field.value = originalValues[field.name];
+                field.readOnly = true;
+                field.classList.remove('border-warning');
+            });
+            saveBtn.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            toggleBtn.style.display = 'inline-block';
+        });
     }
 
     // ========================================

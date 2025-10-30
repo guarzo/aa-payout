@@ -107,6 +107,13 @@ def appraise_loot_pool(self, loot_pool_id: int = None):
         payouts_created = create_payouts(loot_pool)
         logger.info(f"[Task] Auto-created {payouts_created} payouts")
 
+        if payouts_created == 0:
+            logger.warning(
+                f"[Task] Created 0 payouts for loot pool {actual_loot_pool_id}. "
+                f"This is normal if fleet has no participants yet. "
+                f"Payouts will be auto-generated when participants are added."
+            )
+
         # Mark as approved since payouts are generated
         loot_pool.status = constants.LOOT_STATUS_APPROVED
         loot_pool.approved_at = timezone.now()

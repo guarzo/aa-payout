@@ -80,7 +80,7 @@ class ParticipantAddForm(forms.ModelForm):
         max_length=200,
         widget=forms.TextInput(
             attrs={
-                "class": "form-control",
+                "class": "form-control character-autocomplete",
                 "placeholder": "Start typing character name...",
                 "autocomplete": "off",
             }
@@ -90,28 +90,10 @@ class ParticipantAddForm(forms.ModelForm):
 
     class Meta:
         model = FleetParticipant
-        fields = ["role", "joined_at", "notes"]
+        fields = ["role"]
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
-            "joined_at": forms.DateTimeInput(
-                attrs={
-                    "class": "form-control",
-                    "type": "datetime-local",
-                }
-            ),
-            "notes": forms.Textarea(
-                attrs={
-                    "class": "form-control",
-                    "rows": 2,
-                }
-            ),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Set default joined time to now
-        if not self.instance.pk and "joined_at" not in self.initial:
-            self.initial["joined_at"] = timezone.now().strftime("%Y-%m-%dT%H:%M")
 
 
 class ParticipantEditForm(forms.ModelForm):
@@ -158,14 +140,8 @@ class LootPoolCreateForm(forms.ModelForm):
 
     class Meta:
         model = LootPool
-        fields = ["name", "raw_loot_text", "pricing_method"]
+        fields = ["raw_loot_text", "pricing_method"]
         widgets = {
-            "name": forms.TextInput(
-                attrs={
-                    "class": "form-control",
-                    "placeholder": "e.g., Main Wreck Loot",
-                }
-            ),
             "raw_loot_text": forms.Textarea(
                 attrs={
                     "class": "form-control font-monospace",
