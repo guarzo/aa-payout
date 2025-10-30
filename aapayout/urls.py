@@ -48,4 +48,5 @@ urlpatterns = [
     path("loot/<int:pool_id>/express-mode/", views.express_mode_start, name="express_mode_start"),
     path("api/payouts/<int:payout_id>/open-window/", views.express_mode_open_window, name="express_mode_open_window"),
     path("api/payouts/<int:payout_id>/mark-paid-express/", views.express_mode_mark_paid, name="express_mode_mark_paid"),
+    path("api/payouts/<int:payout_id>/mark-verified/", views.mark_payout_verified, name="mark_payout_verified"),
 ]

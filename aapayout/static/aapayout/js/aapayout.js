@@ -20,6 +20,7 @@
         initializeInlinePaymentActions();
         initializeParticipantStatusToggles();
         initializeModalAutocomplete();
+        initializeCopyOnClick();
     });
 
     // ========================================
@@ -370,6 +371,15 @@
                 openCharacterWindow(payoutId, this);
             });
         });
+
+        // Mark Verified buttons (manual override)
+        document.querySelectorAll('.mark-verified-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const payoutId = this.dataset.payoutId;
+                markPayoutVerified(payoutId, this);
+            });
+        });
     }
 
     function copyToClipboard(text) {
@@ -452,6 +462,58 @@
             });
     }
 
+    function markPayoutVerified(payoutId, button) {
+        if (!confirm('Mark this payout as verified? This will allow fleet finalization even without ESI verification.')) {
+            return;
+        }
+
+        const csrftoken = getCookie('csrftoken');
+        const buttonGroup = button.closest('.btn-group');
+        const badgeContainer = button.closest('div').querySelector('.badge');
+        const originalHTML = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch('/payout/api/payouts/' + payoutId + '/mark-verified/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            },
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function (result) {
+                if (result.ok && result.data.success) {
+                    // Remove the button
+                    button.remove();
+
+                    // Update badge to show verified
+                    if (badgeContainer) {
+                        badgeContainer.className = 'badge bg-success';
+                        badgeContainer.title = 'Manually verified';
+                        badgeContainer.innerHTML = '<i class="fas fa-check-circle"></i> Verified';
+                    }
+
+                    showFeedback(buttonGroup, 'Marked as verified!');
+                } else {
+                    button.innerHTML = originalHTML;
+                    button.disabled = false;
+                    alert('Failed to mark as verified: ' + (result.data.error || 'Unknown error'));
+                }
+            })
+            .catch(function (error) {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+                console.error('Error marking as verified:', error);
+                alert('Failed to mark as verified: ' + error.message);
+            });
+    }
+
     // ========================================
     // Participant Status Toggles (Scout/Exclude)
     // ========================================
@@ -505,6 +567,35 @@
                 console.error('Error updating participant:', error);
                 alert('Failed to update participant: ' + error.message);
             });
+    }
+
+    // ========================================
+    // Copy on Click
+    // ========================================
+
+    function initializeCopyOnClick() {
+        document.querySelectorAll('.copy-on-click').forEach(function (element) {
+            element.addEventListener('click', function () {
+                let textToCopy = this.dataset.copyText;
+
+                // If it's an amount (contains decimal or comma), remove decimals for EVE
+                if (textToCopy && textToCopy.match(/[\d,\.]/)) {
+                    // Remove commas and convert to number, then floor it
+                    const cleanAmount = Math.floor(parseFloat(textToCopy.replace(/,/g, '')));
+                    textToCopy = cleanAmount.toString();
+                }
+
+                copyToClipboard(textToCopy);
+
+                // Visual feedback
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check text-success"></i> ' + originalText;
+
+                setTimeout(function () {
+                    element.innerHTML = originalText;
+                }.bind(this), 1000);
+            });
+        });
     }
 
     // ========================================

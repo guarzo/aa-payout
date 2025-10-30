@@ -337,7 +337,9 @@
                                 <tr class="{% if group.excluded %}table-secondary text-muted{% endif %}"
                                     id="participant-row-{{ first_participant.pk }}">
                                     <td>
-                                        <strong>{{ main_char.name }}</strong>
+                                        <strong class="copy-on-click" data-copy-text="{{ main_char.name }}" style="cursor: pointer;" title="{% translate 'Click to copy name' %}">
+                                            {{ main_char.name }}
+                                        </strong>
                                     </td>
                                     <td>
                                         {% if group.participants|length > 1 %}
@@ -359,7 +361,9 @@
                                     {% if payout_map %}
                                         <td class="text-end">
                                             {% if main_char_id in payout_map %}
-                                                <strong>{{ payout_map|get_item:main_char_id|isk_format_full }}</strong>
+                                                <strong class="copy-on-click" data-copy-text="{{ payout_map|get_item:main_char_id }}" style="cursor: pointer;" title="{% translate 'Click to copy amount (no decimals)' %}">
+                                                    {{ payout_map|get_item:main_char_id|isk_format_full }}
+                                                </strong>
                                                 {% if group.is_scout %}
                                                     <span class="badge bg-success ms-1">{% translate "Scout" %}</span>
                                                 {% endif %}
@@ -400,13 +404,20 @@
                                                             title="{% translate 'Open character window in EVE' %}">
                                                         <i class="fas fa-external-link-alt"></i>
                                                     </button>
+                                                    {% if not payout_obj.verified and not fleet.finalized %}
+                                                    <button class="btn btn-outline-success mark-verified-btn"
+                                                            data-payout-id="{{ payout_obj.pk }}"
+                                                            title="{% translate 'Mark as verified (manual override)' %}">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    {% endif %}
                                                 </div>
                                                 {% if payout_obj.verified %}
-                                                    <span class="badge bg-success" title="{% translate 'Verified via ESI wallet at' %} {{ payout_obj.verified_at|date:'Y-m-d H:i' }}">
+                                                    <span class="badge bg-success" title="{% translate 'Verified at' %} {{ payout_obj.verified_at|date:'Y-m-d H:i' }}">
                                                         <i class="fas fa-check-circle"></i> {% translate "Verified" %}
                                                     </span>
                                                 {% else %}
-                                                    <span class="badge bg-secondary" title="{% translate 'Not yet verified via ESI wallet' %}">
+                                                    <span class="badge bg-secondary" title="{% translate 'Not yet verified' %}">
                                                         <i class="fas fa-clock"></i> {% translate "Pending" %}
                                                     </span>
                                                 {% endif %}

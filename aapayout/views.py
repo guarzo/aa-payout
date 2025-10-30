@@ -339,10 +339,14 @@ def fleet_finalize(request, pk):
         messages.warning(request, "This fleet has already been finalized")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # Check if there are any payouts
-    total_payouts = 0
-    for loot_pool in fleet.loot_pools.all():
-        total_payouts += loot_pool.payouts.count()
+    # Check if there are any payouts and count verified/pending
+    # AA Payout
+    from aapayout.models import Payout
+
+    all_payouts = Payout.objects.filter(loot_pool__fleet=fleet)
+    total_payouts = all_payouts.count()
+    verified_payouts = all_payouts.filter(verified=True).count()
+    pending_payouts = all_payouts.filter(verified=False).count()
 
     if total_payouts == 0:
         messages.error(request, "Cannot finalize fleet: no payouts found")
@@ -363,20 +367,30 @@ def fleet_finalize(request, pk):
         )
         has_esi_token = token is not None
 
+    # Validation: Can only finalize if ESI token exists OR all payouts are already verified
+    if not has_esi_token and pending_payouts > 0:
+        messages.error(
+            request,
+            f"Cannot finalize fleet: {pending_payouts} payout{'s' if pending_payouts != 1 else ''} not yet verified. "
+            f"You must either:\n"
+            f"1. Add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
+            f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification, OR\n"
+            f"2. Manually verify all payments first (verification happens after you finalize with ESI).",
+        )
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
     # Mark fleet as finalized
     fleet.finalized = True
     fleet.finalized_at = timezone.now()
     fleet.finalized_by = request.user
     fleet.save()
 
-    # Trigger ESI wallet verification for all payouts
-    if not has_esi_token:
-        messages.warning(
+    # If all payouts already verified, just finalize without running verification
+    if pending_payouts == 0:
+        messages.success(
             request,
-            f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification is not available. "
-            f"You need to add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
-            f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification. "
-            f"Payouts will remain as 'Pending' until verified manually or via ESI.",
+            f"Fleet '{fleet.name}' has been finalized! "
+            f"All {verified_payouts} payout{'s' if verified_payouts != 1 else ''} {'are' if verified_payouts != 1 else 'is'} already verified.",
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
@@ -1583,6 +1597,53 @@ def express_mode_open_window(request, payout_id):
 
     except Exception as e:
         logger.error(f"Failed to open window for payout {payout_id}: {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def mark_payout_verified(request, payout_id):
+    """
+    AJAX endpoint to manually mark a payout as verified
+
+    This allows FCs to manually verify payouts without ESI, enabling fleet
+    finalization even when ESI wallet verification is not available.
+    """
+    # AA Payout
+    from aapayout.models import Payout
+
+    payout = get_object_or_404(Payout, pk=payout_id)
+
+    # Check permissions - only FC or admins can mark verified
+    if not payout.can_mark_paid(request.user):
+        return JsonResponse({"success": False, "error": "Permission denied"}, status=403)
+
+    try:
+        # Mark as verified
+        payout.verified = True
+        payout.verified_at = timezone.now()
+        payout.status = constants.PAYOUT_STATUS_PAID
+        payout.paid_at = timezone.now()
+        payout.paid_by = request.user
+        payout.payment_method = "manual"
+        payout.save()
+
+        logger.info(
+            f"Payout {payout_id} manually marked as verified by {request.user.username}: "
+            f"{payout.amount} ISK to {payout.recipient.name}"
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "payout_id": payout_id,
+                "verified": True,
+                "verified_at": payout.verified_at.isoformat() if payout.verified_at else None,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to mark payout {payout_id} as verified: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
