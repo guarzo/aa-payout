@@ -1337,7 +1337,9 @@ def participant_update_status(request, pk):
             {
                 "success": True,
                 "is_scout": participants_to_update[0].is_scout if participants_to_update else False,
-                "excluded_from_payout": participants_to_update[0].excluded_from_payout if participants_to_update else False,
+                "excluded_from_payout": (
+                    participants_to_update[0].excluded_from_payout if participants_to_update else False
+                ),
                 "payouts_recalculated": payouts_recalculated,
                 "participants_updated": len(participants_to_update),
             }
