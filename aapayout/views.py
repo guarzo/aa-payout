@@ -387,10 +387,12 @@ def fleet_finalize(request, pk):
 
     # If all payouts already verified, just finalize without running verification
     if pending_payouts == 0:
+        payout_word = "payout" if verified_payouts == 1 else "payouts"
+        verb = "is" if verified_payouts == 1 else "are"
         messages.success(
             request,
             f"Fleet '{fleet.name}' has been finalized! "
-            f"All {verified_payouts} payout{'s' if verified_payouts != 1 else ''} {'are' if verified_payouts != 1 else 'is'} already verified.",
+            f"All {verified_payouts} {payout_word} {verb} already verified.",
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
