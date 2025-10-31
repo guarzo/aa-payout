@@ -86,6 +86,16 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     # Calculate base share per eligible player (even split)
     base_share = (participant_pool / player_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
+    # Check minimum per-participant threshold (default 100M ISK)
+    minimum_per_participant = Decimal(str(app_settings.AAPAYOUT_MINIMUM_PER_PARTICIPANT))
+    if base_share < minimum_per_participant:
+        logger.warning(
+            f"Base share per participant ({base_share:,.2f} ISK) is below minimum threshold "
+            f"({minimum_per_participant:,.2f} ISK). All ISK ({total_value:,.2f}) goes to corporation. "
+            f"No participant payouts will be created."
+        )
+        return []
+
     # Phase 2 Week 5: Calculate scout bonus (+10% of base share)
     scout_bonus_percentage = Decimal(str(app_settings.AAPAYOUT_SCOUT_BONUS_PERCENTAGE))
     scout_bonus = (base_share * scout_bonus_percentage / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)

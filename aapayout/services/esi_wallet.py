@@ -164,22 +164,52 @@ class ESIWalletService:
         """
         errors = []
 
-        # Fetch wallet journal
+        # CRITICAL: Log which character's wallet we're checking (should be FC, NOT payee)
+        logger.info(
+            f"Starting payment verification - checking FC character ID {fc_character_id}'s wallet journal "
+            f"(NOT payee wallets). Token character: {token.character_id}, Token user: {token.user}"
+        )
+
+        # Validate that token matches the FC character
+        if token.character_id != fc_character_id:
+            error_msg = (
+                f"Token mismatch! Token is for character {token.character_id} "
+                f"but trying to check wallet for character {fc_character_id}. "
+                f"ESI requires the token to match the character being queried."
+            )
+            logger.error(error_msg)
+            errors.append(error_msg)
+            return 0, len(payouts), errors
+
+        # Fetch wallet journal FROM THE FC'S WALLET
+        logger.info(f"Fetching wallet journal from FC character {fc_character_id} (the person who made payments)")
         journal_entries = cls.get_wallet_journal(fc_character_id, token)
 
         if journal_entries is None:
-            errors.append("Failed to fetch wallet journal from ESI")
+            error_msg = f"Failed to fetch wallet journal from ESI for FC character {fc_character_id}"
+            logger.error(error_msg)
+            errors.append(error_msg)
             return 0, len(payouts), errors
 
         if len(journal_entries) == 0:
-            errors.append("No wallet journal entries found")
+            error_msg = f"No wallet journal entries found for FC character {fc_character_id}"
+            logger.warning(error_msg)
+            errors.append(error_msg)
             return 0, len(payouts), errors
+
+        logger.info(f"Retrieved {len(journal_entries)} journal entries from FC character {fc_character_id}'s wallet")
 
         verified_count = 0
         pending_count = 0
 
         # Match each payout
         for payout in payouts:
+            logger.info(
+                f"Checking payout {payout.id}: {payout.amount} ISK to recipient {payout.recipient.name} "
+                f"(recipient ID: {payout.recipient.id}). Looking for payment FROM FC {fc_character_id} "
+                f"TO recipient {payout.recipient.id}"
+            )
+
             match = cls.match_payout_to_journal(
                 payout_amount=payout.amount,
                 recipient_character_id=payout.recipient.id,
@@ -197,14 +227,21 @@ class ESIWalletService:
                 payout.save()
 
                 verified_count += 1
-                logger.info(f"Verified payout {payout.id}: {payout.amount} ISK to " f"{payout.recipient.name}")
+                logger.info(
+                    f"✓ Verified payout {payout.id}: {payout.amount} ISK to {payout.recipient.name} "
+                    f"(matched journal entry {match.get('id')})"
+                )
             else:
                 pending_count += 1
                 logger.warning(
-                    f"No match found for payout {payout.id}: {payout.amount} ISK to " f"{payout.recipient.name}"
+                    f"✗ No match found for payout {payout.id}: {payout.amount} ISK to {payout.recipient.name}. "
+                    f"Could not find matching transfer in FC {fc_character_id}'s wallet journal."
                 )
 
-        logger.info(f"Verification complete: {verified_count} verified, " f"{pending_count} pending")
+        logger.info(
+            f"Verification complete for FC {fc_character_id}: "
+            f"{verified_count} verified, {pending_count} pending out of {len(payouts)} total payouts"
+        )
 
         return verified_count, pending_count, errors
 

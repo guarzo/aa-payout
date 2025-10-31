@@ -239,6 +239,17 @@
                         </div>
                     </div>
                 </div>
+            {% elif loot_pool.payouts.count == 0 and participants.count > 0 %}
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Loot Below Minimum Threshold" %}</h6>
+                            <p class="mb-0">
+                                {% translate "The loot value results in individual shares below 100M ISK per participant. As per fleet policy, all ISK from this fleet will go to the corporation. No participant payouts will be distributed." %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
             {% elif loot_pool.payouts.count == 0 and participants.count == 0 %}
                 <div class="row mb-4">
                     <div class="col-12">

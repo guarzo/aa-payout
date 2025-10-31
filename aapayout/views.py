@@ -1266,9 +1266,15 @@ def participant_update_status(request, pk):
     AJAX endpoint to update participant scout/exclude status
 
     Phase 2: Real-time participant controls
+
+    When a participant's status is updated, this also updates ALL participants
+    in the same deduplication group (all alts of the same main character).
     """
     # Standard Library
     import json
+
+    # AA Payout
+    from aapayout.helpers import get_main_character_for_participant
 
     participant = get_object_or_404(FleetParticipant, pk=pk)
 
@@ -1279,14 +1285,42 @@ def participant_update_status(request, pk):
     try:
         data = json.loads(request.body)
 
-        # Update allowed fields
+        # Get main character for this participant
+        main_char = get_main_character_for_participant(participant)
+
+        # Get ALL participants in the same fleet with the same main character
+        # This ensures we update all alts of the same player
+        fleet_participants = participant.fleet.participants.filter(left_at__isnull=True)
+
+        participants_to_update = []
+        for p in fleet_participants:
+            p_main = get_main_character_for_participant(p)
+            if p_main.id == main_char.id:
+                participants_to_update.append(p)
+
+        # Update allowed fields for ALL participants in the group
+        update_fields = []
         if "is_scout" in data:
-            participant.is_scout = bool(data["is_scout"])
+            scout_value = bool(data["is_scout"])
+            for p in participants_to_update:
+                p.is_scout = scout_value
+            update_fields.append("is_scout")
 
         if "excluded_from_payout" in data:
-            participant.excluded_from_payout = bool(data["excluded_from_payout"])
+            excluded_value = bool(data["excluded_from_payout"])
+            for p in participants_to_update:
+                p.excluded_from_payout = excluded_value
+            update_fields.append("excluded_from_payout")
 
-        participant.save()
+        # Bulk update all participants
+        if update_fields:
+            for p in participants_to_update:
+                p.save(update_fields=update_fields)
+
+            logger.info(
+                f"Updated {len(participants_to_update)} participant(s) for main character {main_char.name} "
+                f"(fields: {', '.join(update_fields)})"
+            )
 
         # Auto-recalculate payouts if loot exists
         payouts_recalculated = 0
@@ -1297,14 +1331,15 @@ def participant_update_status(request, pk):
                 from aapayout.helpers import create_payouts
 
                 payouts_recalculated = create_payouts(loot_pool)
-                logger.info(f"Auto-regenerated {payouts_recalculated} payouts after status update for participant {pk}")
+                logger.info(f"Auto-regenerated {payouts_recalculated} payouts after status update")
 
         return JsonResponse(
             {
                 "success": True,
-                "is_scout": participant.is_scout,
-                "excluded_from_payout": participant.excluded_from_payout,
+                "is_scout": participants_to_update[0].is_scout if participants_to_update else False,
+                "excluded_from_payout": participants_to_update[0].excluded_from_payout if participants_to_update else False,
                 "payouts_recalculated": payouts_recalculated,
+                "participants_updated": len(participants_to_update),
             }
         )
 
