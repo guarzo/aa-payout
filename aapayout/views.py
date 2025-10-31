@@ -420,6 +420,86 @@ def fleet_finalize(request, pk):
     return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
 
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def fleet_verify_payouts(request, pk):
+    """
+    Manually trigger ESI wallet verification for all payouts
+
+    This allows FCs to check wallet verification at any time (not just during finalization).
+    Useful for checking if payments have cleared without finalizing the fleet.
+    """
+    # Alliance Auth
+    from esi.models import Token
+
+    fleet = get_object_or_404(Fleet, pk=pk)
+
+    # Check permissions
+    if not fleet.can_edit(request.user):
+        messages.error(request, "You don't have permission to verify payouts for this fleet")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if there are any payouts
+    # AA Payout
+    from aapayout.models import Payout
+
+    all_payouts = Payout.objects.filter(loot_pool__fleet=fleet)
+    total_payouts = all_payouts.count()
+    pending_payouts = all_payouts.filter(verified=False).count()
+
+    if total_payouts == 0:
+        messages.error(request, "No payouts found to verify")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    if pending_payouts == 0:
+        messages.info(request, f"All {total_payouts} payout{'s' if total_payouts != 1 else ''} already verified!")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Check if user has ESI token with wallet journal scope
+    fc_character = request.user.profile.main_character
+    if not fc_character:
+        messages.error(request, "You don't have a main character set")
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    token = (
+        Token.objects.filter(
+            user=request.user,
+            character_id=fc_character.character_id,
+        )
+        .require_scopes("esi-wallet.read_character_journal.v1")
+        .require_valid()
+        .first()
+    )
+
+    if not token:
+        messages.error(
+            request,
+            f"No ESI token found for {fc_character.character_name} with wallet journal scope. "
+            f"Please add an ESI token with scope 'esi-wallet.read_character_journal.v1'.",
+        )
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+    # Trigger verification task
+    # AA Payout
+    from aapayout.tasks import verify_fleet_payments
+
+    try:
+        task = verify_fleet_payments.delay(fleet_id=fleet.pk, user_id=request.user.pk, time_window_hours=24)
+        logger.info(f"Started wallet verification task {task.id} for fleet {fleet.pk} (manual trigger)")
+
+        messages.success(
+            request,
+            f"Verifying {pending_payouts} pending payout{'s' if pending_payouts != 1 else ''} via ESI wallet journal... "
+            f"This will take a few moments. Refresh the page to see updated verification status.",
+        )
+    except Exception as e:
+        logger.error(f"Failed to start verification task for fleet {fleet.pk}: {e}")
+        messages.error(request, f"Failed to start verification: {str(e)}")
+
+    return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+
 # ============================================================================
 # Participant Management
 # ============================================================================

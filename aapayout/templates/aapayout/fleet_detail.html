@@ -148,7 +148,7 @@
                             <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-sync"></i> {% translate "Reappraise" %}
                             </a>
-                            {% if loot_pool.payouts.count > 0 %}
+                            {% if loot_pool.payouts.exists %}
                             <form method="post" action="{% url 'aapayout:regenerate_payouts' loot_pool.pk %}" style="display: inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-secondary"
@@ -156,8 +156,14 @@
                                     <i class="fas fa-calculator"></i> {% translate "Recalculate Payouts" %}
                                 </button>
                             </form>
-                            {% endif %}
-                            {% if loot_pool.payouts.count > 0 and not fleet.finalized %}
+                            {% if not fleet.finalized %}
+                            <form method="post" action="{% url 'aapayout:fleet_verify_payouts' fleet.pk %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-info"
+                                        title="{% translate 'Check ESI wallet for completed payments' %}">
+                                    <i class="fas fa-check-double"></i> {% translate "Verify Payouts" %}
+                                </button>
+                            </form>
                             <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" style="display: inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-success"
@@ -166,7 +172,9 @@
                                     <i class="fas fa-flag-checkered"></i> {% translate "Finalize Fleet" %}
                                 </button>
                             </form>
-                            {% elif fleet.finalized %}
+                            {% endif %}
+                            {% endif %}
+                            {% if fleet.finalized %}
                             <span class="badge bg-success" title="{% translate 'Finalized at' %} {{ fleet.finalized_at|date:'Y-m-d H:i' }} {% translate 'by' %} {{ fleet.finalized_by.username }}">
                                 <i class="fas fa-check-circle"></i> {% translate "Finalized" %}
                             </span>
