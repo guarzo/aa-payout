@@ -139,7 +139,7 @@ class LootPoolCreateForm(forms.ModelForm):
 
     class Meta:
         model = LootPool
-        fields = ["raw_loot_text", "pricing_method"]
+        fields = ["raw_loot_text", "pricing_method", "scout_bonus_percentage"]
         widgets = {
             "raw_loot_text": forms.Textarea(
                 attrs={
@@ -152,9 +152,61 @@ class LootPoolCreateForm(forms.ModelForm):
                 }
             ),
             "pricing_method": forms.Select(attrs={"class": "form-select"}),
+            "scout_bonus_percentage": forms.NumberInput(
+                attrs={
+                    "class": "form-range",
+                    "type": "range",
+                    "min": "0",
+                    "max": "100",
+                    "step": "10",
+                    "id": "scout-bonus-slider-create",
+                }
+            ),
         }
         help_texts = {
             "raw_loot_text": "Paste items directly from EVE client inventory",
+            "scout_bonus_percentage": "Percentage bonus for scouts (0-100%)",
+        }
+
+    def clean_raw_loot_text(self):
+        loot_text = self.cleaned_data.get("raw_loot_text", "")
+        if not loot_text or not loot_text.strip():
+            raise ValidationError("Loot text cannot be empty")
+        return loot_text.strip()
+
+
+class LootPoolEditForm(forms.ModelForm):
+    """Form for editing a loot pool's raw text and settings"""
+
+    class Meta:
+        model = LootPool
+        fields = ["raw_loot_text", "pricing_method", "scout_bonus_percentage"]
+        widgets = {
+            "raw_loot_text": forms.Textarea(
+                attrs={
+                    "class": "form-control font-monospace",
+                    "rows": 10,
+                    "placeholder": (
+                        "Paste loot from EVE client here...\n\n"
+                        "Example:\nCompressed Arkonor\t1000\nCompressed Bistot\t500"
+                    ),
+                }
+            ),
+            "pricing_method": forms.Select(attrs={"class": "form-select"}),
+            "scout_bonus_percentage": forms.NumberInput(
+                attrs={
+                    "class": "form-range",
+                    "type": "range",
+                    "min": "0",
+                    "max": "100",
+                    "step": "10",
+                    "id": "scout-bonus-slider-edit",
+                }
+            ),
+        }
+        help_texts = {
+            "raw_loot_text": "Paste items directly from EVE client inventory",
+            "scout_bonus_percentage": "Percentage bonus for scouts (0-100%)",
         }
 
     def clean_raw_loot_text(self):

@@ -26,6 +26,7 @@ from aapayout.forms import (
     LootItemEditForm,
     LootPoolApproveForm,
     LootPoolCreateForm,
+    LootPoolEditForm,
     ParticipantAddForm,
     ParticipantEditForm,
     PayoutMarkPaidForm,
@@ -748,6 +749,84 @@ def loot_reappraise(request, pk):
 
 @login_required
 @permission_required("aapayout.basic_access")
+def loot_edit(request, pk):
+    """
+    Edit a loot pool's raw text and settings
+
+    Allows editing the loot text, pricing method, and scout bonus.
+    Re-appraises after saving.
+    """
+    loot_pool = get_object_or_404(LootPool, pk=pk)
+    fleet = loot_pool.fleet
+
+    # Check permissions
+    if not fleet.can_edit(request.user):
+        messages.error(request, "You don't have permission to edit this fleet")
+        return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+
+    if request.method == "POST":
+        form = LootPoolEditForm(request.POST, instance=loot_pool)
+        if form.is_valid():
+            # Check if raw_loot_text changed
+            raw_text_changed = form.cleaned_data["raw_loot_text"] != form.initial.get("raw_loot_text")
+
+            # Save the form
+            loot_pool = form.save()
+
+            logger.info(f"Loot pool {loot_pool.id} updated by user {request.user.username}")
+
+            # If raw text changed, clear items and re-appraise
+            if raw_text_changed:
+                logger.info(f"Raw loot text changed for loot pool {loot_pool.id}, re-appraising")
+
+                # Clear existing items
+                deleted_count = loot_pool.items.count()
+                loot_pool.items.all().delete()
+                logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
+
+                # Reset status to draft
+                loot_pool.status = constants.LOOT_STATUS_DRAFT
+                loot_pool.save()
+
+                # Run appraisal synchronously
+                logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
+                result = appraise_loot_pool(loot_pool.id)
+
+                if result.get("success"):
+                    messages.success(
+                        request,
+                        f"Loot updated and reappraised successfully! "
+                        f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
+                        f"{result.get('payouts_created')} payouts created.",
+                    )
+                else:
+                    messages.error(request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}")
+            else:
+                # Just settings changed (pricing method or scout bonus)
+                # Recalculate payouts if they exist
+                if loot_pool.payouts.exists():
+                    payouts_created = create_payouts(loot_pool)
+                    messages.success(
+                        request,
+                        f"Loot settings updated successfully! {payouts_created} payouts recalculated.",
+                    )
+                else:
+                    messages.success(request, "Loot settings updated successfully!")
+
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+    else:
+        form = LootPoolEditForm(instance=loot_pool)
+
+    context = {
+        "form": form,
+        "loot_pool": loot_pool,
+        "fleet": fleet,
+    }
+    return render(request, "aapayout/loot_edit.html", context)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
 def loot_detail(request, pk):
     """View loot pool details"""
     loot_pool = get_object_or_404(
@@ -768,8 +847,10 @@ def loot_detail(request, pk):
     context = {
         "loot_pool": loot_pool,
         "loot_items": loot_items,
+        "items": loot_items,  # Alias for template compatibility
         "payouts": payouts,
         "can_approve": loot_pool.can_approve(request.user),
+        "can_edit": loot_pool.fleet.can_edit(request.user),
     }
 
     return render(request, "aapayout/loot_detail.html", context)
@@ -1347,6 +1428,58 @@ def participant_update_status(request, pk):
 
     except Exception as e:
         logger.error(f"Failed to update participant {pk}: {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def update_scout_bonus(request, pool_id):
+    """
+    AJAX endpoint to update scout bonus percentage for a loot pool
+
+    Updates the scout bonus percentage and automatically recalculates payouts.
+    """
+    # Standard Library
+    import json
+    from decimal import Decimal
+
+    loot_pool = get_object_or_404(LootPool.objects.select_related("fleet"), pk=pool_id)
+
+    # Check permissions
+    if not loot_pool.fleet.can_edit(request.user):
+        return JsonResponse({"success": False, "error": "Permission denied"}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        new_percentage = Decimal(str(data.get("percentage", 10)))
+
+        # Validate percentage (0-100)
+        if new_percentage < 0 or new_percentage > 100:
+            return JsonResponse({"success": False, "error": "Percentage must be between 0 and 100"}, status=400)
+
+        # Update loot pool scout bonus percentage
+        loot_pool.scout_bonus_percentage = new_percentage
+        loot_pool.save(update_fields=["scout_bonus_percentage"])
+
+        logger.info(f"Updated scout bonus to {new_percentage}% for loot pool {pool_id}")
+
+        # Auto-recalculate payouts if loot pool is approved or valued
+        payouts_recalculated = 0
+        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            payouts_recalculated = create_payouts(loot_pool)
+            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
+
+        return JsonResponse(
+            {
+                "success": True,
+                "percentage": float(new_percentage),
+                "payouts_recalculated": payouts_recalculated,
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to update scout bonus for loot pool {pool_id}: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 

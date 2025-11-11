@@ -96,8 +96,9 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
         )
         return []
 
-    # Phase 2 Week 5: Calculate scout bonus (+10% of base share)
-    scout_bonus_percentage = Decimal(str(app_settings.AAPAYOUT_SCOUT_BONUS_PERCENTAGE))
+    # Phase 2 Week 5: Calculate scout bonus (configurable % of base share)
+    # Use loot pool's scout bonus percentage (defaults to 10%)
+    scout_bonus_percentage = loot_pool.scout_bonus_percentage or Decimal("10.00")
     scout_bonus = (base_share * scout_bonus_percentage / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
     # Build payout list and calculate actual total distributed
