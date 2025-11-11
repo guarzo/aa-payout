@@ -225,6 +225,32 @@
         </div>
     </div>
 
+    <!-- ESI Wallet Scope Warning -->
+    {% if wallet_scope_status.needs_verification and not wallet_scope_status.has_wallet_scope %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h6><i class="fas fa-exclamation-triangle"></i> {% translate "ESI Scope Required for Payment Verification" %}</h6>
+                <p class="mb-2">
+                    {% translate "To finalize this fleet and automatically verify payments, you need to add an ESI token with wallet journal access." %}
+                </p>
+                <p class="small mb-2">
+                    <strong>{% translate "Required scope:" %}</strong> <code>esi-wallet.read_character_journal.v1</code>
+                </p>
+                <p class="small mb-3">
+                    {% translate "Without this scope, you must manually verify all payments before finalizing." %}
+                </p>
+                <a href="{% url 'authentication:dashboard' %}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-key"></i> {% translate "Add ESI Token for" %} {{ wallet_scope_status.fc_character_name }}
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">
+                    {% translate "Dismiss" %}
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- User Guidance Messages -->
     {% if loot_pools %}
         {% with loot_pool=loot_pools.first %}

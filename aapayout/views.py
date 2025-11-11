@@ -261,6 +261,38 @@ def fleet_detail(request, pk):
                 esi_status["has_scope"] = False
                 esi_status["message"] = f"ESI token required for {fc_character_name}"
 
+    # Check for wallet journal ESI scope (needed for payment verification)
+    wallet_scope_status = {
+        "has_wallet_scope": False,
+        "fc_character_id": None,
+        "fc_character_name": None,
+        "needs_verification": False,
+    }
+
+    if loot_pools.exists() and loot_pools.first().payouts.exists() and fleet.can_edit(request.user):
+        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+        if fc_character:
+            wallet_scope_status["fc_character_id"] = fc_character.character_id
+            wallet_scope_status["fc_character_name"] = fc_character.character_name
+
+            # Check for wallet journal scope
+            token = (
+                Token.objects.filter(
+                    user=request.user,
+                    character_id=fc_character.character_id,
+                )
+                .require_scopes("esi-wallet.read_character_journal.v1")
+                .require_valid()
+                .first()
+            )
+
+            wallet_scope_status["has_wallet_scope"] = token is not None
+
+            # Check if there are unverified payouts
+            loot_pool = loot_pools.first()
+            unverified_count = loot_pool.payouts.filter(verified=False).count()
+            wallet_scope_status["needs_verification"] = unverified_count > 0 and not fleet.finalized
+
     context = {
         "fleet": fleet,
         "participants": updated_participants,
@@ -272,6 +304,7 @@ def fleet_detail(request, pk):
         "esi_status": esi_status,
         "payout_map": payout_map,
         "existing_payouts": existing_payouts,
+        "wallet_scope_status": wallet_scope_status,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -370,14 +403,19 @@ def fleet_finalize(request, pk):
 
     # Validation: Can only finalize if ESI token exists OR all payouts are already verified
     if not has_esi_token and pending_payouts > 0:
-        messages.error(
-            request,
-            f"Cannot finalize fleet: {pending_payouts} payout{'s' if pending_payouts != 1 else ''} not yet verified. "
-            f"You must either:\n"
-            f"1. Add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
-            f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification, OR\n"
-            f"2. Manually verify all payments first (verification happens after you finalize with ESI).",
+        # Django
+        from django.utils.safestring import mark_safe
+
+        character_name = fc_character.character_name if fc_character else "your main character"
+        error_message = mark_safe(
+            f"<strong>Cannot finalize fleet:</strong> {pending_payouts} payout{'s' if pending_payouts != 1 else ''} "
+            f"not yet verified.<br><br>"
+            f"<strong>You must either:</strong><br>"
+            f"1. <a href='/authentication/dashboard/' class='alert-link'><strong>Add an ESI token for {character_name}</strong></a> "
+            f"with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
+            f"2. Manually verify all payments first (click the green checkmark on each payment)."
         )
+        messages.error(request, error_message)
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Mark fleet as finalized
