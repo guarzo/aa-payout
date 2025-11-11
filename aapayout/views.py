@@ -414,8 +414,8 @@ def fleet_finalize(request, pk):
             "with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
             "2. Manually verify all payments first (click the green checkmark on each payment).",
             pending_payouts,
-            's' if pending_payouts != 1 else '',
-            character_name
+            "s" if pending_payouts != 1 else "",
+            character_name,
         )
         messages.error(request, error_message)
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
@@ -840,7 +840,9 @@ def loot_edit(request, pk):
                         f"{result.get('payouts_created')} payouts created.",
                     )
                 else:
-                    messages.error(request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}")
+                    messages.error(
+                        request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}"
+                    )
             else:
                 # Just settings changed (pricing method or scout bonus)
                 # Recalculate payouts if they exist
