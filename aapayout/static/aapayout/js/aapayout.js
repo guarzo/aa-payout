@@ -808,7 +808,7 @@ function initializeScoutBonusSlider() {
             }
 
             updateTimer = setTimeout(function () {
-                updateScoutBonus(lootPoolId, newPercentage);
+                updateScoutBonus(lootPoolId, newPercentage, 'scout-bonus-value');
             }, 300);
         });
     }
@@ -851,15 +851,47 @@ function initializeScoutBonusSlider() {
             }
 
             updateTimerDetail = setTimeout(function () {
-                updateScoutBonus(lootPoolIdDetail, newPercentage);
+                updateScoutBonus(lootPoolIdDetail, newPercentage, 'scout-bonus-value-detail');
+            }, 300);
+        });
+    }
+
+    // Loot edit page slider (with AJAX update)
+    const sliderEdit = document.getElementById('scout-bonus-slider-edit');
+    if (sliderEdit) {
+        const valueDisplayEdit = document.getElementById('scout-bonus-value-edit');
+        const lootPoolIdEdit = sliderEdit.dataset.lootPoolId;
+        let updateTimerEdit;
+
+        // Update display as slider moves
+        sliderEdit.addEventListener('input', function () {
+            if (valueDisplayEdit) {
+                valueDisplayEdit.textContent = this.value;
+            }
+        });
+
+        // Update server when slider changes (with debounce)
+        sliderEdit.addEventListener('change', function () {
+            clearTimeout(updateTimerEdit);
+            const newPercentage = this.value;
+
+            // Show loading state
+            if (valueDisplayEdit) {
+                valueDisplayEdit.textContent = newPercentage + ' (updating...)';
+            }
+
+            updateTimerEdit = setTimeout(function () {
+                updateScoutBonus(lootPoolIdEdit, newPercentage, 'scout-bonus-value-edit');
             }, 300);
         });
     }
 }
 
-function updateScoutBonus(lootPoolId, percentage) {
+function updateScoutBonus(lootPoolId, percentage, displayElementId) {
     const csrftoken = getCookie('csrftoken');
-    const valueDisplay = document.getElementById('scout-bonus-value');
+    // Use provided displayElementId or fallback to default
+    const elementId = displayElementId || 'scout-bonus-value';
+    const valueDisplay = document.getElementById(elementId);
 
     fetch('/payout/api/loot/' + lootPoolId + '/update-scout-bonus/', {
         method: 'POST',
@@ -896,7 +928,9 @@ function updateScoutBonus(lootPoolId, percentage) {
             showErrorToast('Failed to update scout bonus: ' + error.message);
             // Reset display
             if (valueDisplay) {
-                const slider = document.getElementById('scout-bonus-slider');
+                // Derive slider ID from display element ID by replacing '-value' with '-slider'
+                const sliderId = elementId.replace('-value', '-slider');
+                const slider = document.getElementById(sliderId);
                 if (slider) {
                     valueDisplay.textContent = slider.value;
                 }

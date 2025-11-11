@@ -13,6 +13,7 @@ from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
 # Alliance Auth (External Libs)
@@ -403,17 +404,18 @@ def fleet_finalize(request, pk):
 
     # Validation: Can only finalize if ESI token exists OR all payouts are already verified
     if not has_esi_token and pending_payouts > 0:
-        # Django
-        from django.utils.safestring import mark_safe
-
         character_name = fc_character.character_name if fc_character else "your main character"
-        error_message = mark_safe(
-            f"<strong>Cannot finalize fleet:</strong> {pending_payouts} payout{'s' if pending_payouts != 1 else ''} "
-            f"not yet verified.<br><br>"
-            f"<strong>You must either:</strong><br>"
-            f"1. <a href='/authentication/dashboard/' class='alert-link'><strong>Add an ESI token for {character_name}</strong></a> "
-            f"with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
-            f"2. Manually verify all payments first (click the green checkmark on each payment)."
+        error_message = format_html(
+            "<strong>Cannot finalize fleet:</strong> {} payout{} "
+            "not yet verified.<br><br>"
+            "<strong>You must either:</strong><br>"
+            "1. <a href='/authentication/dashboard/' class='alert-link'>"
+            "<strong>Add an ESI token for {}</strong></a> "
+            "with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
+            "2. Manually verify all payments first (click the green checkmark on each payment).",
+            pending_payouts,
+            's' if pending_payouts != 1 else '',
+            character_name
         )
         messages.error(request, error_message)
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
@@ -1517,7 +1519,7 @@ def update_scout_bonus(request, pool_id):
         )
 
     except Exception as e:
-        logger.error(f"Failed to update scout bonus for loot pool {pool_id}: {e}")
+        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 

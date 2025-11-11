@@ -38,7 +38,7 @@
                         <div class="mb-3">
                             <label for="{{ form.scout_bonus_percentage.id_for_label }}" class="form-label">
                                 <i class="fas fa-binoculars"></i> {{ form.scout_bonus_percentage.label }}:
-                                <strong><span id="scout-bonus-value-create">10</span>%</strong>
+                                <strong><span id="scout-bonus-value-create">{{ form.scout_bonus_percentage.value|default:form.scout_bonus_percentage.field.initial }}</span>%</strong>
                             </label>
                             {{ form.scout_bonus_percentage }}
                             <div class="d-flex justify-content-between text-muted small">
