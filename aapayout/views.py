@@ -16,8 +16,10 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
-# Alliance Auth (External Libs)
+# Alliance Auth
 from esi.models import Token
+
+# Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
 # AA Payout
@@ -169,9 +171,6 @@ def fleet_create(request):
 @permission_required("aapayout.basic_access")
 def fleet_detail(request, pk):
     """View fleet details"""
-    # Alliance Auth
-    from esi.models import Token
-
     # AA Payout
     from aapayout import app_settings
     from aapayout.helpers import get_main_character_for_participant
@@ -360,9 +359,6 @@ def fleet_delete(request, pk):
 @require_POST
 def fleet_finalize(request, pk):
     """Finalize a fleet and trigger ESI wallet verification for all payouts"""
-    # Alliance Auth
-    from esi.models import Token
-
     fleet = get_object_or_404(Fleet, pk=pk)
 
     # Check permissions
@@ -474,9 +470,6 @@ def fleet_verify_payouts(request, pk):
     This allows FCs to check wallet verification at any time (not just during finalization).
     Useful for checking if payments have cleared without finalizing the fleet.
     """
-    # Alliance Auth
-    from esi.models import Token
-
     fleet = get_object_or_404(Fleet, pk=pk)
 
     # Check permissions
@@ -1106,9 +1099,6 @@ def verify_payments(request, pool_id):
 
     if request.method == "POST":
         # Check if user has ESI token with wallet journal scope
-        # Alliance Auth
-        from esi.models import Token
-
         # Get FC's main character ID
         fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
         if not fc_character:
@@ -1542,9 +1532,6 @@ def fleet_import(request, pk):
 
     Phase 2: Week 3-4 - ESI Fleet Import
     """
-    # Alliance Auth
-    from esi.models import Token
-
     # AA Payout
     from aapayout import app_settings
     from aapayout.helpers import get_main_character_for_participant
@@ -1846,9 +1833,6 @@ def express_mode_open_window(request, payout_id):
 
     Phase 2: Week 6 - Express Mode
     """
-    # Alliance Auth
-    from esi.models import Token
-
     # AA Payout
     from aapayout.models import Payout
     from aapayout.services.esi_fleet import esi_ui_service
