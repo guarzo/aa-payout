@@ -26,6 +26,7 @@ class ScoutBonusCalculationTests(TestCase):
 
     def setUp(self):
         """Patch settings before each test"""
+        # Standard Library
         from unittest.mock import patch
 
         # Patch app_settings to use low minimum payout for tests

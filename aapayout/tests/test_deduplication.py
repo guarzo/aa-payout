@@ -245,6 +245,7 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
     def setUp(self):
         """Set up test data"""
         # Patch minimum payout settings for tests
+        # AA Payout
         from aapayout import app_settings
 
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
@@ -388,6 +389,7 @@ class DeduplicationIntegrationTest(TestCase):
     def setUp(self):
         """Set up test data"""
         # Patch minimum payout settings for tests
+        # AA Payout
         from aapayout import app_settings
 
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
