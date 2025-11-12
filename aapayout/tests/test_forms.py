@@ -156,6 +156,7 @@ class LootPoolCreateFormTest(TestCase):
             "name": "Test Loot Pool",
             "raw_loot_text": "Compressed Arkonor\t1000\nCompressed Bistot\t500",
             "pricing_method": constants.PRICING_JANICE_BUY,
+            "scout_bonus_percentage": 10,
         }
 
         form = LootPoolCreateForm(data=form_data)

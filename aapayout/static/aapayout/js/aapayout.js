@@ -21,6 +21,7 @@
         initializeParticipantStatusToggles();
         initializeModalAutocomplete();
         initializeCopyOnClick();
+        initializeScoutBonusSlider();
     });
 
     // ========================================
@@ -775,4 +776,164 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+
+// ========================================
+// Scout Bonus Slider
+// ========================================
+
+function initializeScoutBonusSlider() {
+    // Fleet detail page slider (with AJAX update)
+    const slider = document.getElementById('scout-bonus-slider');
+    if (slider) {
+        const valueDisplay = document.getElementById('scout-bonus-value');
+        const lootPoolId = slider.dataset.lootPoolId;
+        let updateTimer;
+
+        // Update display as slider moves
+        slider.addEventListener('input', function () {
+            if (valueDisplay) {
+                valueDisplay.textContent = this.value;
+            }
+        });
+
+        // Update server when slider changes (with debounce)
+        slider.addEventListener('change', function () {
+            clearTimeout(updateTimer);
+            const newPercentage = this.value;
+
+            // Show loading state
+            if (valueDisplay) {
+                valueDisplay.textContent = newPercentage + ' (updating...)';
+            }
+
+            updateTimer = setTimeout(function () {
+                updateScoutBonus(lootPoolId, newPercentage, 'scout-bonus-value');
+            }, 300);
+        });
+    }
+
+    // Loot create page slider (client-side display only)
+    const sliderCreate = document.getElementById('scout-bonus-slider-create');
+    if (sliderCreate) {
+        const valueDisplayCreate = document.getElementById('scout-bonus-value-create');
+
+        // Update display as slider moves
+        sliderCreate.addEventListener('input', function () {
+            if (valueDisplayCreate) {
+                valueDisplayCreate.textContent = this.value;
+            }
+        });
+    }
+
+    // Loot detail page slider (with AJAX update)
+    const sliderDetail = document.getElementById('scout-bonus-slider-detail');
+    if (sliderDetail) {
+        const valueDisplayDetail = document.getElementById('scout-bonus-value-detail');
+        const lootPoolIdDetail = sliderDetail.dataset.lootPoolId;
+        let updateTimerDetail;
+
+        // Update display as slider moves
+        sliderDetail.addEventListener('input', function () {
+            if (valueDisplayDetail) {
+                valueDisplayDetail.textContent = this.value;
+            }
+        });
+
+        // Update server when slider changes (with debounce)
+        sliderDetail.addEventListener('change', function () {
+            clearTimeout(updateTimerDetail);
+            const newPercentage = this.value;
+
+            // Show loading state
+            if (valueDisplayDetail) {
+                valueDisplayDetail.textContent = newPercentage + ' (updating...)';
+            }
+
+            updateTimerDetail = setTimeout(function () {
+                updateScoutBonus(lootPoolIdDetail, newPercentage, 'scout-bonus-value-detail');
+            }, 300);
+        });
+    }
+
+    // Loot edit page slider (with AJAX update)
+    const sliderEdit = document.getElementById('scout-bonus-slider-edit');
+    if (sliderEdit) {
+        const valueDisplayEdit = document.getElementById('scout-bonus-value-edit');
+        const lootPoolIdEdit = sliderEdit.dataset.lootPoolId;
+        let updateTimerEdit;
+
+        // Update display as slider moves
+        sliderEdit.addEventListener('input', function () {
+            if (valueDisplayEdit) {
+                valueDisplayEdit.textContent = this.value;
+            }
+        });
+
+        // Update server when slider changes (with debounce)
+        sliderEdit.addEventListener('change', function () {
+            clearTimeout(updateTimerEdit);
+            const newPercentage = this.value;
+
+            // Show loading state
+            if (valueDisplayEdit) {
+                valueDisplayEdit.textContent = newPercentage + ' (updating...)';
+            }
+
+            updateTimerEdit = setTimeout(function () {
+                updateScoutBonus(lootPoolIdEdit, newPercentage, 'scout-bonus-value-edit');
+            }, 300);
+        });
+    }
+}
+
+function updateScoutBonus(lootPoolId, percentage, displayElementId) {
+    const csrftoken = getCookie('csrftoken');
+    // Use provided displayElementId or fallback to default
+    const elementId = displayElementId || 'scout-bonus-value';
+    const valueDisplay = document.getElementById(elementId);
+
+    fetch('/payout/api/loot/' + lootPoolId + '/update-scout-bonus/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ percentage: percentage }),
+    })
+        .then(function (response) {
+            if (!response.ok) {
+                throw new Error('Failed to update scout bonus');
+            }
+            return response.json();
+        })
+        .then(function (data) {
+            if (data.success) {
+                // Update display
+                if (valueDisplay) {
+                    valueDisplay.textContent = percentage;
+                }
+                showSuccessToast('Scout bonus updated to ' + percentage + '%. Payouts recalculated.');
+
+                // Reload page to show updated payouts
+                setTimeout(function () {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                throw new Error(data.error || 'Update failed');
+            }
+        })
+        .catch(function (error) {
+            console.error('Error updating scout bonus:', error);
+            showErrorToast('Failed to update scout bonus: ' + error.message);
+            // Reset display
+            if (valueDisplay) {
+                // Derive slider ID from display element ID by replacing '-value' with '-slider'
+                const sliderId = elementId.replace('-value', '-slider');
+                const slider = document.getElementById(sliderId);
+                if (slider) {
+                    valueDisplay.textContent = slider.value;
+                }
+            }
+        });
 }

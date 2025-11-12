@@ -28,6 +28,7 @@ urlpatterns = [
     # Loot Management
     path("fleets/<int:fleet_id>/loot/create/", views.loot_create, name="loot_create"),
     path("loot/<int:pk>/", views.loot_detail, name="loot_detail"),
+    path("loot/<int:pk>/edit/", views.loot_edit, name="loot_edit"),
     path("loot/<int:pk>/reappraise/", views.loot_reappraise, name="loot_reappraise"),
     path("loot/<int:pool_id>/items/<int:item_id>/edit/", views.loot_edit_item, name="loot_edit_item"),
     path("loot/<int:pk>/approve/", views.loot_approve, name="loot_approve"),
@@ -42,6 +43,7 @@ urlpatterns = [
     # AJAX / API
     path("api/character-search/", views.character_search, name="character_search"),
     path("api/participant/<int:pk>/update/", views.participant_update_status, name="participant_update_status"),
+    path("api/loot/<int:pool_id>/update-scout-bonus/", views.update_scout_bonus, name="update_scout_bonus"),
     # Phase 2: ESI Fleet Import
     path("fleets/<int:pk>/import/", views.fleet_import, name="fleet_import"),
     path("imports/<int:import_id>/results/", views.fleet_import_results, name="fleet_import_results"),

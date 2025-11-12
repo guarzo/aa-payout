@@ -24,6 +24,22 @@ from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
 class ScoutBonusCalculationTests(TestCase):
     """Tests for scout bonus payout calculations"""
 
+    def setUp(self):
+        """Patch settings before each test"""
+        # Standard Library
+        from unittest.mock import patch
+
+        # Patch app_settings to use low minimum payout for tests
+        self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
+        self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)
+        self.settings_patcher.start()
+        self.per_participant_patcher.start()
+
+    def tearDown(self):
+        """Stop patching settings"""
+        self.settings_patcher.stop()
+        self.per_participant_patcher.stop()
+
     @classmethod
     def setUpTestData(cls):
         """Set up test data"""

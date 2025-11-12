@@ -27,11 +27,16 @@ class CalculatePayoutsTest(TestCase):
         """Patch settings before each test"""
         # Patch app_settings to use low minimum payout for tests
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)  # 1k ISK minimum for tests
+        self.per_participant_patcher = patch.object(
+            app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000
+        )  # 1k ISK minimum for tests
         self.settings_patcher.start()
+        self.per_participant_patcher.start()
 
     def tearDown(self):
         """Stop patching settings"""
         self.settings_patcher.stop()
+        self.per_participant_patcher.stop()
 
     @classmethod
     def setUpTestData(cls):

@@ -140,11 +140,36 @@
                             <strong>{{ loot_pool.items.count }} {% translate "items" %}</strong> {% translate "valued at" %}
                             <strong class="text-primary">{{ loot_pool.total_value|isk_format_full }}</strong>
                         </p>
+
+                        {% if can_edit %}
+                        <div class="mb-3 p-3 bg-light rounded">
+                            <label for="scout-bonus-slider" class="form-label">
+                                <i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %}:
+                                <strong><span id="scout-bonus-value">{{ loot_pool.scout_bonus_percentage|floatformat:0 }}</span>%</strong>
+                            </label>
+                            <input type="range" class="form-range" id="scout-bonus-slider"
+                                   min="0" max="100" step="10"
+                                   value="{{ loot_pool.scout_bonus_percentage|floatformat:0 }}"
+                                   data-loot-pool-id="{{ loot_pool.pk }}">
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>100%</span>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                <i class="fas fa-info-circle"></i> {% translate "Adjust scout bonus percentage - payouts will update automatically" %}
+                            </small>
+                        </div>
+                        {% endif %}
+
                         <div class="d-flex flex-wrap gap-2">
                             <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}" class="btn btn-sm btn-info">
                                 <i class="fas fa-eye"></i> {% translate "View Details" %}
                             </a>
                             {% if can_edit %}
+                            <a href="{% url 'aapayout:loot_edit' loot_pool.pk %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit"></i> {% translate "Edit Loot" %}
+                            </a>
                             <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-sync"></i> {% translate "Reappraise" %}
                             </a>
@@ -199,6 +224,32 @@
             </div>
         </div>
     </div>
+
+    <!-- ESI Wallet Scope Warning -->
+    {% if wallet_scope_status.needs_verification and not wallet_scope_status.has_wallet_scope %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <h6><i class="fas fa-exclamation-triangle"></i> {% translate "ESI Scope Required for Payment Verification" %}</h6>
+                <p class="mb-2">
+                    {% translate "To finalize this fleet and automatically verify payments, you need to add an ESI token with wallet journal access." %}
+                </p>
+                <p class="small mb-2">
+                    <strong>{% translate "Required scope:" %}</strong> <code>esi-wallet.read_character_journal.v1</code>
+                </p>
+                <p class="small mb-3">
+                    {% translate "Without this scope, you must manually verify all payments before finalizing." %}
+                </p>
+                <a href="{% url 'authentication:dashboard' %}" class="btn btn-warning btn-sm">
+                    <i class="fas fa-key"></i> {% translate "Add ESI Token for" %} {{ wallet_scope_status.fc_character_name }}
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">
+                    {% translate "Dismiss" %}
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- User Guidance Messages -->
     {% if loot_pools %}

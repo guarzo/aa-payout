@@ -13,6 +13,7 @@ from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
 # Alliance Auth (External Libs)
@@ -26,6 +27,7 @@ from aapayout.forms import (
     LootItemEditForm,
     LootPoolApproveForm,
     LootPoolCreateForm,
+    LootPoolEditForm,
     ParticipantAddForm,
     ParticipantEditForm,
     PayoutMarkPaidForm,
@@ -260,6 +262,38 @@ def fleet_detail(request, pk):
                 esi_status["has_scope"] = False
                 esi_status["message"] = f"ESI token required for {fc_character_name}"
 
+    # Check for wallet journal ESI scope (needed for payment verification)
+    wallet_scope_status = {
+        "has_wallet_scope": False,
+        "fc_character_id": None,
+        "fc_character_name": None,
+        "needs_verification": False,
+    }
+
+    if loot_pools.exists() and loot_pools.first().payouts.exists() and fleet.can_edit(request.user):
+        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+        if fc_character:
+            wallet_scope_status["fc_character_id"] = fc_character.character_id
+            wallet_scope_status["fc_character_name"] = fc_character.character_name
+
+            # Check for wallet journal scope
+            token = (
+                Token.objects.filter(
+                    user=request.user,
+                    character_id=fc_character.character_id,
+                )
+                .require_scopes("esi-wallet.read_character_journal.v1")
+                .require_valid()
+                .first()
+            )
+
+            wallet_scope_status["has_wallet_scope"] = token is not None
+
+            # Check if there are unverified payouts
+            loot_pool = loot_pools.first()
+            unverified_count = loot_pool.payouts.filter(verified=False).count()
+            wallet_scope_status["needs_verification"] = unverified_count > 0 and not fleet.finalized
+
     context = {
         "fleet": fleet,
         "participants": updated_participants,
@@ -271,6 +305,7 @@ def fleet_detail(request, pk):
         "esi_status": esi_status,
         "payout_map": payout_map,
         "existing_payouts": existing_payouts,
+        "wallet_scope_status": wallet_scope_status,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -369,14 +404,20 @@ def fleet_finalize(request, pk):
 
     # Validation: Can only finalize if ESI token exists OR all payouts are already verified
     if not has_esi_token and pending_payouts > 0:
-        messages.error(
-            request,
-            f"Cannot finalize fleet: {pending_payouts} payout{'s' if pending_payouts != 1 else ''} not yet verified. "
-            f"You must either:\n"
-            f"1. Add an ESI token for {fc_character.character_name if fc_character else 'your main character'} "
-            f"with scope 'esi-wallet.read_character_journal.v1' to enable automatic verification, OR\n"
-            f"2. Manually verify all payments first (verification happens after you finalize with ESI).",
+        character_name = fc_character.character_name if fc_character else "your main character"
+        error_message = format_html(
+            "<strong>Cannot finalize fleet:</strong> {} payout{} "
+            "not yet verified.<br><br>"
+            "<strong>You must either:</strong><br>"
+            "1. <a href='/authentication/dashboard/' class='alert-link'>"
+            "<strong>Add an ESI token for {}</strong></a> "
+            "with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
+            "2. Manually verify all payments first (click the green checkmark on each payment).",
+            pending_payouts,
+            "s" if pending_payouts != 1 else "",
+            character_name,
         )
+        messages.error(request, error_message)
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Mark fleet as finalized
@@ -748,6 +789,86 @@ def loot_reappraise(request, pk):
 
 @login_required
 @permission_required("aapayout.basic_access")
+def loot_edit(request, pk):
+    """
+    Edit a loot pool's raw text and settings
+
+    Allows editing the loot text, pricing method, and scout bonus.
+    Re-appraises after saving.
+    """
+    loot_pool = get_object_or_404(LootPool, pk=pk)
+    fleet = loot_pool.fleet
+
+    # Check permissions
+    if not fleet.can_edit(request.user):
+        messages.error(request, "You don't have permission to edit this fleet")
+        return redirect("aapayout:loot_detail", pk=loot_pool.pk)
+
+    if request.method == "POST":
+        form = LootPoolEditForm(request.POST, instance=loot_pool)
+        if form.is_valid():
+            # Check if raw_loot_text changed
+            raw_text_changed = form.cleaned_data["raw_loot_text"] != form.initial.get("raw_loot_text")
+
+            # Save the form
+            loot_pool = form.save()
+
+            logger.info(f"Loot pool {loot_pool.id} updated by user {request.user.username}")
+
+            # If raw text changed, clear items and re-appraise
+            if raw_text_changed:
+                logger.info(f"Raw loot text changed for loot pool {loot_pool.id}, re-appraising")
+
+                # Clear existing items
+                deleted_count = loot_pool.items.count()
+                loot_pool.items.all().delete()
+                logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
+
+                # Reset status to draft
+                loot_pool.status = constants.LOOT_STATUS_DRAFT
+                loot_pool.save()
+
+                # Run appraisal synchronously
+                logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
+                result = appraise_loot_pool(loot_pool.id)
+
+                if result.get("success"):
+                    messages.success(
+                        request,
+                        f"Loot updated and reappraised successfully! "
+                        f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
+                        f"{result.get('payouts_created')} payouts created.",
+                    )
+                else:
+                    messages.error(
+                        request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}"
+                    )
+            else:
+                # Just settings changed (pricing method or scout bonus)
+                # Recalculate payouts if they exist
+                if loot_pool.payouts.exists():
+                    payouts_created = create_payouts(loot_pool)
+                    messages.success(
+                        request,
+                        f"Loot settings updated successfully! {payouts_created} payouts recalculated.",
+                    )
+                else:
+                    messages.success(request, "Loot settings updated successfully!")
+
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+    else:
+        form = LootPoolEditForm(instance=loot_pool)
+
+    context = {
+        "form": form,
+        "loot_pool": loot_pool,
+        "fleet": fleet,
+    }
+    return render(request, "aapayout/loot_edit.html", context)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
 def loot_detail(request, pk):
     """View loot pool details"""
     loot_pool = get_object_or_404(
@@ -768,8 +889,10 @@ def loot_detail(request, pk):
     context = {
         "loot_pool": loot_pool,
         "loot_items": loot_items,
+        "items": loot_items,  # Alias for template compatibility
         "payouts": payouts,
         "can_approve": loot_pool.can_approve(request.user),
+        "can_edit": loot_pool.fleet.can_edit(request.user),
     }
 
     return render(request, "aapayout/loot_detail.html", context)
@@ -1347,6 +1470,58 @@ def participant_update_status(request, pk):
 
     except Exception as e:
         logger.error(f"Failed to update participant {pk}: {e}")
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+@permission_required("aapayout.basic_access")
+@require_POST
+def update_scout_bonus(request, pool_id):
+    """
+    AJAX endpoint to update scout bonus percentage for a loot pool
+
+    Updates the scout bonus percentage and automatically recalculates payouts.
+    """
+    # Standard Library
+    import json
+    from decimal import Decimal
+
+    loot_pool = get_object_or_404(LootPool.objects.select_related("fleet"), pk=pool_id)
+
+    # Check permissions
+    if not loot_pool.fleet.can_edit(request.user):
+        return JsonResponse({"success": False, "error": "Permission denied"}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        new_percentage = Decimal(str(data.get("percentage", 10)))
+
+        # Validate percentage (0-100)
+        if new_percentage < 0 or new_percentage > 100:
+            return JsonResponse({"success": False, "error": "Percentage must be between 0 and 100"}, status=400)
+
+        # Update loot pool scout bonus percentage
+        loot_pool.scout_bonus_percentage = new_percentage
+        loot_pool.save(update_fields=["scout_bonus_percentage"])
+
+        logger.info(f"Updated scout bonus to {new_percentage}% for loot pool {pool_id}")
+
+        # Auto-recalculate payouts if loot pool is approved or valued
+        payouts_recalculated = 0
+        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            payouts_recalculated = create_payouts(loot_pool)
+            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
+
+        return JsonResponse(
+            {
+                "success": True,
+                "percentage": float(new_percentage),
+                "payouts_recalculated": payouts_recalculated,
+            }
+        )
+
+    except Exception as e:
+        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 
