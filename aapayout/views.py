@@ -17,6 +17,7 @@ from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
 # Alliance Auth (External Libs)
+from esi.models import Token
 from eveuniverse.models import EveEntity
 
 # AA Payout
