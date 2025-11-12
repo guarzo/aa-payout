@@ -244,6 +244,14 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
 
     def setUp(self):
         """Set up test data"""
+        # Patch minimum payout settings for tests
+        from aapayout import app_settings
+
+        self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
+        self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)
+        self.settings_patcher.start()
+        self.per_participant_patcher.start()
+
         # Create test user
         self.user = User.objects.create_user(username="testuser", password="password")
 
@@ -272,6 +280,11 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
             total_value=Decimal("100000000.00"),  # 100M ISK
             corp_share_percentage=Decimal("10.00"),
         )
+
+    def tearDown(self):
+        """Stop patching settings"""
+        self.settings_patcher.stop()
+        self.per_participant_patcher.stop()
 
     def test_payout_calculation_with_deduplication(self):
         """Test that payouts use deduplication (one per player)"""
@@ -374,6 +387,14 @@ class DeduplicationIntegrationTest(TestCase):
 
     def setUp(self):
         """Set up test data"""
+        # Patch minimum payout settings for tests
+        from aapayout import app_settings
+
+        self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
+        self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)
+        self.settings_patcher.start()
+        self.per_participant_patcher.start()
+
         # Create test user
         self.user = User.objects.create_user(username="testuser", password="password")
 
@@ -402,6 +423,11 @@ class DeduplicationIntegrationTest(TestCase):
             fleet_commander=self.user,
             fleet_time=timezone.now(),
         )
+
+    def tearDown(self):
+        """Stop patching settings"""
+        self.settings_patcher.stop()
+        self.per_participant_patcher.stop()
 
     def test_multi_boxing_scenario(self):
         """

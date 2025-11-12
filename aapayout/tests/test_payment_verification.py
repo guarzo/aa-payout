@@ -294,6 +294,7 @@ class TestESIWalletService(TestCase):
 
         # Mock token
         mock_token = MagicMock()
+        mock_token.character_id = 12345678  # Must match fc_character_id
         mock_token.has_scope.return_value = True
         mock_token.valid_access_token.return_value = "test_token"
 
@@ -339,6 +340,7 @@ class TestESIWalletService(TestCase):
 
         # Mock token
         mock_token = MagicMock()
+        mock_token.character_id = 12345678  # Must match fc_character_id
         mock_token.has_scope.return_value = True
         mock_token.valid_access_token.return_value = "test_token"
 
@@ -368,6 +370,7 @@ class TestESIWalletService(TestCase):
         """Test verification with ESI error"""
         # Mock token
         mock_token = MagicMock()
+        mock_token.character_id = 12345678  # Must match fc_character_id
 
         # Mock ESI call returning None (error)
         with patch.object(ESIWalletService, "get_wallet_journal", return_value=None):
