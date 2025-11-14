@@ -116,6 +116,10 @@ class JaniceService:
                 f"[Janice] Received response with {len(items_data) if isinstance(items_data, list) else 0} items"
             )
 
+            # Log first few items for debugging (helps identify quantity issues)
+            if isinstance(items_data, list) and len(items_data) > 0:
+                logger.debug(f"[Janice] Sample response items (first 3): {items_data[:3]}")
+
             if not isinstance(items_data, list):
                 logger.error(f"[Janice] Unexpected response format: {type(items_data)}")
                 raise JaniceAPIError("Unexpected API response format")
@@ -131,7 +135,16 @@ class JaniceService:
                 try:
                     type_id = item["itemType"]["eid"]
                     name = item["itemType"]["name"]
-                    quantity = item.get("quantity", 1)
+
+                    # Get quantity with explicit validation
+                    quantity = item.get("quantity")
+                    if quantity is None:
+                        logger.warning(
+                            f"[Janice] Item '{name}' (type_id={type_id}) has no 'quantity' field in response, "
+                            f"defaulting to 1. This may indicate an API issue."
+                        )
+                        quantity = 1
+
                     unit_price = Decimal(str(item["immediatePrices"][price_key]))
                     item_total_value = quantity * unit_price
 

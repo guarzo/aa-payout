@@ -7,7 +7,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>{% translate "Fleet Payout Dashboard" %}</h2>
+            <h2>{% translate "Payout Dashboard" %}</h2>
         </div>
     </div>
 
@@ -25,7 +25,7 @@
         <div class="col-md-6">
             <div class="card border-success">
                 <div class="card-body">
-                    <h5 class="card-title">{% translate "Recent Fleets" %}</h5>
+                    <h5 class="card-title">{% translate "Recent Payout Sessions" %}</h5>
                     <p class="card-text display-6">{{ recent_fleets|length }}</p>
                 </div>
             </div>
@@ -48,7 +48,7 @@
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Fleet" %}</th>
+                                    <th>{% translate "Payout Session" %}</th>
                                     <th>{% translate "Loot Pool" %}</th>
                                     <th class="text-end">{% translate "Amount" %}</th>
                                     <th>{% translate "Status" %}</th>
@@ -99,21 +99,21 @@
     </div>
     {% endif %}
 
-    <!-- Recent Fleets -->
+    <!-- Recent Payout Sessions -->
     {% if recent_fleets %}
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>{% translate "Your Recent Fleets" %}</h5>
+                    <h5>{% translate "Your Recent Payout Sessions" %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Fleet Name" %}</th>
-                                    <th>{% translate "Fleet Time" %}</th>
+                                    <th>{% translate "Payout Name" %}</th>
+                                    <th>{% translate "Date" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     <th>{% translate "Participants" %}</th>
                                     <th class="text-end">{% translate "Total Value" %}</th>
@@ -162,10 +162,10 @@
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">
-                <h4>{% translate "Welcome to Fleet Payouts!" %}</h4>
-                <p>{% translate "You don't have any pending payouts or fleets yet." %}</p>
+                <h4>{% translate "Welcome to Payouts!" %}</h4>
+                <p>{% translate "You don't have any pending payouts yet." %}</p>
                 {% if perms.aapayout.create_fleet %}
-                <p>{% translate "Click the 'Create Fleet' button in the top navigation bar to create your first fleet." %}</p>
+                <p>{% translate "Click the 'Create Payout' button in the top navigation bar to create your first payout." %}</p>
                 {% endif %}
             </div>
         </div>
@@ -173,20 +173,20 @@
     {% endif %}
 </div>
 
-<!-- Fleet Creation Modal -->
+<!-- Payout Creation Modal -->
 {% if perms.aapayout.create_fleet %}
 <div class="modal fade" id="createFleetModal" tabindex="-1" aria-labelledby="createFleetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createFleetModalLabel">{% translate "Create New Fleet" %}</h5>
+                <h5 class="modal-title" id="createFleetModalLabel">{% translate "Create New Payout" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'aapayout:fleet_create' %}" id="fleet-create-form">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="fleet_name" class="form-label">{% translate "Fleet Name" %} <span class="text-danger">*</span></label>
+                        <label for="fleet_name" class="form-label">{% translate "Payout Name" %} <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="fleet_name" class="form-control" required>
                     </div>
                     <div class="mb-3">
@@ -201,7 +201,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Cancel" %}</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> {% translate "Create Fleet" %}
+                        <i class="fas fa-save"></i> {% translate "Create Payout" %}
                     </button>
                 </div>
             </form>

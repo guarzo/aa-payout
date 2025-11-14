@@ -113,6 +113,40 @@ class ParticipantAddFormTest(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn("character_name", form.errors)
 
+    def test_is_scout_true(self):
+        """Test form with is_scout set to True"""
+        form_data = {
+            "character_name": "Scout Character",
+            "role": constants.ROLE_REGULAR,
+            "is_scout": True,
+        }
+
+        form = ParticipantAddForm(data=form_data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.cleaned_data["is_scout"])
+
+    def test_is_scout_false(self):
+        """Test form with is_scout set to False"""
+        form_data = {
+            "character_name": "Regular Character",
+            "role": constants.ROLE_REGULAR,
+            "is_scout": False,
+        }
+
+        form = ParticipantAddForm(data=form_data)
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["is_scout"])
+
+    def test_is_scout_not_required(self):
+        """Test that is_scout field is optional"""
+        form_data = {
+            "character_name": "Test Character",
+            "role": constants.ROLE_REGULAR,
+        }
+
+        form = ParticipantAddForm(data=form_data)
+        self.assertTrue(form.is_valid())
+
 
 class ParticipantEditFormTest(TestCase):
     """Test ParticipantEditForm"""
@@ -145,6 +179,21 @@ class ParticipantEditFormTest(TestCase):
 
         form = ParticipantEditForm(data=form_data)
         self.assertFalse(form.is_valid())
+
+    def test_is_scout_in_edit_form(self):
+        """Test that is_scout field can be edited"""
+        joined_at = timezone.now()
+
+        form_data = {
+            "role": constants.ROLE_REGULAR,
+            "is_scout": True,
+            "joined_at": joined_at.strftime("%Y-%m-%dT%H:%M"),
+            "notes": "Test notes",
+        }
+
+        form = ParticipantEditForm(data=form_data)
+        self.assertTrue(form.is_valid())
+        self.assertTrue(form.cleaned_data["is_scout"])
 
 
 class LootPoolCreateFormTest(TestCase):

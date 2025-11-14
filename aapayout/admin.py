@@ -16,7 +16,7 @@ from aapayout.models import (
 
 
 class FleetParticipantInline(admin.TabularInline):
-    """Inline admin for fleet participants"""
+    """Inline admin for payout participants"""
 
     model = FleetParticipant
     extra = 0
@@ -36,7 +36,7 @@ class LootPoolInline(admin.TabularInline):
 
 @admin.register(Fleet)
 class FleetAdmin(admin.ModelAdmin):
-    """Admin for Fleet model"""
+    """Admin for Payout model"""
 
     list_display = (
         "name",
@@ -54,7 +54,7 @@ class FleetAdmin(admin.ModelAdmin):
     inlines = [FleetParticipantInline, LootPoolInline]
 
     fieldsets = (
-        ("Fleet Information", {"fields": ("name", "fleet_commander", "fleet_time", "battle_report")}),
+        ("Payout Information", {"fields": ("name", "fleet_commander", "fleet_time", "battle_report")}),
         ("Status", {"fields": ("status", "notes")}),
         (
             "Timestamps",
@@ -81,7 +81,7 @@ class FleetAdmin(admin.ModelAdmin):
 
 @admin.register(FleetParticipant)
 class FleetParticipantAdmin(admin.ModelAdmin):
-    """Admin for FleetParticipant model"""
+    """Admin for Payout Participant model"""
 
     list_display = (
         "character",
@@ -323,7 +323,7 @@ class PayoutAdmin(admin.ModelAdmin):
 
 @admin.register(ESIFleetImport)
 class ESIFleetImportAdmin(admin.ModelAdmin):
-    """Admin for ESI Fleet Imports"""
+    """Admin for ESI Payout Imports"""
 
     list_display = [
         "id",

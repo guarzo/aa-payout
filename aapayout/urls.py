@@ -13,6 +13,9 @@ urlpatterns = [
     path("", views.dashboard, name="dashboard"),
     # FC Character Selection
     path("set-fc/<int:character_id>/", views.set_fc_character, name="set_fc_character"),
+    # ESI OAuth Redirect Views
+    path("esi/add-fleet-scope/", views.add_esi_fleet_scope, name="add_esi_fleet_scope"),
+    path("esi/add-wallet-scope/", views.add_esi_wallet_scope, name="add_esi_wallet_scope"),
     # Fleet Management
     path("fleets/", views.dashboard, name="fleet_list"),  # Redirect to dashboard
     path("fleets/create/", views.fleet_create, name="fleet_create"),

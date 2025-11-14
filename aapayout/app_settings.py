@@ -5,8 +5,8 @@ from django.conf import settings
 
 # Janice API Configuration
 AAPAYOUT_JANICE_API_KEY = getattr(settings, "AAPAYOUT_JANICE_API_KEY", "")
-# Market ID (integer): 2=Jita, 1=Amarr, etc. See https://janice.e-351.com/api/rest/v2/markets
-AAPAYOUT_JANICE_MARKET = getattr(settings, "AAPAYOUT_JANICE_MARKET", 2)  # Default: Jita
+# Market name (string): "jita", "amarr", "perimeter", "r1o-gn", etc. See https://janice.e-351.com/api/rest/v2/markets
+AAPAYOUT_JANICE_MARKET = getattr(settings, "AAPAYOUT_JANICE_MARKET", "jita")  # Default: Jita
 AAPAYOUT_JANICE_PRICE_TYPE = getattr(settings, "AAPAYOUT_JANICE_PRICE_TYPE", "buy")
 AAPAYOUT_JANICE_TIMEOUT = getattr(settings, "AAPAYOUT_JANICE_TIMEOUT", 30)
 AAPAYOUT_JANICE_CACHE_HOURS = getattr(settings, "AAPAYOUT_JANICE_CACHE_HOURS", 1)

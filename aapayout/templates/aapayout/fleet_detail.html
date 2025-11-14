@@ -18,7 +18,7 @@
                 <form method="post" action="{% url 'aapayout:fleet_delete' fleet.pk %}" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-danger"
-                            onclick="return confirm('{% translate "Are you sure you want to delete this fleet?" %}')">
+                            onclick="return confirm('{% translate "Are you sure you want to delete this payout?" %}')">
                         <i class="fas fa-trash"></i> {% translate "Delete" %}
                     </button>
                 </form>
@@ -26,19 +26,19 @@
         </div>
     </div>
 
-    <!-- Fleet Info Card -->
+    <!-- Payout Info Card -->
     <div class="row mb-4">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5>{% translate "Fleet Information" %}</h5>
+                    <h5>{% translate "Payout Information" %}</h5>
                 </div>
                 <div class="card-body">
                     <form method="post" action="{% url 'aapayout:fleet_edit' fleet.pk %}" id="fleet-edit-form">
                         {% csrf_token %}
                         <table class="table table-sm">
                             <tr>
-                                <th>{% translate "Fleet Name" %}:</th>
+                                <th>{% translate "Payout Name" %}:</th>
                                 <td>
                                     {% if can_edit %}
                                     <input type="text" name="name" value="{{ fleet.name }}"
@@ -49,7 +49,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>{% translate "Fleet Time" %}:</th>
+                                <th>{% translate "Date" %}:</th>
                                 <td>
                                     {% if can_edit %}
                                     <input type="datetime-local" name="fleet_time"
@@ -192,9 +192,9 @@
                             <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" style="display: inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-sm btn-success"
-                                        onclick="return confirm('{% translate "Finalize this fleet and verify all payments via ESI wallet? This action cannot be undone." %}')"
-                                        title="{% translate 'Finalize fleet and verify payments via ESI wallet journal' %}">
-                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize Fleet" %}
+                                        onclick="return confirm('{% translate "Finalize this payout and verify all payments via ESI wallet? This action cannot be undone." %}')"
+                                        title="{% translate 'Finalize payout and verify payments via ESI wallet journal' %}">
+                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize Payout" %}
                                 </button>
                             </form>
                             {% endif %}
@@ -232,7 +232,7 @@
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
                 <h6><i class="fas fa-exclamation-triangle"></i> {% translate "ESI Scope Required for Payment Verification" %}</h6>
                 <p class="mb-2">
-                    {% translate "To finalize this fleet and automatically verify payments, you need to add an ESI token with wallet journal access." %}
+                    {% translate "To finalize this payout and automatically verify payments, you need to add an ESI token with wallet journal access." %}
                 </p>
                 <p class="small mb-2">
                     <strong>{% translate "Required scope:" %}</strong> <code>esi-wallet.read_character_journal.v1</code>
@@ -240,7 +240,9 @@
                 <p class="small mb-3">
                     {% translate "Without this scope, you must manually verify all payments before finalizing." %}
                 </p>
-                <a href="{% url 'authentication:dashboard' %}" class="btn btn-warning btn-sm">
+                <a href="{% url 'aapayout:add_esi_wallet_scope' %}"
+                   class="btn btn-warning btn-sm"
+                   title="{% translate 'Add ESI token for' %} {{ wallet_scope_status.fc_character_name }}. {% translate 'Required scope:' %} esi-wallet.read_character_journal.v1">
                     <i class="fas fa-key"></i> {% translate "Add ESI Token for" %} {{ wallet_scope_status.fc_character_name }}
                 </a>
                 <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">
@@ -258,9 +260,9 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-success">
-                            <h6><i class="fas fa-check-circle"></i> {% translate "Fleet Finalized" %}</h6>
+                            <h6><i class="fas fa-check-circle"></i> {% translate "Payout Finalized" %}</h6>
                             <p class="mb-2">
-                                {% translate "This fleet was finalized by" %} <strong>{{ fleet.finalized_by.username }}</strong>
+                                {% translate "This payout was finalized by" %} <strong>{{ fleet.finalized_by.username }}</strong>
                                 {% translate "on" %} {{ fleet.finalized_at|date:"Y-m-d H:i" }}.
                             </p>
                             <p class="small mb-0">
@@ -284,8 +286,8 @@
                                 <strong>{% translate "Note:" %}</strong> {% translate "Payouts are automatically recalculated when you add, remove, or change participants." %}
                             </p>
                             <p class="small mb-0 mt-2">
-                                <strong>{% translate "Finalize Fleet:" %}</strong>
-                                {% translate "When you're done making payments in EVE, click 'Finalize Fleet' above to automatically verify all payments via ESI wallet journal." %}
+                                <strong>{% translate "Finalize Payout:" %}</strong>
+                                {% translate "When you're done making payments in EVE, click 'Finalize Payout' above to automatically verify all payments via ESI wallet journal." %}
                             </p>
                         </div>
                     </div>
@@ -296,7 +298,7 @@
                         <div class="alert alert-warning">
                             <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Loot Below Minimum Threshold" %}</h6>
                             <p class="mb-0">
-                                {% translate "The loot value results in individual shares below 100M ISK per participant. As per fleet policy, all ISK from this fleet will go to the corporation. No participant payouts will be distributed." %}
+                                {% translate "The loot value results in individual shares below 100M ISK per participant. As per payout policy, all ISK from this payout will go to the corporation. No participant payouts will be distributed." %}
                             </p>
                         </div>
                     </div>
@@ -306,7 +308,7 @@
                     <div class="col-12">
                         <div class="alert alert-warning">
                             <h6><i class="fas fa-exclamation-triangle"></i> {% translate "No Payouts Generated" %}</h6>
-                            <p class="mb-0">{% translate "Add participants to the fleet below to generate payouts. Payouts will be calculated automatically." %}</p>
+                            <p class="mb-0">{% translate "Add participants below to generate payouts. Payouts will be calculated automatically." %}
                         </div>
                     </div>
                 </div>
@@ -320,7 +322,7 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{% translate "Fleet Participants" %}</h5>
+                        <h5 class="mb-0">{% translate "Participants" %}</h5>
                         {% if can_edit %}
                             <div>
                                 {% if esi_status.enabled %}
@@ -332,9 +334,10 @@
                                         </button>
                                     {% elif not esi_status.has_scope %}
                                         {# FC character selected but no ESI token #}
-                                        <a href="{% url 'authentication:dashboard' %}" class="btn btn-sm btn-warning me-2"
-                                           title="{% translate 'Click to add ESI token with fleet read permissions for' %} {{ esi_status.fc_character_name }}">
-                                            <i class="fas fa-key"></i> {% translate "Grant ESI Access" %}
+                                        <a href="{% url 'aapayout:add_esi_fleet_scope' %}"
+                                           class="btn btn-sm btn-warning me-2"
+                                           title="{% translate 'Add ESI token for' %} {{ esi_status.fc_character_name }}. {% translate 'Required scope:' %} esi-fleets.read_fleet.v1">
+                                            <i class="fas fa-key"></i> {% translate "Add ESI Token" %}
                                         </a>
                                     {% elif esi_status.can_import %}
                                         {# Everything ready - show enabled import button #}
@@ -367,7 +370,7 @@
                             </small>
                         {% elif not esi_status.has_scope %}
                             <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i> {% translate "Click 'Grant ESI Access' to add ESI token with fleet read permissions for" %} {{ esi_status.fc_character_name }}
+                                <i class="fas fa-info-circle"></i> {% translate "Click 'Add ESI Token' above to add your character. When prompted, make sure to grant the" %} <code>esi-fleets.read_fleet.v1</code> {% translate "scope for" %} {{ esi_status.fc_character_name }}
                             </small>
                         {% elif esi_status.can_import %}
                             <small class="text-muted d-block mt-2">
@@ -383,7 +386,7 @@
                             <thead>
                                 <tr>
                                     <th>{% translate "Main Character" %}</th>
-                                    <th>{% translate "Characters in Fleet" %}</th>
+                                    <th>{% translate "Characters" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     {% if payout_map %}
                                         <th class="text-end">{% translate "Payout Amount" %}</th>
@@ -556,6 +559,18 @@
                                 <option value="regular">{% translate "Regular" %}</option>
                                 <option value="scout">{% translate "Scout" %}</option>
                             </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="id_is_scout" name="is_scout">
+                                <label class="form-check-label" for="id_is_scout">
+                                    <i class="fas fa-binoculars text-primary"></i>
+                                    {% translate "Mark as Scout (receives +10% bonus)" %}
+                                </label>
+                                <small class="form-text text-muted d-block">
+                                    {% translate "Scouts receive bonus payout percentage" %}
+                                </small>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">

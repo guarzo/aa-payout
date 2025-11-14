@@ -1,6 +1,6 @@
-# AA Payout - Fleet Loot Management System
+# AA Payout - Loot Management System
 
-An Alliance Auth plugin that allows fleet commanders to value loot from PvP engagements and automatically distribute ISK payouts to participating pilots.
+An Alliance Auth plugin that allows organizers to value loot from PvP engagements and automatically distribute ISK payouts to participating pilots.
 
 ![License](https://img.shields.io/badge/license-GPLv3-green)
 ![Python](https://img.shields.io/badge/python-3.10+-informational)
@@ -10,7 +10,7 @@ An Alliance Auth plugin that allows fleet commanders to value loot from PvP enga
 ## Features
 
 ### Core Features
-- **Fleet Management**: Create and track fleet operations with participant rosters
+- **Payout Management**: Create and track payout operations with participant rosters
 - **Loot Valuation**: Automatically value loot using Janice API (Jita buy/sell prices)
 - **Payout Calculation**: Even split distribution with configurable corporation share
 - **Payment Tracking**: Track payment status and maintain audit trails
@@ -34,7 +34,7 @@ Before installing this plugin, you need:
    - Create a free account at [https://janice.e-351.com](https://janice.e-351.com)
    - Generate an API key from your account settings
    - See [Janice API Documentation](https://janice.e-351.com/api/rest/docs/index.html) for more information
-3. **ESI Token** (Optional but recommended): For advanced features, FCs need ESI tokens with these scopes:
+3. **ESI Token** (Optional but recommended): For advanced features, organizers need ESI tokens with these scopes:
    - `esi-fleets.read_fleet.v1` - Import fleet composition
    - `esi-ui.open_window.v1` - Express Mode payment interface
    - `esi-wallet.read_character_journal.v1` - Payment verification
@@ -64,7 +64,7 @@ INSTALLED_APPS += [
     'aapayout',
 ]
 
-# Add context processor for FC character selection
+# Add context processor for organizer character selection
 TEMPLATES[0]['OPTIONS']['context_processors'].append(
     'aapayout.context_processors.fc_character'
 )
@@ -120,44 +120,44 @@ The following permissions are available:
 | Permission | Description |
 |------------|-------------|
 | `aapayout.basic_access` | Can access the payout system |
-| `aapayout.create_fleet` | Can create fleets |
-| `aapayout.manage_own_fleets` | Can manage own fleets as FC |
-| `aapayout.manage_all_fleets` | Can manage all fleets |
+| `aapayout.create_fleet` | Can create payouts |
+| `aapayout.manage_own_fleets` | Can manage own payouts as organizer |
+| `aapayout.manage_all_fleets` | Can manage all payouts |
 | `aapayout.approve_payouts` | Can approve payouts |
 | `aapayout.view_all_payouts` | Can view all payout history |
 | `aapayout.manage_payout_rules` | Can manage payout rules |
 
 ## Basic Usage
 
-### Selecting FC Character
+### Selecting Organizer Character
 
-Before creating fleets or importing from ESI, select which character to use as the FC:
+Before creating payouts or importing from ESI, select which character to use as the organizer:
 
-1. Look for the **FC character dropdown** in the top navigation bar
+1. Look for the **organizer character dropdown** in the top navigation bar
 2. Click the dropdown (shows "FC: [Character Name]")
-3. Select the character you want to use for FC operations
+3. Select the character you want to use for payout operations
 4. The selected character will be used for:
    - ESI fleet detection and import
    - Payment operations
-   - Fleet commander assignment
+   - Payout organizer assignment
 
 **Note**: The system defaults to your main character. You can change this at any time.
 
-### Creating a Fleet
+### Creating a Payout
 
 1. Navigate to **Fleet Payouts** in the Alliance Auth sidebar
-2. Click **Create Fleet**
-3. Fill in fleet details:
-   - Fleet name (e.g., "Roaming Fleet - 2025-10-28")
+2. Click **Create Payout**
+3. Fill in payout details:
+   - Payout name (e.g., "Roaming Fleet - 2025-10-28")
    - Battle report URL (optional, e.g., link to zkillboard or evetools battle report)
    - Notes (optional)
-4. Fleet time is automatically set to the current time
+4. Payout time is automatically set to the current time
 5. Click **Create**
 
 ### Adding Participants
 
 **Option 1: Manual Entry**
-1. Open your fleet
+1. Open your payout
 2. Click **Add Participant**
 3. Enter character name
 4. Optionally mark as scout or exclude from payout
@@ -165,8 +165,8 @@ Before creating fleets or importing from ESI, select which character to use as t
 
 **Option 2: ESI Fleet Import** (Recommended)
 1. Make sure you're in a fleet in EVE Online
-2. Select the correct FC character from the dropdown (top navigation)
-3. Open your fleet in the payout system
+2. Select the correct organizer character from the dropdown (top navigation)
+3. Open your payout in the system
 4. Click **Import from ESI**
 5. Click **Import Current Fleet**
 6. System will automatically:
@@ -176,7 +176,7 @@ Before creating fleets or importing from ESI, select which character to use as t
 
 ### Adding Loot
 
-1. Open your fleet
+1. Open your payout
 2. Click **Add Loot Pool**
 3. Give the loot pool a name (e.g., "Main Haul")
 4. Paste raw loot text from EVE client:
@@ -230,10 +230,10 @@ Before creating fleets or importing from ESI, select which character to use as t
 
 1. Click **Payout History** in the main menu
 2. Use filters to find specific payouts:
-   - Filter by fleet
+   - Filter by payout session
    - Filter by status (pending/paid)
    - Filter by date range
-   - Search by character or fleet name
+   - Search by character or payout name
 3. View summary statistics (total paid, pending, etc.)
 
 ## How It Works
@@ -266,7 +266,7 @@ Additional configuration options in your `local.py`:
 # Advanced Configuration
 AAPAYOUT_JANICE_TIMEOUT = 30             # API request timeout in seconds
 AAPAYOUT_JANICE_CACHE_HOURS = 1         # Cache appraisals for this many hours
-AAPAYOUT_REQUIRE_APPROVAL = True        # Require FC approval before payouts
+AAPAYOUT_REQUIRE_APPROVAL = True        # Require organizer approval before payouts
 
 # ESI Integration
 AAPAYOUT_ESI_FLEET_IMPORT_ENABLED = True  # Enable ESI fleet import
@@ -290,12 +290,12 @@ AAPAYOUT_AUTO_VERIFY_AFTER_PAYMENT = True     # Auto-verify after Express Mode
 
 **Problem**: "You are not currently in a fleet" error
 - **Solution**: Make sure you're actually in a fleet in EVE Online
-- **Solution**: Verify the correct FC character is selected in the dropdown (top navigation)
+- **Solution**: Verify the correct organizer character is selected in the dropdown (top navigation)
 - **Solution**: Ensure you have added an ESI token with `esi-fleets.read_fleet.v1` scope for that character
 - **Solution**: Try refreshing your ESI token by re-adding your character
 
 **Problem**: "ESI fleet import failed" error
-- **Solution**: Ensure you are the fleet commander or have fleet boss role
+- **Solution**: Ensure you are the fleet commander or have fleet boss role in EVE Online
 - **Solution**: Check your ESI token is valid and not expired
 - **Solution**: Verify network connectivity to ESI
 

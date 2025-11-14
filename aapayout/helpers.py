@@ -406,3 +406,46 @@ def create_loot_items_from_appraisal(loot_pool: LootPool, appraisal_data: Dict) 
     logger.info(f"Created {items_created} loot items for pool {loot_pool.id}")
 
     return items_created
+
+
+def reappraise_loot_pool(loot_pool: LootPool) -> Dict:
+    """
+    Clear existing items and re-appraise a loot pool synchronously
+
+    This helper function encapsulates the common re-appraisal logic used by
+    both the loot_edit and loot_reappraise views.
+
+    Steps:
+    1. Clear all existing loot items
+    2. Reset loot pool status to DRAFT
+    3. Run Janice API appraisal synchronously
+    4. Return result dict with success/error information
+
+    Args:
+        loot_pool: LootPool instance to re-appraise
+
+    Returns:
+        Dict with keys:
+        - success: bool
+        - items_created: int (if successful)
+        - total_value: Decimal (if successful)
+        - payouts_created: int (if successful)
+        - error: str (if failed)
+    """
+    # AA Payout
+    from aapayout.tasks import appraise_loot_pool as appraise_task
+
+    # Clear existing items
+    deleted_count = loot_pool.items.count()
+    loot_pool.items.all().delete()
+    logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
+
+    # Reset status to draft
+    loot_pool.status = constants.LOOT_STATUS_DRAFT
+    loot_pool.save()
+
+    # Run appraisal synchronously
+    logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
+    result = appraise_task(loot_pool.id)
+
+    return result

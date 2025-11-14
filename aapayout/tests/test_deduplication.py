@@ -18,6 +18,7 @@ from allianceauth.eveonline.models import EveCharacter
 from eveuniverse.models import EveEntity
 
 # AA Payout
+from aapayout import app_settings
 from aapayout.helpers import (
     calculate_payouts,
     deduplicate_participants,
@@ -245,9 +246,6 @@ class CalculatePayoutsWithDeduplicationTest(TestCase):
     def setUp(self):
         """Set up test data"""
         # Patch minimum payout settings for tests
-        # AA Payout
-        from aapayout import app_settings
-
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
         self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)
         self.settings_patcher.start()
@@ -389,9 +387,6 @@ class DeduplicationIntegrationTest(TestCase):
     def setUp(self):
         """Set up test data"""
         # Patch minimum payout settings for tests
-        # AA Payout
-        from aapayout import app_settings
-
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
         self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)
         self.settings_patcher.start()
