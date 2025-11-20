@@ -40,9 +40,12 @@ class ParticipantUpdateStatusTest(TestCase):
         self.fc_user.user_permissions.add(basic_access)
         self.other_user.user_permissions.add(basic_access)
 
-        # Create character
+        # Create characters
         self.character, _ = EveEntity.objects.get_or_create(
             id=1001, defaults={"name": "Test Character", "category": EveEntity.CATEGORY_CHARACTER}
+        )
+        self.character2, _ = EveEntity.objects.get_or_create(
+            id=1002, defaults={"name": "Test Character 2", "category": EveEntity.CATEGORY_CHARACTER}
         )
 
         # Create fleet
@@ -52,11 +55,16 @@ class ParticipantUpdateStatusTest(TestCase):
             fleet_time=timezone.now(),
         )
 
-        # Create participant
+        # Create participants (need at least 2 for exclude validation to work)
         self.participant = FleetParticipant.objects.create(
             fleet=self.fleet,
             character=self.character,
             main_character=self.character,
+        )
+        self.participant2 = FleetParticipant.objects.create(
+            fleet=self.fleet,
+            character=self.character2,
+            main_character=self.character2,
         )
 
         # Create request factory

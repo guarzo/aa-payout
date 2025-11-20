@@ -160,6 +160,76 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     return payouts
 
 
+def calculate_payout_summary(loot_pool: LootPool, participant_groups: Dict) -> Dict:
+    """
+    Calculate payout summary for display purposes.
+
+    This extracts the summary calculation logic used in views to maintain DRY principles
+    and ensure consistency with the main calculate_payouts function.
+
+    Args:
+        loot_pool: LootPool instance with approved/paid status
+        participant_groups: Dictionary of participant groups (from deduplicate_participants)
+
+    Returns:
+        Dictionary with payout summary information:
+        {
+            'total_loot': Decimal,
+            'corp_share_pct': Decimal,
+            'corp_share': Decimal,
+            'participant_pool': Decimal,
+            'eligible_count': int,
+            'scout_count': int,
+            'regular_count': int,
+            'base_share': Decimal,
+            'scout_bonus_pct': Decimal,
+            'scout_bonus': Decimal,
+            'total_payouts': Decimal,
+            'remainder': Decimal,
+            'corp_final': Decimal,
+        }
+    """
+    total_value = loot_pool.total_value
+    corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
+    scout_bonus_pct = loot_pool.scout_bonus_percentage or Decimal("10.00")
+
+    # Corp share
+    corp_share = (total_value * corp_share_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    participant_pool = total_value - corp_share
+
+    # Count eligible participants
+    eligible_count = len([g for g in participant_groups.values() if not g["excluded"]])
+    scout_count = len([g for g in participant_groups.values() if g["is_scout"] and not g["excluded"]])
+
+    # Base share
+    base_share = Decimal("0.00")
+    scout_bonus = Decimal("0.00")
+    if eligible_count > 0:
+        base_share = (participant_pool / eligible_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        scout_bonus = (base_share * scout_bonus_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+    # Total distributed
+    total_payouts = sum(p.amount for p in loot_pool.payouts.all())
+    remainder = participant_pool - total_payouts
+    corp_final = corp_share + remainder
+
+    return {
+        "total_loot": total_value,
+        "corp_share_pct": corp_share_pct,
+        "corp_share": corp_share,
+        "participant_pool": participant_pool,
+        "eligible_count": eligible_count,
+        "scout_count": scout_count,
+        "regular_count": eligible_count - scout_count,
+        "base_share": base_share,
+        "scout_bonus_pct": scout_bonus_pct,
+        "scout_bonus": scout_bonus,
+        "total_payouts": total_payouts,
+        "remainder": remainder,
+        "corp_final": corp_final,
+    }
+
+
 @transaction.atomic
 def create_payouts(loot_pool: LootPool) -> int:
     """
@@ -408,9 +478,9 @@ def create_loot_items_from_appraisal(loot_pool: LootPool, appraisal_data: Dict) 
     return items_created
 
 
-def reappraise_loot_pool(loot_pool: LootPool) -> Dict:
+def reappraise_loot_pool(loot_pool: LootPool) -> str:
     """
-    Clear existing items and re-appraise a loot pool synchronously
+    Clear existing items and re-appraise a loot pool asynchronously
 
     This helper function encapsulates the common re-appraisal logic used by
     both the loot_edit and loot_reappraise views.
@@ -418,19 +488,14 @@ def reappraise_loot_pool(loot_pool: LootPool) -> Dict:
     Steps:
     1. Clear all existing loot items
     2. Reset loot pool status to DRAFT
-    3. Run Janice API appraisal synchronously
-    4. Return result dict with success/error information
+    3. Queue Janice API appraisal task asynchronously via Celery
+    4. Return AsyncResult task ID for status tracking
 
     Args:
         loot_pool: LootPool instance to re-appraise
 
     Returns:
-        Dict with keys:
-        - success: bool
-        - items_created: int (if successful)
-        - total_value: Decimal (if successful)
-        - payouts_created: int (if successful)
-        - error: str (if failed)
+        str: Celery AsyncResult task ID for tracking appraisal status
     """
     # AA Payout
     from aapayout.tasks import appraise_loot_pool as appraise_task
@@ -444,8 +509,10 @@ def reappraise_loot_pool(loot_pool: LootPool) -> Dict:
     loot_pool.status = constants.LOOT_STATUS_DRAFT
     loot_pool.save()
 
-    # Run appraisal synchronously
-    logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
-    result = appraise_task(loot_pool.id)
+    # Queue appraisal asynchronously using Celery
+    logger.info(f"Queueing async appraisal task for loot pool {loot_pool.id}")
+    async_result = appraise_task.delay(loot_pool.id)
 
-    return result
+    logger.info(f"Appraisal task queued with ID: {async_result.id}")
+
+    return async_result.id

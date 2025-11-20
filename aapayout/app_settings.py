@@ -1,12 +1,40 @@
 """App Settings"""
 
+# Standard Library
+import logging
+
 # Django
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 # Janice API Configuration
 AAPAYOUT_JANICE_API_KEY = getattr(settings, "AAPAYOUT_JANICE_API_KEY", "")
 # Market name (string): "jita", "amarr", "perimeter", "r1o-gn", etc. See https://janice.e-351.com/api/rest/v2/markets
 AAPAYOUT_JANICE_MARKET = getattr(settings, "AAPAYOUT_JANICE_MARKET", "jita")  # Default: Jita
+
+# Runtime check: Warn if user is using deprecated integer market IDs
+if isinstance(AAPAYOUT_JANICE_MARKET, int):
+    # Map common integer IDs to string names for migration guidance
+    market_id_map = {
+        1: "amarr",
+        2: "jita",
+        3: "dodixie",
+        4: "rens",
+        5: "hek",
+    }
+    suggested_name = market_id_map.get(AAPAYOUT_JANICE_MARKET, "jita")
+    logger.warning(
+        f"DEPRECATION WARNING: AAPAYOUT_JANICE_MARKET is set to integer value {AAPAYOUT_JANICE_MARKET}. "
+        f"Integer market IDs are deprecated and will be removed in a future version. "
+        f"Please update your settings to use the string market name instead: "
+        f'AAPAYOUT_JANICE_MARKET = "{suggested_name}". '
+        f"Valid market names: 'jita', 'amarr', 'perimeter', 'dodixie', 'rens', 'hek', etc. "
+        f"See https://janice.e-351.com/api/rest/v2/markets for all supported markets."
+    )
+    # Auto-convert for backward compatibility (temporary)
+    AAPAYOUT_JANICE_MARKET = suggested_name
+
 AAPAYOUT_JANICE_PRICE_TYPE = getattr(settings, "AAPAYOUT_JANICE_PRICE_TYPE", "buy")
 AAPAYOUT_JANICE_TIMEOUT = getattr(settings, "AAPAYOUT_JANICE_TIMEOUT", 30)
 AAPAYOUT_JANICE_CACHE_HOURS = getattr(settings, "AAPAYOUT_JANICE_CACHE_HOURS", 1)

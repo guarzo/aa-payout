@@ -37,6 +37,7 @@ from aapayout.forms import (
     PayoutMarkPaidForm,
 )
 from aapayout.helpers import (
+    calculate_payout_summary,
     calculate_payouts,
     create_payouts,
     deduplicate_participants,
@@ -241,50 +242,8 @@ def fleet_detail(request, pk):
                 existing_payouts[payout.recipient.id] = payout
                 payout_map[payout.recipient.id] = payout.amount
 
-            # Calculate payout summary for display
-            # Standard Library
-            from decimal import ROUND_DOWN, Decimal
-
-            total_value = loot_pool.total_value
-            corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
-            scout_bonus_pct = loot_pool.scout_bonus_percentage or Decimal("10.00")
-
-            # Corp share
-            corp_share = (total_value * corp_share_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-            participant_pool = total_value - corp_share
-
-            # Count eligible participants
-            eligible_count = len([g for g in participant_groups.values() if not g["excluded"]])
-            scout_count = len([g for g in participant_groups.values() if g["is_scout"] and not g["excluded"]])
-
-            # Base share
-            base_share = Decimal("0.00")
-            scout_bonus = Decimal("0.00")
-            if eligible_count > 0:
-                base_share = (participant_pool / eligible_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-                scout_bonus = (base_share * scout_bonus_pct / Decimal("100")).quantize(
-                    Decimal("0.01"), rounding=ROUND_DOWN
-                )
-
-            # Total distributed
-            total_payouts = sum(p.amount for p in loot_pool.payouts.all())
-            remainder = participant_pool - total_payouts
-            corp_final = corp_share + remainder
-
-            payout_summary = {
-                "total_loot": total_value,
-                "corp_share_pct": corp_share_pct,
-                "corp_share": corp_share,
-                "participant_pool": participant_pool,
-                "eligible_count": eligible_count,
-                "scout_count": scout_count,
-                "base_share": base_share,
-                "scout_bonus_pct": scout_bonus_pct,
-                "scout_bonus": scout_bonus,
-                "total_payouts": total_payouts,
-                "remainder": remainder,
-                "corp_final": corp_final,
-            }
+            # Calculate payout summary for display using helper function
+            payout_summary = calculate_payout_summary(loot_pool, participant_groups)
 
     # Check ESI fleet import status (Phase 2)
     # CRITICAL: Token must belong to the specific FC character, not just any character
@@ -850,17 +809,14 @@ def loot_reappraise(request, pk):
 
     logger.info(f"Manual reappraisal requested for loot pool {loot_pool.id} by user {request.user.username}")
 
-    # Use helper function to clear items and re-appraise synchronously
-    result = reappraise_loot_pool(loot_pool)
+    # Use helper function to clear items and queue re-appraisal asynchronously
+    task_id = reappraise_loot_pool(loot_pool)
 
-    if result.get("success"):
-        messages.success(
-            request,
-            f"Loot reappraised successfully! {result.get('items_created')} items valued at "
-            f"{result.get('total_value'):,.2f} ISK. {result.get('payouts_created')} payouts created.",
-        )
-    else:
-        messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
+    messages.success(
+        request,
+        f"Loot reappraisal has been queued and will complete in the background. "
+        f"Refresh the page in a few moments to see the results. (Task ID: {task_id})",
+    )
 
     return redirect("aapayout:fleet_detail", pk=loot_pool.fleet.pk)
 
@@ -897,21 +853,14 @@ def loot_edit(request, pk):
             if raw_text_changed:
                 logger.info(f"Raw loot text changed for loot pool {loot_pool.id}, re-appraising")
 
-                # Use helper function to clear items and re-appraise synchronously
-                result = reappraise_loot_pool(loot_pool)
+                # Use helper function to clear items and queue re-appraisal asynchronously
+                task_id = reappraise_loot_pool(loot_pool)
 
-                if result.get("success"):
-                    messages.success(
-                        request,
-                        f"Loot updated and reappraised successfully! "
-                        f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
-                        f"{result.get('payouts_created')} payouts created.",
-                    )
-                else:
-                    messages.error(
-                        request,
-                        f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}",
-                    )
+                messages.success(
+                    request,
+                    f"Loot updated! Appraisal has been queued and will complete in the background. "
+                    f"Refresh the page in a few moments to see the results. (Task ID: {task_id})",
+                )
             else:
                 # Just settings changed (pricing method or scout bonus)
                 # Recalculate payouts if loot is valued
@@ -2125,7 +2074,7 @@ def express_mode_mark_paid(request, payout_id):
 
 @login_required
 @token_required(scopes="esi-fleets.read_fleet.v1", new=True)
-def add_esi_fleet_scope(request, token):
+def add_esi_fleet_scope(request, _token):
     """
     View to initiate ESI OAuth flow for fleet read scope.
 
@@ -2133,6 +2082,10 @@ def add_esi_fleet_scope(request, token):
     which forces the OAuth flow even if the user has other tokens.
 
     After successful OAuth, redirect back to dashboard.
+
+    Args:
+        request: HTTP request
+        _token: Token instance (unused, handled by decorator)
     """
     messages.success(
         request,
@@ -2143,7 +2096,7 @@ def add_esi_fleet_scope(request, token):
 
 @login_required
 @token_required(scopes="esi-wallet.read_character_journal.v1", new=True)
-def add_esi_wallet_scope(request, token):
+def add_esi_wallet_scope(request, _token):
     """
     View to initiate ESI OAuth flow for wallet journal scope.
 
@@ -2151,6 +2104,10 @@ def add_esi_wallet_scope(request, token):
     which forces the OAuth flow even if the user has other tokens.
 
     After successful OAuth, redirect back to dashboard.
+
+    Args:
+        request: HTTP request
+        _token: Token instance (unused, handled by decorator)
     """
     messages.success(
         request,
