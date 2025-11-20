@@ -16,6 +16,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
+# Alliance Auth
 # ESI
 from esi.decorators import token_required
 
@@ -106,9 +107,13 @@ def dashboard(request):
         ).select_related("loot_pool", "loot_pool__fleet")[:10]
 
         # Get all payouts (last 20)
-        all_payouts = Payout.objects.filter(
-            recipient__id=main_character.character_id,
-        ).select_related("loot_pool", "loot_pool__fleet").order_by("-created_at")[:20]
+        all_payouts = (
+            Payout.objects.filter(
+                recipient__id=main_character.character_id,
+            )
+            .select_related("loot_pool", "loot_pool__fleet")
+            .order_by("-created_at")[:20]
+        )
 
     # Get recent fleets (if user is FC)
     recent_fleets = Fleet.objects.none()
@@ -228,14 +233,17 @@ def fleet_detail(request, pk):
         loot_pool = loot_pools.first()
 
         # Payouts are automatically created when loot is valued (no approval step)
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_PAID]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_PAID,
+        ]:
             for payout in loot_pool.payouts.all():
                 existing_payouts[payout.recipient.id] = payout
                 payout_map[payout.recipient.id] = payout.amount
 
             # Calculate payout summary for display
-            from decimal import Decimal, ROUND_DOWN
-            from aapayout import app_settings
+            # Standard Library
+            from decimal import ROUND_DOWN, Decimal
 
             total_value = loot_pool.total_value
             corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
@@ -254,7 +262,9 @@ def fleet_detail(request, pk):
             scout_bonus = Decimal("0.00")
             if eligible_count > 0:
                 base_share = (participant_pool / eligible_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-                scout_bonus = (base_share * scout_bonus_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+                scout_bonus = (base_share * scout_bonus_pct / Decimal("100")).quantize(
+                    Decimal("0.01"), rounding=ROUND_DOWN
+                )
 
             # Total distributed
             total_payouts = sum(p.amount for p in loot_pool.payouts.all())
@@ -559,7 +569,10 @@ def fleet_verify_payouts(request, pk):
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if pending_payouts == 0:
-        messages.info(request, f"All {total_payouts} payout{'s' if total_payouts != 1 else ''} already verified!")
+        messages.info(
+            request,
+            f"All {total_payouts} payout{'s' if total_payouts != 1 else ''} already verified!",
+        )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if user has ESI token with wallet journal scope
@@ -654,14 +667,20 @@ def participant_add(request, fleet_id):
         # Auto-recalculate payouts if loot exists
         if fleet.loot_pools.exists():
             loot_pool = fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
                 payouts_created = create_payouts(loot_pool)
                 logger.info(f"Auto-regenerated {payouts_created} payouts after adding participant")
                 if payouts_created > 0:
-                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts updated")
+                    messages.info(
+                        request,
+                        f"Payouts recalculated: {payouts_created} payouts updated",
+                    )
 
         messages.success(request, f"Added {character.name} to the payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
@@ -714,7 +733,10 @@ def participant_remove(request, pk):
     fleet = Fleet.objects.get(pk=fleet_pk)  # Re-fetch after delete
     if fleet.loot_pools.exists():
         loot_pool = fleet.loot_pools.first()
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_VALUED,
+        ]:
             # AA Payout
             from aapayout.helpers import create_payouts
 
@@ -748,7 +770,10 @@ def loot_create(request, fleet_id):
 
     # Check if fleet already has a loot pool (only one allowed per fleet)
     if fleet.loot_pools.exists():
-        messages.error(request, "This payout already has a loot pool. Only one loot pool is allowed per payout.")
+        messages.error(
+            request,
+            "This payout already has a loot pool. Only one loot pool is allowed per payout.",
+        )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Warn if Janice API key is not configured
@@ -787,7 +812,8 @@ def loot_create(request, fleet_id):
                 )
             else:
                 messages.error(
-                    request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}"
+                    request,
+                    f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}",
                 )
                 messages.info(request, "You can retry valuation from the loot pool detail page.")
 
@@ -883,12 +909,16 @@ def loot_edit(request, pk):
                     )
                 else:
                     messages.error(
-                        request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}"
+                        request,
+                        f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}",
                     )
             else:
                 # Just settings changed (pricing method or scout bonus)
                 # Recalculate payouts if loot is valued
-                if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+                if loot_pool.status in [
+                    constants.LOOT_STATUS_APPROVED,
+                    constants.LOOT_STATUS_VALUED,
+                ]:
                     payouts_created = create_payouts(loot_pool)
                     messages.success(
                         request,
@@ -1153,7 +1183,10 @@ def verify_payments(request, pool_id):
         # Get FC's main character ID
         fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
         if not fc_character:
-            messages.error(request, "You need to set a main character in your profile to verify payments.")
+            messages.error(
+                request,
+                "You need to set a main character in your profile to verify payments.",
+            )
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
         # Get token for the specific FC character
@@ -1185,7 +1218,8 @@ def verify_payments(request, pool_id):
         )
 
         messages.success(
-            request, f"Payment verification started for {pending_count} pending payouts. " "This may take a moment..."
+            request,
+            f"Payment verification started for {pending_count} pending payouts. " "This may take a moment...",
         )
 
         # Redirect to results page with task ID
@@ -1477,7 +1511,9 @@ def participant_update_status(request, pk):
             # Validation: Prevent all participants from being excluded
             if excluded_value:
                 # Count how many unique players (by main character) are NOT excluded
+                # Standard Library
                 from collections import defaultdict
+
                 main_char_exclusion = defaultdict(list)
 
                 for p in fleet_participants:
@@ -1497,10 +1533,13 @@ def participant_update_status(request, pk):
                             non_excluded_count += 1
 
                 if non_excluded_count == 0:
-                    return JsonResponse({
-                        "success": False,
-                        "error": "Cannot exclude all participants from payout. At least one participant must remain eligible."
-                    }, status=400)
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "error": "Cannot exclude all participants from payout. At least one participant must remain eligible.",
+                        },
+                        status=400,
+                    )
 
             for p in participants_to_update:
                 p.excluded_from_payout = excluded_value
@@ -1520,7 +1559,10 @@ def participant_update_status(request, pk):
         payouts_recalculated = 0
         if participant.fleet.loot_pools.exists():
             loot_pool = participant.fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
@@ -1530,7 +1572,7 @@ def participant_update_status(request, pk):
         return JsonResponse(
             {
                 "success": True,
-                "is_scout": participants_to_update[0].is_scout if participants_to_update else False,
+                "is_scout": (participants_to_update[0].is_scout if participants_to_update else False),
                 "excluded_from_payout": (
                     participants_to_update[0].excluded_from_payout if participants_to_update else False
                 ),
@@ -1569,7 +1611,10 @@ def update_scout_bonus(request, pool_id):
 
         # Validate percentage (0-100)
         if new_percentage < 0 or new_percentage > 100:
-            return JsonResponse({"success": False, "error": "Percentage must be between 0 and 100"}, status=400)
+            return JsonResponse(
+                {"success": False, "error": "Percentage must be between 0 and 100"},
+                status=400,
+            )
 
         # Update loot pool scout bonus percentage
         loot_pool.scout_bonus_percentage = new_percentage
@@ -1579,7 +1624,10 @@ def update_scout_bonus(request, pool_id):
 
         # Auto-recalculate payouts if loot pool is approved or valued
         payouts_recalculated = 0
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_VALUED,
+        ]:
             payouts_recalculated = create_payouts(loot_pool)
             logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
 
@@ -1643,7 +1691,8 @@ def fleet_import(request, pk):
             fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
             if not fc_character:
                 messages.error(
-                    request, "Please select an FC character from the dropdown in the navigation bar before importing."
+                    request,
+                    "Please select an FC character from the dropdown in the navigation bar before importing.",
                 )
                 return redirect("aapayout:fleet_detail", pk=fleet.pk)
             fc_character_id = fc_character.character_id
@@ -1674,7 +1723,10 @@ def fleet_import(request, pk):
 
         except Exception as e:
             logger.error(f"Failed to get ESI token for character {fc_character_id}: {e}")
-            messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
+            messages.error(
+                request,
+                "Failed to get your ESI token. Please try adding your character again.",
+            )
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         logger.info(f"Using ESI token for character {fc_character_id} ({fc_character_name})")
@@ -1792,14 +1844,20 @@ def fleet_import(request, pk):
         # Auto-recalculate payouts if loot exists
         if fleet.loot_pools.exists():
             loot_pool = fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
                 payouts_created = create_payouts(loot_pool)
                 logger.info(f"Auto-regenerated {payouts_created} payouts after ESI fleet import")
                 if payouts_created > 0:
-                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts created/updated")
+                    messages.info(
+                        request,
+                        f"Payouts recalculated: {payouts_created} payouts created/updated",
+                    )
 
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
@@ -1942,7 +2000,10 @@ def express_mode_open_window(request, payout_id):
 
         if not token:
             return JsonResponse(
-                {"success": False, "error": "You need an ESI token with UI window access. Please add your character."},
+                {
+                    "success": False,
+                    "error": "You need an ESI token with UI window access. Please add your character.",
+                },
                 status=400,
             )
 
@@ -1950,7 +2011,10 @@ def express_mode_open_window(request, payout_id):
         success, error = esi_ui_service.open_character_window(payout.recipient.id, token)
 
         if not success:
-            return JsonResponse({"success": False, "error": f"Failed to open window: {error}"}, status=500)
+            return JsonResponse(
+                {"success": False, "error": f"Failed to open window: {error}"},
+                status=500,
+            )
 
         return JsonResponse(
             {
@@ -2004,7 +2068,7 @@ def mark_payout_verified(request, payout_id):
                 "success": True,
                 "payout_id": payout_id,
                 "verified": True,
-                "verified_at": payout.verified_at.isoformat() if payout.verified_at else None,
+                "verified_at": (payout.verified_at.isoformat() if payout.verified_at else None),
             }
         )
     except Exception as e:
@@ -2060,7 +2124,7 @@ def express_mode_mark_paid(request, payout_id):
 
 
 @login_required
-@token_required(scopes='esi-fleets.read_fleet.v1', new=True)
+@token_required(scopes="esi-fleets.read_fleet.v1", new=True)
 def add_esi_fleet_scope(request, token):
     """
     View to initiate ESI OAuth flow for fleet read scope.
@@ -2072,13 +2136,13 @@ def add_esi_fleet_scope(request, token):
     """
     messages.success(
         request,
-        "ESI fleet read scope added successfully! You can now use ESI fleet import."
+        "ESI fleet read scope added successfully! You can now use ESI fleet import.",
     )
-    return redirect('aapayout:dashboard')
+    return redirect("aapayout:dashboard")
 
 
 @login_required
-@token_required(scopes='esi-wallet.read_character_journal.v1', new=True)
+@token_required(scopes="esi-wallet.read_character_journal.v1", new=True)
 def add_esi_wallet_scope(request, token):
     """
     View to initiate ESI OAuth flow for wallet journal scope.
@@ -2090,6 +2154,6 @@ def add_esi_wallet_scope(request, token):
     """
     messages.success(
         request,
-        "ESI wallet journal scope added successfully! You can now use automatic payment verification."
+        "ESI wallet journal scope added successfully! You can now use automatic payment verification.",
     )
-    return redirect('aapayout:dashboard')
+    return redirect("aapayout:dashboard")
