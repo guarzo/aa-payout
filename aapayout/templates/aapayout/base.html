@@ -4,11 +4,11 @@
 {% load static %}
 
 {% block page_title %}
-    {% translate "Payouts" %}
+    {% translate "Loot Payouts" %}
 {% endblock %}
 
 {% block header_nav_brand %}
-    {% translate "Payouts" %}
+    {% translate "Loot Payouts" %}
 {% endblock header_nav_brand %}
 
 {% block header_nav_collapse_right %}
@@ -17,7 +17,7 @@
         {% if perms.aapayout.create_fleet %}
         <li class="nav-item">
             <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createFleetModal">
-                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">{% translate "Create Payout" %}</span>
+                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">{% translate "Create Loot Payout" %}</span>
             </button>
         </li>
         {% endif %}

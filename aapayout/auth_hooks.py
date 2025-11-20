@@ -18,7 +18,7 @@ class PayoutMenuItem(MenuItemHook):
         # setup menu entry for sidebar
         MenuItemHook.__init__(
             self,
-            _("Fleet Payouts"),
+            _("Loot Payouts"),
             "fas fa-coins fa-fw",
             "aapayout:dashboard",
             navactive=["aapayout:"],

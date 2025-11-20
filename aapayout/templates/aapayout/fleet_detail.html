@@ -210,9 +210,9 @@
                     {% else %}
                         <p class="text-muted">{% translate "No loot added yet" %}</p>
                         {% if can_edit %}
-                        <a href="{% url 'aapayout:loot_create' fleet.pk %}" class="btn btn-primary">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLootModal">
                             <i class="fas fa-plus"></i> {% translate "Add Loot" %}
-                        </a>
+                        </button>
                         {% if participants.count == 0 %}
                         <small class="text-muted d-block mt-2">
                             <i class="fas fa-info-circle"></i> {% translate "Tip: Payouts will be calculated automatically whether you add participants before or after loot" %}
@@ -224,6 +224,99 @@
             </div>
         </div>
     </div>
+
+    <!-- Payout Math Summary -->
+    {% if payout_summary %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-calculator"></i> {% translate "Payout Calculation Summary" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Column 1: Loot & Corp Share -->
+                        <div class="col-md-4">
+                            <h6 class="text-primary"><i class="fas fa-treasure-chest"></i> {% translate "Loot Value" %}</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>{% translate "Total Loot" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.total_loot|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>{% translate "Corp Share" %} ({{ payout_summary.corp_share_pct|floatformat:0 }}%):</td>
+                                    <td class="text-end"><strong>{{ payout_summary.corp_share|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="table-success">
+                                    <td>{% translate "Participant Pool" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.participant_pool|isk_format_full }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Column 2: Participants & Base Share -->
+                        <div class="col-md-4">
+                            <h6 class="text-primary"><i class="fas fa-users"></i> {% translate "Participants" %}</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>{% translate "Eligible Participants" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.eligible_count }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-binoculars"></i> {% translate "Scouts" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.scout_count }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>{% translate "Regular" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.eligible_count|add:"-"|add:payout_summary.scout_count }}</strong></td>
+                                </tr>
+                                <tr class="table-info">
+                                    <td>{% translate "Base Share" %} (each):</td>
+                                    <td class="text-end"><strong>{{ payout_summary.base_share|isk_format_full }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Column 3: Scout Bonus & Final Totals -->
+                        <div class="col-md-4">
+                            <h6 class="text-primary"><i class="fas fa-gift"></i> {% translate "Scout Bonus & Totals" %}</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %} ({{ payout_summary.scout_bonus_pct|floatformat:0 }}%):</td>
+                                    <td class="text-end"><strong>+{{ payout_summary.scout_bonus|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="table-info">
+                                    <td>{% translate "Scout Gets" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.base_share|add:payout_summary.scout_bonus|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>{% translate "Total Distributed" %}:</td>
+                                    <td class="text-end">{{ payout_summary.total_payouts|isk_format_full }}</td>
+                                </tr>
+                                <tr>
+                                    <td>{% translate "Rounding Remainder" %}:</td>
+                                    <td class="text-end">{{ payout_summary.remainder|isk_format_full }}</td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td><strong>{% translate "Corp Final Total" %}:</strong></td>
+                                    <td class="text-end"><strong>{{ payout_summary.corp_final|isk_format_full }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small>
+                            <i class="fas fa-info-circle"></i>
+                            <strong>{% translate "How it works:" %}</strong>
+                            {% translate "Corporation gets" %} {{ payout_summary.corp_share_pct|floatformat:0 }}% {% translate "first. Remaining ISK split evenly among" %} {{ payout_summary.eligible_count }} {% translate "participant(s). Scouts receive" %} {{ payout_summary.scout_bonus_pct|floatformat:0 }}% {% translate "bonus. Rounding remainder goes to corp." %}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- ESI Wallet Scope Warning -->
     {% if wallet_scope_status.needs_verification and not wallet_scope_status.has_wallet_scope %}
@@ -497,18 +590,13 @@
                                             </div>
                                             {% endwith %}
                                         {% else %}
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{% url 'aapayout:participant_edit' first_participant.pk %}" class="btn btn-warning" title="{% translate 'Edit' %}">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form method="post" action="{% url 'aapayout:participant_remove' first_participant.pk %}" style="display: inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-danger btn-sm" title="{% translate 'Remove' %}"
-                                                            onclick="return confirm('{% translate "Remove this participant?" %}')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
+                                            <form method="post" action="{% url 'aapayout:participant_remove' first_participant.pk %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-danger btn-sm" title="{% translate 'Remove' %}"
+                                                        onclick="return confirm('{% translate "Remove this participant?" %}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
                                         {% endif %}
                                     </td>
                                     {% endif %}
@@ -582,5 +670,81 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Add Loot Modal -->
+    {% if can_edit and not loot_pools %}
+    <div class="modal fade" id="addLootModal" tabindex="-1" aria-labelledby="addLootModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addLootModalLabel">{% translate "Add Loot" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'aapayout:loot_create' fleet.pk %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="raw_loot_text" class="form-label">
+                                {% translate "Loot from EVE" %} <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="raw_loot_text" id="raw_loot_text" class="form-control font-monospace" rows="10" required placeholder="{% translate 'Paste loot from EVE inventory (Ctrl+C in inventory, then paste here)' %}"></textarea>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> {% translate "Select items in your EVE inventory, press Ctrl+C, then paste here" %}
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="scout_bonus_percentage" class="form-label">
+                                <i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %}:
+                                <strong><span id="scout-bonus-value-modal">10</span>%</strong>
+                            </label>
+                            <input type="range" class="form-range" id="scout_bonus_percentage" name="scout_bonus_percentage"
+                                   min="0" max="100" step="10" value="10">
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>0%</span>
+                                <span>50%</span>
+                                <span>100%</span>
+                            </div>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> {% translate "Scouts receive additional ISK bonus on top of base share" %}
+                            </small>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-lightbulb"></i> {% translate "How Loot Valuation Works" %}</h6>
+                            <ul class="small mb-0">
+                                <li>{% translate "Items will be sent to Janice API for valuation" %}</li>
+                                <li>{% translate "Prices based on Jita buy orders" %}</li>
+                                <li>{% translate "You can manually adjust prices after" %}</li>
+                                <li>{% translate "Payouts will be calculated automatically" %}</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Cancel" %}</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> {% translate "Create & Value Loot" %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<script>
+// Scout bonus slider for loot modal
+document.addEventListener('DOMContentLoaded', function() {
+    const scoutSliderModal = document.getElementById('scout_bonus_percentage');
+    const scoutValueModal = document.getElementById('scout-bonus-value-modal');
+
+    if (scoutSliderModal && scoutValueModal) {
+        scoutSliderModal.addEventListener('input', function() {
+            scoutValueModal.textContent = this.value;
+        });
+    }
+});
+</script>
+
 {% endblock %}

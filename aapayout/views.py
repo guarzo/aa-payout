@@ -98,11 +98,17 @@ def dashboard(request):
     main_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
 
     pending_payouts = []
+    all_payouts = []
     if main_character:
         pending_payouts = Payout.objects.filter(
             recipient__id=main_character.character_id,
             status=constants.PAYOUT_STATUS_PENDING,
         ).select_related("loot_pool", "loot_pool__fleet")[:10]
+
+        # Get all payouts (last 20)
+        all_payouts = Payout.objects.filter(
+            recipient__id=main_character.character_id,
+        ).select_related("loot_pool", "loot_pool__fleet").order_by("-created_at")[:20]
 
     # Get recent fleets (if user is FC)
     recent_fleets = Fleet.objects.none()
@@ -111,10 +117,13 @@ def dashboard(request):
 
     # Calculate stats
     total_pending = sum(p.amount for p in pending_payouts)
+    total_paid = sum(p.amount for p in all_payouts if p.status == constants.PAYOUT_STATUS_PAID)
 
     context = {
         "pending_payouts": pending_payouts,
+        "all_payouts": all_payouts,
         "total_pending": total_pending,
+        "total_paid": total_paid,
         "recent_fleets": recent_fleets,
     }
 
@@ -213,6 +222,8 @@ def fleet_detail(request, pk):
     # Calculate payout amounts for inline display (payouts auto-created after valuation)
     payout_map = {}  # Maps main_character.id to payout amount
     existing_payouts = {}  # Maps recipient.id to Payout instance (for status tracking)
+    payout_summary = None  # Calculation summary for display
+
     if loot_pools.exists():
         loot_pool = loot_pools.first()
 
@@ -221,6 +232,49 @@ def fleet_detail(request, pk):
             for payout in loot_pool.payouts.all():
                 existing_payouts[payout.recipient.id] = payout
                 payout_map[payout.recipient.id] = payout.amount
+
+            # Calculate payout summary for display
+            from decimal import Decimal, ROUND_DOWN
+            from aapayout import app_settings
+
+            total_value = loot_pool.total_value
+            corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
+            scout_bonus_pct = loot_pool.scout_bonus_percentage or Decimal("10.00")
+
+            # Corp share
+            corp_share = (total_value * corp_share_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+            participant_pool = total_value - corp_share
+
+            # Count eligible participants
+            eligible_count = len([g for g in participant_groups.values() if not g["excluded"]])
+            scout_count = len([g for g in participant_groups.values() if g["is_scout"] and not g["excluded"]])
+
+            # Base share
+            base_share = Decimal("0.00")
+            scout_bonus = Decimal("0.00")
+            if eligible_count > 0:
+                base_share = (participant_pool / eligible_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+                scout_bonus = (base_share * scout_bonus_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+            # Total distributed
+            total_payouts = sum(p.amount for p in loot_pool.payouts.all())
+            remainder = participant_pool - total_payouts
+            corp_final = corp_share + remainder
+
+            payout_summary = {
+                "total_loot": total_value,
+                "corp_share_pct": corp_share_pct,
+                "corp_share": corp_share,
+                "participant_pool": participant_pool,
+                "eligible_count": eligible_count,
+                "scout_count": scout_count,
+                "base_share": base_share,
+                "scout_bonus_pct": scout_bonus_pct,
+                "scout_bonus": scout_bonus,
+                "total_payouts": total_payouts,
+                "remainder": remainder,
+                "corp_final": corp_final,
+            }
 
     # Check ESI fleet import status (Phase 2)
     # CRITICAL: Token must belong to the specific FC character, not just any character
@@ -314,6 +368,7 @@ def fleet_detail(request, pk):
         "payout_map": payout_map,
         "existing_payouts": existing_payouts,
         "wallet_scope_status": wallet_scope_status,
+        "payout_summary": payout_summary,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -1418,6 +1473,35 @@ def participant_update_status(request, pk):
 
         if "excluded_from_payout" in data:
             excluded_value = bool(data["excluded_from_payout"])
+
+            # Validation: Prevent all participants from being excluded
+            if excluded_value:
+                # Count how many unique players (by main character) are NOT excluded
+                from collections import defaultdict
+                main_char_exclusion = defaultdict(list)
+
+                for p in fleet_participants:
+                    p_main = get_main_character_for_participant(p)
+                    main_char_exclusion[p_main.id].append(p)
+
+                # Check if this exclusion would leave no participants eligible for payout
+                non_excluded_count = 0
+                for main_id, participants in main_char_exclusion.items():
+                    # Check if this main character would be excluded
+                    if main_id == main_char.id:
+                        # This is the one being excluded - don't count it
+                        continue
+                    else:
+                        # Check if any of this main's participants are excluded
+                        if not any(p.excluded_from_payout for p in participants):
+                            non_excluded_count += 1
+
+                if non_excluded_count == 0:
+                    return JsonResponse({
+                        "success": False,
+                        "error": "Cannot exclude all participants from payout. At least one participant must remain eligible."
+                    }, status=400)
+
             for p in participants_to_update:
                 p.excluded_from_payout = excluded_value
             update_fields.append("excluded_from_payout")
