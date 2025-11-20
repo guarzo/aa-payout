@@ -10,7 +10,7 @@
                 <h2>{% translate "ESI Fleet Import Results" %}</h2>
                 <div>
                     <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-primary">
-                        <i class="fas fa-arrow-left"></i> {% translate "Back to Fleet" %}
+                        <i class="fas fa-arrow-left"></i> {% translate "Back to Payout" %}
                     </a>
                 </div>
             </div>
@@ -31,13 +31,13 @@
                         <div class="col-md-3">
                             <div class="p-3 bg-light rounded">
                                 <h2 class="mb-0 text-success">{{ esi_import.characters_added }}</h2>
-                                <small class="text-muted">{% translate "Added to Fleet" %}</small>
+                                <small class="text-muted">{% translate "Added to Payout" %}</small>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 bg-light rounded">
                                 <h2 class="mb-0 text-warning">{{ esi_import.characters_skipped }}</h2>
-                                <small class="text-muted">{% translate "Already in Fleet" %}</small>
+                                <small class="text-muted">{% translate "Already in Payout" %}</small>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -58,7 +58,7 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tr>
-                            <th style="width: 200px;">{% translate "Fleet" %}:</th>
+                            <th style="width: 200px;">{% translate "Payout" %}:</th>
                             <td>
                                 <a href="{% url 'aapayout:fleet_detail' fleet.pk %}">{{ fleet.name }}</a>
                             </td>
@@ -123,7 +123,7 @@
                             <a href="{% url 'aapayout:loot_create' fleet.pk %}">
                                 {% translate "Create a loot pool" %}
                             </a>
-                            {% translate "and paste the fleet loot for valuation." %}
+                            {% translate "and paste the loot for valuation." %}
                         </li>
                         <li>
                             <strong>{% translate "Calculate payouts" %}:</strong>

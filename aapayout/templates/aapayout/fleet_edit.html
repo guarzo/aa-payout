@@ -5,7 +5,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>{% translate "Edit Fleet" %}: {{ fleet.name }}</h2>
+            <h2>{% translate "Edit Payout" %}: {{ fleet.name }}</h2>
         </div>
     </div>
 
@@ -13,7 +13,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
-                    <h5>{% translate "Fleet Information" %}</h5>
+                    <h5>{% translate "Payout Information" %}</h5>
                 </div>
                 <div class="card-body">
                     <form method="post">
@@ -84,11 +84,11 @@
         <div class="col-md-4">
             <div class="card border-warning">
                 <div class="card-header bg-warning text-dark">
-                    <h5>{% translate "Editing Fleet" %}</h5>
+                    <h5>{% translate "Editing Payout" %}</h5>
                 </div>
                 <div class="card-body">
                     <p class="small">
-                        {% translate "You are editing the fleet information. Changes will be saved immediately." %}
+                        {% translate "You are editing the payout information. Changes will be saved immediately." %}
                     </p>
                     <hr>
                     <dl class="row small">
@@ -98,7 +98,7 @@
                         <dt class="col-sm-4">{% translate "Created" %}:</dt>
                         <dd class="col-sm-8">{{ fleet.created_at|date:"Y-m-d H:i" }}</dd>
 
-                        <dt class="col-sm-4">{% translate "FC" %}:</dt>
+                        <dt class="col-sm-4">{% translate "Organizer" %}:</dt>
                         <dd class="col-sm-8">{{ fleet.fleet_commander.username }}</dd>
                     </dl>
                 </div>

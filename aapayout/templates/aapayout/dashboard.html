@@ -7,7 +7,7 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h2>{% translate "Fleet Payout Dashboard" %}</h2>
+            <h2>{% translate "Loot Payout Dashboard" %}</h2>
         </div>
     </div>
 
@@ -25,7 +25,7 @@
         <div class="col-md-6">
             <div class="card border-success">
                 <div class="card-body">
-                    <h5 class="card-title">{% translate "Recent Fleets" %}</h5>
+                    <h5 class="card-title">{% translate "Recent Payout Sessions" %}</h5>
                     <p class="card-text display-6">{{ recent_fleets|length }}</p>
                 </div>
             </div>
@@ -37,18 +37,15 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header">
                     <h5 class="mb-0">{% translate "Your Pending Payouts" %}</h5>
-                    <a href="{% url 'aapayout:payout_history' %}" class="btn btn-sm btn-info">
-                        <i class="fas fa-history"></i> {% translate "View All Payouts" %}
-                    </a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Fleet" %}</th>
+                                    <th>{% translate "Payout Session" %}</th>
                                     <th>{% translate "Loot Pool" %}</th>
                                     <th class="text-end">{% translate "Amount" %}</th>
                                     <th>{% translate "Status" %}</th>
@@ -81,39 +78,30 @@
         </div>
     </div>
     {% else %}
-    <!-- Show payout history link even when no pending payouts -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>{% translate "Your Payouts" %}</h5>
-                </div>
-                <div class="card-body text-center">
-                    <p class="text-muted">{% translate "No pending payouts at the moment" %}</p>
-                    <a href="{% url 'aapayout:payout_history' %}" class="btn btn-info">
-                        <i class="fas fa-history"></i> {% translate "View Payout History" %}
-                    </a>
-                </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> {% translate "No pending payouts at the moment" %}
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Recent Fleets -->
+    <!-- Recent Payout Sessions -->
     {% if recent_fleets %}
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5>{% translate "Your Recent Fleets" %}</h5>
+                    <h5>{% translate "Your Recent Payout Sessions" %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Fleet Name" %}</th>
-                                    <th>{% translate "Fleet Time" %}</th>
+                                    <th>{% translate "Payout Name" %}</th>
+                                    <th>{% translate "Date" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     <th>{% translate "Participants" %}</th>
                                     <th class="text-end">{% translate "Total Value" %}</th>
@@ -158,14 +146,75 @@
     </div>
     {% endif %}
 
-    {% if not pending_payouts and not recent_fleets %}
+    <!-- All Payouts Table -->
+    {% if all_payouts %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{% translate "All Payouts" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>{% translate "Date" %}</th>
+                                    <th>{% translate "Payout Session" %}</th>
+                                    <th>{% translate "Loot Pool" %}</th>
+                                    <th class="text-end">{% translate "Amount" %}</th>
+                                    <th>{% translate "Status" %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payout in all_payouts %}
+                                <tr>
+                                    <td><small>{{ payout.created_at|date:"Y-m-d H:i" }}</small></td>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
+                                            {{ payout.loot_pool.fleet.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'aapayout:loot_detail' payout.loot_pool.pk %}">
+                                            {{ payout.loot_pool.name }}
+                                        </a>
+                                    </td>
+                                    <td class="text-end">{{ payout.amount|isk_format_full }}</td>
+                                    <td>
+                                        {% if payout.status == 'pending' %}
+                                            <span class="badge bg-warning">{{ payout.get_status_display }}</span>
+                                        {% elif payout.status == 'paid' %}
+                                            <span class="badge bg-success">{{ payout.get_status_display }}</span>
+                                            {% if payout.verified %}
+                                                <span class="badge bg-info" title="{% translate 'Verified via ESI' %}">
+                                                    <i class="fas fa-shield-alt"></i>
+                                                </span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-muted">{% translate "Showing last 20 payouts" %}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not pending_payouts and not recent_fleets and not all_payouts %}
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">
-                <h4>{% translate "Welcome to Fleet Payouts!" %}</h4>
-                <p>{% translate "You don't have any pending payouts or fleets yet." %}</p>
+                <h4>{% translate "Welcome to Loot Payouts!" %}</h4>
+                <p>{% translate "You don't have any payouts yet." %}</p>
                 {% if perms.aapayout.create_fleet %}
-                <p>{% translate "Click the 'Create Fleet' button in the top navigation bar to create your first fleet." %}</p>
+                <p>{% translate "Click the 'Create Loot Payout' button in the top navigation bar to create your first payout." %}</p>
                 {% endif %}
             </div>
         </div>
@@ -173,20 +222,20 @@
     {% endif %}
 </div>
 
-<!-- Fleet Creation Modal -->
+<!-- Payout Creation Modal -->
 {% if perms.aapayout.create_fleet %}
 <div class="modal fade" id="createFleetModal" tabindex="-1" aria-labelledby="createFleetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createFleetModalLabel">{% translate "Create New Fleet" %}</h5>
+                <h5 class="modal-title" id="createFleetModalLabel">{% translate "Create New Loot Payout" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'aapayout:fleet_create' %}" id="fleet-create-form">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="fleet_name" class="form-label">{% translate "Fleet Name" %} <span class="text-danger">*</span></label>
+                        <label for="fleet_name" class="form-label">{% translate "Payout Name" %} <span class="text-danger">*</span></label>
                         <input type="text" name="name" id="fleet_name" class="form-control" required>
                     </div>
                     <div class="mb-3">
@@ -201,7 +250,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% translate "Cancel" %}</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> {% translate "Create Fleet" %}
+                        <i class="fas fa-save"></i> {% translate "Create Loot Payout" %}
                     </button>
                 </div>
             </form>

@@ -7,12 +7,12 @@
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-md-9">
-            <h2>{% translate "Fleet List" %}</h2>
+            <h2>{% translate "Payout List" %}</h2>
         </div>
         <div class="col-md-3 text-end">
             {% if perms.aapayout.create_fleet %}
                 <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> {% translate "Create Fleet" %}
+                    <i class="fas fa-plus"></i> {% translate "Create Payout" %}
                 </a>
             {% endif %}
         </div>
@@ -27,9 +27,9 @@
                         <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Fleet Name" %}</th>
-                                    <th>{% translate "FC" %}</th>
-                                    <th>{% translate "Fleet Time" %}</th>
+                                    <th>{% translate "Payout Name" %}</th>
+                                    <th>{% translate "Organizer" %}</th>
+                                    <th>{% translate "Date" %}</th>
                                     <th>{% translate "Status" %}</th>
                                     <th>{% translate "Participants" %}</th>
                                     <th class="text-end">{% translate "Total Value" %}</th>
@@ -79,7 +79,7 @@
 
                     <!-- Pagination (if needed) -->
                     {% if page_obj.paginator.num_pages > 1 %}
-                    <nav aria-label="Fleet list pagination">
+                    <nav aria-label="Payout list pagination">
                         <ul class="pagination justify-content-center">
                             {% if page_obj.has_previous %}
                                 <li class="page-item">
@@ -115,12 +115,12 @@
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">
-                <h4>{% translate "No Fleets Found" %}</h4>
-                <p>{% translate "There are no fleets in the system yet." %}</p>
+                <h4>{% translate "No Payouts Found" %}</h4>
+                <p>{% translate "There are no payouts in the system yet." %}</p>
                 {% if perms.aapayout.create_fleet %}
                 <p>
                     <a href="{% url 'aapayout:fleet_create' %}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> {% translate "Create the First Fleet" %}
+                        <i class="fas fa-plus"></i> {% translate "Create the First Payout" %}
                     </a>
                 </p>
                 {% endif %}

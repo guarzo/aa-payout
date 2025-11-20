@@ -21,7 +21,7 @@ class FleetCreateForm(forms.ModelForm):
             "name": forms.TextInput(
                 attrs={
                     "class": "form-control",
-                    "placeholder": "e.g., Wormhole Gank Fleet",
+                    "placeholder": "e.g., Wormhole Gank Payout",
                 }
             ),
             "battle_report": forms.URLInput(
@@ -34,7 +34,7 @@ class FleetCreateForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "rows": 3,
-                    "placeholder": "Additional notes about the fleet (optional)",
+                    "placeholder": "Additional notes about the payout (optional)",
                 }
             ),
         }
@@ -87,9 +87,17 @@ class ParticipantAddForm(forms.ModelForm):
         help_text="Type to search for characters in the database",
     )
 
+    is_scout = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_is_scout"}),
+        label="Mark as Scout",
+        help_text="Scouts receive +10% bonus payout",
+    )
+
     class Meta:
         model = FleetParticipant
-        fields = ["role"]
+        fields = ["role", "is_scout"]
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
         }
@@ -98,9 +106,16 @@ class ParticipantAddForm(forms.ModelForm):
 class ParticipantEditForm(forms.ModelForm):
     """Form for editing a fleet participant"""
 
+    is_scout = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        label="Mark as Scout",
+        help_text="Scouts receive +10% bonus payout",
+    )
+
     class Meta:
         model = FleetParticipant
-        fields = ["role", "joined_at", "left_at", "notes"]
+        fields = ["role", "is_scout", "joined_at", "left_at", "notes"]
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
             "joined_at": forms.DateTimeInput(

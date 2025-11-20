@@ -51,7 +51,7 @@
         </h2>
         {% if can_view_all %}
             <p class="text-muted">
-                {% trans "Showing all payouts across all fleets" %}
+                {% trans "Showing all payouts across all sessions" %}
             </p>
         {% else %}
             <p class="text-muted">
@@ -134,21 +134,21 @@
                                 <i class="fas fa-search"></i> {% trans "Search" %}
                             </label>
                             <input type="text" class="form-control" id="search" name="search"
-                                   placeholder="{% trans 'Character or fleet name...' %}"
+                                   placeholder="{% trans 'Character or payout name...' %}"
                                    value="{{ filter_search|default:'' }}">
                             <small class="form-text text-muted">
-                                {% trans "Search by character or fleet name" %}
+                                {% trans "Search by character or payout name" %}
                             </small>
                         </div>
 
-                        <!-- Fleet Filter (only for admins/FCs) -->
+                        <!-- Payout Filter (only for admins/FCs) -->
                         {% if can_view_all and fleet_list %}
                         <div class="col-md-4">
                             <label for="fleet" class="form-label">
-                                <i class="fas fa-users"></i> {% trans "Fleet" %}
+                                <i class="fas fa-users"></i> {% trans "Payout Session" %}
                             </label>
                             <select class="form-select" id="fleet" name="fleet">
-                                <option value="">{% trans "All Fleets" %}</option>
+                                <option value="">{% trans "All Payouts" %}</option>
                                 {% for fleet in fleet_list %}
                                     <option value="{{ fleet.pk }}"
                                             {% if filter_fleet == fleet.pk|stringformat:"s" %}selected{% endif %}>
@@ -228,7 +228,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>{% trans "Date" %}</th>
-                                    <th>{% trans "Fleet" %}</th>
+                                    <th>{% trans "Payout" %}</th>
                                     <th>{% trans "Recipient" %}</th>
                                     <th class="text-end">{% trans "Amount" %}</th>
                                     <th>{% trans "Status" %}</th>

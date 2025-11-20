@@ -160,6 +160,44 @@ class FleetParticipantModelTest(TestCase):
         self.assertIn("Test Character", str(participant))
         self.assertIn("Test Fleet", str(participant))
 
+    def test_role_scout_syncs_is_scout(self):
+        """Test that setting role to 'scout' automatically sets is_scout to True"""
+        participant = FleetParticipant.objects.create(
+            fleet=self.fleet,
+            character=self.character,
+            role=constants.ROLE_SCOUT,
+            joined_at=timezone.now(),
+        )
+
+        # is_scout should be auto-set to True when role is 'scout'
+        self.assertTrue(participant.is_scout)
+
+    def test_is_scout_can_be_set_independently(self):
+        """Test that is_scout can be set to True even when role is 'regular'"""
+        participant = FleetParticipant.objects.create(
+            fleet=self.fleet,
+            character=self.character,
+            role=constants.ROLE_REGULAR,
+            is_scout=True,
+            joined_at=timezone.now(),
+        )
+
+        # is_scout should remain True even though role is 'regular'
+        self.assertTrue(participant.is_scout)
+        self.assertEqual(participant.role, constants.ROLE_REGULAR)
+
+    def test_is_scout_defaults_to_false(self):
+        """Test that is_scout defaults to False"""
+        participant = FleetParticipant.objects.create(
+            fleet=self.fleet,
+            character=self.character,
+            role=constants.ROLE_REGULAR,
+            joined_at=timezone.now(),
+        )
+
+        # is_scout should default to False
+        self.assertFalse(participant.is_scout)
+
 
 class LootPoolModelTest(TestCase):
     """Test LootPool model"""

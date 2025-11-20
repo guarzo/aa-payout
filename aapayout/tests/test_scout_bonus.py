@@ -6,6 +6,7 @@ Phase 2: Week 5 - Scout Bonus Calculation
 
 # Standard Library
 from decimal import Decimal
+from unittest.mock import patch
 
 # Django
 from django.contrib.auth.models import User
@@ -26,9 +27,6 @@ class ScoutBonusCalculationTests(TestCase):
 
     def setUp(self):
         """Patch settings before each test"""
-        # Standard Library
-        from unittest.mock import patch
-
         # Patch app_settings to use low minimum payout for tests
         self.settings_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000)
         self.per_participant_patcher = patch.object(app_settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 1000)

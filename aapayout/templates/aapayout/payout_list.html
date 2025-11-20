@@ -9,7 +9,7 @@
         <div class="col-md-8">
             <h2>{% translate "Payouts for" %} {{ loot_pool.name }}</h2>
             <p class="text-muted">
-                {% translate "Fleet" %}: <a href="{% url 'aapayout:fleet_detail' loot_pool.fleet.pk %}">{{ loot_pool.fleet.name }}</a>
+                {% translate "Payout" %}: <a href="{% url 'aapayout:fleet_detail' loot_pool.fleet.pk %}">{{ loot_pool.fleet.name }}</a>
                 | {% translate "Loot Pool" %}: <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}">{{ loot_pool.name }}</a>
             </p>
         </div>

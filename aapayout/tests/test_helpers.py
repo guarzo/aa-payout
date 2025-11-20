@@ -95,7 +95,7 @@ class CalculatePayoutsTest(TestCase):
             fleet=cls.fleet,
             character=cls.char3,
             main_character=cls.char3,  # Each character is their own main
-            role=constants.ROLE_SCOUT,
+            role=constants.ROLE_REGULAR,
             joined_at=timezone.now(),
         )
 

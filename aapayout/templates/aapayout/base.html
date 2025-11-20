@@ -4,11 +4,11 @@
 {% load static %}
 
 {% block page_title %}
-    {% translate "Fleet Payouts" %}
+    {% translate "Loot Payouts" %}
 {% endblock %}
 
 {% block header_nav_brand %}
-    {% translate "Fleet Payouts" %}
+    {% translate "Loot Payouts" %}
 {% endblock header_nav_brand %}
 
 {% block header_nav_collapse_right %}
@@ -17,7 +17,7 @@
         {% if perms.aapayout.create_fleet %}
         <li class="nav-item">
             <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createFleetModal">
-                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">{% translate "Create Fleet" %}</span>
+                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">{% translate "Create Loot Payout" %}</span>
             </button>
         </li>
         {% endif %}
@@ -27,7 +27,7 @@
                 <span class="d-none d-md-inline">FC:</span> <span id="current-fc-name">{{ fc_character_name|default:"Select" }}</span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="fcCharacterDropdown">
-                <li><h6 class="dropdown-header">{% translate "Select FC Character" %}</h6></li>
+                <li><h6 class="dropdown-header">{% translate "Select Character" %}</h6></li>
                 {% for char in user.character_ownerships.all %}
                     <li>
                         <a class="dropdown-item {% if fc_character_id == char.character.character_id %}active{% endif %}"

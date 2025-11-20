@@ -150,6 +150,19 @@ class FleetParticipant(models.Model):
     def __str__(self):
         return f"{self.character.name} - {self.fleet.name}"
 
+    def save(self, *args, **kwargs):
+        """
+        Auto-sync is_scout with role for consistency.
+        If role is set to 'scout', ensure is_scout is True.
+
+        Note: This sync is one-way only - is_scout will not be cleared if role
+        changes away from scout. Additionally, is_scout can be set manually
+        independent of role, allowing intentional overrides.
+        """
+        if self.role == constants.ROLE_SCOUT:
+            self.is_scout = True
+        super().save(*args, **kwargs)
+
     @property
     def is_active(self):
         """Check if participant is still active in fleet"""

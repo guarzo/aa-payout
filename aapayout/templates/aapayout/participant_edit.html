@@ -42,6 +42,22 @@
                         </div>
 
                         <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_scout }}
+                                <label class="form-check-label" for="{{ form.is_scout.id_for_label }}">
+                                    <i class="fas fa-binoculars text-primary"></i>
+                                    {{ form.is_scout.label }}
+                                </label>
+                                {% if form.is_scout.help_text %}
+                                    <small class="form-text text-muted d-block">{{ form.is_scout.help_text }}</small>
+                                {% endif %}
+                                {% if form.is_scout.errors %}
+                                    <div class="text-danger">{{ form.is_scout.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="{{ form.joined_at.id_for_label }}" class="form-label">
                                 {{ form.joined_at.label }} <span class="text-danger">*</span>
                             </label>

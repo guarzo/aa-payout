@@ -16,6 +16,10 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
+# Alliance Auth
+# ESI
+from esi.decorators import token_required
+
 # Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
@@ -32,7 +36,13 @@ from aapayout.forms import (
     ParticipantEditForm,
     PayoutMarkPaidForm,
 )
-from aapayout.helpers import calculate_payouts, create_payouts, deduplicate_participants
+from aapayout.helpers import (
+    calculate_payout_summary,
+    calculate_payouts,
+    create_payouts,
+    deduplicate_participants,
+    reappraise_loot_pool,
+)
 from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool, Payout
 from aapayout.tasks import appraise_loot_pool
 
@@ -90,11 +100,21 @@ def dashboard(request):
     main_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
 
     pending_payouts = []
+    all_payouts = []
     if main_character:
         pending_payouts = Payout.objects.filter(
             recipient__id=main_character.character_id,
             status=constants.PAYOUT_STATUS_PENDING,
         ).select_related("loot_pool", "loot_pool__fleet")[:10]
+
+        # Get all payouts (last 20)
+        all_payouts = (
+            Payout.objects.filter(
+                recipient__id=main_character.character_id,
+            )
+            .select_related("loot_pool", "loot_pool__fleet")
+            .order_by("-created_at")[:20]
+        )
 
     # Get recent fleets (if user is FC)
     recent_fleets = Fleet.objects.none()
@@ -103,10 +123,13 @@ def dashboard(request):
 
     # Calculate stats
     total_pending = sum(p.amount for p in pending_payouts)
+    total_paid = sum(p.amount for p in all_payouts if p.status == constants.PAYOUT_STATUS_PAID)
 
     context = {
         "pending_payouts": pending_payouts,
+        "all_payouts": all_payouts,
         "total_pending": total_pending,
+        "total_paid": total_paid,
         "recent_fleets": recent_fleets,
     }
 
@@ -155,7 +178,7 @@ def fleet_create(request):
             fleet.status = constants.FLEET_STATUS_DRAFT
             fleet.save()
 
-            messages.success(request, f"Fleet '{fleet.name}' created successfully!")
+            messages.success(request, f"Payout '{fleet.name}' created successfully!")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
     else:
         form = FleetCreateForm()
@@ -205,14 +228,22 @@ def fleet_detail(request, pk):
     # Calculate payout amounts for inline display (payouts auto-created after valuation)
     payout_map = {}  # Maps main_character.id to payout amount
     existing_payouts = {}  # Maps recipient.id to Payout instance (for status tracking)
+    payout_summary = None  # Calculation summary for display
+
     if loot_pools.exists():
         loot_pool = loot_pools.first()
 
         # Payouts are automatically created when loot is valued (no approval step)
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_PAID]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_PAID,
+        ]:
             for payout in loot_pool.payouts.all():
                 existing_payouts[payout.recipient.id] = payout
                 payout_map[payout.recipient.id] = payout.amount
+
+            # Calculate payout summary for display using helper function
+            payout_summary = calculate_payout_summary(loot_pool, participant_groups)
 
     # Check ESI fleet import status (Phase 2)
     # CRITICAL: Token must belong to the specific FC character, not just any character
@@ -306,6 +337,7 @@ def fleet_detail(request, pk):
         "payout_map": payout_map,
         "existing_payouts": existing_payouts,
         "wallet_scope_status": wallet_scope_status,
+        "payout_summary": payout_summary,
     }
 
     return render(request, "aapayout/fleet_detail.html", context)
@@ -319,14 +351,14 @@ def fleet_edit(request, pk):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
         form = FleetEditForm(request.POST, instance=fleet)
         if form.is_valid():
             form.save()
-            messages.success(request, "Fleet updated successfully!")
+            messages.success(request, "Payout updated successfully!")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
     else:
         form = FleetEditForm(instance=fleet)
@@ -344,13 +376,13 @@ def fleet_delete(request, pk):
 
     # Check permissions
     if not fleet.can_delete(request.user):
-        messages.error(request, "You don't have permission to delete this fleet")
+        messages.error(request, "You don't have permission to delete this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     fleet_name = fleet.name
     fleet.delete()
 
-    messages.success(request, f"Fleet '{fleet_name}' deleted successfully!")
+    messages.success(request, f"Payout '{fleet_name}' deleted successfully!")
     return redirect("aapayout:fleet_list")
 
 
@@ -366,12 +398,12 @@ def fleet_finalize(request, pk):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to finalize this fleet")
+        messages.error(request, "You don't have permission to finalize this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if already finalized
     if fleet.finalized:
-        messages.warning(request, "This fleet has already been finalized")
+        messages.warning(request, "This payout has already been finalized")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if there are any payouts and count verified/pending
@@ -384,7 +416,7 @@ def fleet_finalize(request, pk):
     pending_payouts = all_payouts.filter(verified=False).count()
 
     if total_payouts == 0:
-        messages.error(request, "Cannot finalize fleet: no payouts found")
+        messages.error(request, "Cannot finalize payout: no payouts found")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if user has ESI token with wallet journal scope (pre-check for better UX)
@@ -406,7 +438,7 @@ def fleet_finalize(request, pk):
     if not has_esi_token and pending_payouts > 0:
         character_name = fc_character.character_name if fc_character else "your main character"
         error_message = format_html(
-            "<strong>Cannot finalize fleet:</strong> {} payout{} "
+            "<strong>Cannot finalize payout:</strong> {} payout{} "
             "not yet verified.<br><br>"
             "<strong>You must either:</strong><br>"
             "1. <a href='/authentication/dashboard/' class='alert-link'>"
@@ -432,7 +464,7 @@ def fleet_finalize(request, pk):
         verb = "is" if verified_payouts == 1 else "are"
         messages.success(
             request,
-            f"Fleet '{fleet.name}' has been finalized! "
+            f"Payout '{fleet.name}' has been finalized! "
             f"All {verified_payouts} {payout_word} {verb} already verified.",
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
@@ -447,7 +479,7 @@ def fleet_finalize(request, pk):
 
         messages.success(
             request,
-            f"Fleet '{fleet.name}' has been finalized! "
+            f"Payout '{fleet.name}' has been finalized! "
             f"Wallet verification is running in the background. "
             f"Verified payments will be marked automatically within a few moments. "
             f"({total_payouts} payout{'s' if total_payouts != 1 else ''} to verify)",
@@ -456,7 +488,7 @@ def fleet_finalize(request, pk):
         logger.error(f"Failed to start verification task for fleet {fleet.pk}: {e}")
         messages.warning(
             request,
-            f"Fleet '{fleet.name}' has been finalized, but automatic wallet verification could not be started. "
+            f"Payout '{fleet.name}' has been finalized, but automatic wallet verification could not be started. "
             f"Error: {str(e)}",
         )
 
@@ -480,7 +512,7 @@ def fleet_verify_payouts(request, pk):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to verify payouts for this fleet")
+        messages.error(request, "You don't have permission to verify payouts for this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if there are any payouts
@@ -496,7 +528,10 @@ def fleet_verify_payouts(request, pk):
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if pending_payouts == 0:
-        messages.info(request, f"All {total_payouts} payout{'s' if total_payouts != 1 else ''} already verified!")
+        messages.info(
+            request,
+            f"All {total_payouts} payout{'s' if total_payouts != 1 else ''} already verified!",
+        )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if user has ESI token with wallet journal scope
@@ -556,7 +591,7 @@ def participant_add(request, fleet_id):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
@@ -579,7 +614,7 @@ def participant_add(request, fleet_id):
 
         # Check if already a participant
         if FleetParticipant.objects.filter(fleet=fleet, character=character).exists():
-            messages.warning(request, f"{character.name} is already in this fleet")
+            messages.warning(request, f"{character.name} is already in this payout")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         # Create participant
@@ -591,16 +626,22 @@ def participant_add(request, fleet_id):
         # Auto-recalculate payouts if loot exists
         if fleet.loot_pools.exists():
             loot_pool = fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
                 payouts_created = create_payouts(loot_pool)
                 logger.info(f"Auto-regenerated {payouts_created} payouts after adding participant")
                 if payouts_created > 0:
-                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts updated")
+                    messages.info(
+                        request,
+                        f"Payouts recalculated: {payouts_created} payouts updated",
+                    )
 
-        messages.success(request, f"Added {character.name} to the fleet")
+        messages.success(request, f"Added {character.name} to the payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # GET request - redirect to fleet detail (modal is used instead)
@@ -615,7 +656,7 @@ def participant_edit(request, pk):
 
     # Check permissions
     if not participant.fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:fleet_detail", pk=participant.fleet.pk)
 
     if request.method == "POST":
@@ -640,7 +681,7 @@ def participant_remove(request, pk):
 
     # Check permissions
     if not participant.fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:fleet_detail", pk=participant.fleet.pk)
 
     fleet_pk = participant.fleet.pk
@@ -651,7 +692,10 @@ def participant_remove(request, pk):
     fleet = Fleet.objects.get(pk=fleet_pk)  # Re-fetch after delete
     if fleet.loot_pools.exists():
         loot_pool = fleet.loot_pools.first()
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_VALUED,
+        ]:
             # AA Payout
             from aapayout.helpers import create_payouts
 
@@ -660,7 +704,7 @@ def participant_remove(request, pk):
             if payouts_created > 0:
                 messages.info(request, f"Payouts recalculated: {payouts_created} payouts updated")
 
-    messages.success(request, f"Removed {character_name} from the fleet")
+    messages.success(request, f"Removed {character_name} from the payout")
     return redirect("aapayout:fleet_detail", pk=fleet_pk)
 
 
@@ -680,12 +724,15 @@ def loot_create(request, fleet_id):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if fleet already has a loot pool (only one allowed per fleet)
     if fleet.loot_pools.exists():
-        messages.error(request, "This fleet already has a loot pool. Only one loot pool is allowed per fleet.")
+        messages.error(
+            request,
+            "This payout already has a loot pool. Only one loot pool is allowed per payout.",
+        )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Warn if Janice API key is not configured
@@ -724,7 +771,8 @@ def loot_create(request, fleet_id):
                 )
             else:
                 messages.error(
-                    request, f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}"
+                    request,
+                    f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}",
                 )
                 messages.info(request, "You can retry valuation from the loot pool detail page.")
 
@@ -751,7 +799,7 @@ def loot_reappraise(request, pk):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:loot_detail", pk=loot_pool.pk)
 
     # Check if loot pool has raw text
@@ -761,28 +809,14 @@ def loot_reappraise(request, pk):
 
     logger.info(f"Manual reappraisal requested for loot pool {loot_pool.id} by user {request.user.username}")
 
-    # Clear existing items
-    deleted_count = loot_pool.items.count()
-    loot_pool.items.all().delete()
-    logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
+    # Use helper function to clear items and queue re-appraisal asynchronously
+    task_id = reappraise_loot_pool(loot_pool)
 
-    # Reset status to draft
-    loot_pool.status = constants.LOOT_STATUS_DRAFT
-    loot_pool.save()
-
-    # Run appraisal SYNCHRONOUSLY for manual retries
-    # This ensures immediate feedback and avoids Celery worker issues
-    logger.info(f"Running synchronous reappraisal for loot pool {loot_pool.id}")
-    result = appraise_loot_pool(loot_pool.id)
-
-    if result.get("success"):
-        messages.success(
-            request,
-            f"Loot reappraised successfully! {result.get('items_created')} items valued at "
-            f"{result.get('total_value'):,.2f} ISK. {result.get('payouts_created')} payouts created.",
-        )
-    else:
-        messages.error(request, f"Reappraisal failed: {result.get('error', 'Unknown error')}")
+    messages.success(
+        request,
+        f"Loot reappraisal has been queued and will complete in the background. "
+        f"Refresh the page in a few moments to see the results. (Task ID: {task_id})",
+    )
 
     return redirect("aapayout:fleet_detail", pk=loot_pool.fleet.pk)
 
@@ -801,7 +835,7 @@ def loot_edit(request, pk):
 
     # Check permissions
     if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this fleet")
+        messages.error(request, "You don't have permission to edit this payout")
         return redirect("aapayout:loot_detail", pk=loot_pool.pk)
 
     if request.method == "POST":
@@ -819,34 +853,21 @@ def loot_edit(request, pk):
             if raw_text_changed:
                 logger.info(f"Raw loot text changed for loot pool {loot_pool.id}, re-appraising")
 
-                # Clear existing items
-                deleted_count = loot_pool.items.count()
-                loot_pool.items.all().delete()
-                logger.info(f"Cleared {deleted_count} existing items from loot pool {loot_pool.id}")
+                # Use helper function to clear items and queue re-appraisal asynchronously
+                task_id = reappraise_loot_pool(loot_pool)
 
-                # Reset status to draft
-                loot_pool.status = constants.LOOT_STATUS_DRAFT
-                loot_pool.save()
-
-                # Run appraisal synchronously
-                logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
-                result = appraise_loot_pool(loot_pool.id)
-
-                if result.get("success"):
-                    messages.success(
-                        request,
-                        f"Loot updated and reappraised successfully! "
-                        f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
-                        f"{result.get('payouts_created')} payouts created.",
-                    )
-                else:
-                    messages.error(
-                        request, f"Loot updated but reappraisal failed: {result.get('error', 'Unknown error')}"
-                    )
+                messages.success(
+                    request,
+                    f"Loot updated! Appraisal has been queued and will complete in the background. "
+                    f"Refresh the page in a few moments to see the results. (Task ID: {task_id})",
+                )
             else:
                 # Just settings changed (pricing method or scout bonus)
-                # Recalculate payouts if they exist
-                if loot_pool.payouts.exists():
+                # Recalculate payouts if loot is valued
+                if loot_pool.status in [
+                    constants.LOOT_STATUS_APPROVED,
+                    constants.LOOT_STATUS_VALUED,
+                ]:
                     payouts_created = create_payouts(loot_pool)
                     messages.success(
                         request,
@@ -1093,7 +1114,7 @@ def verify_payments(request, pool_id):
 
     # Check permissions (must be FC or have approve_payouts permission)
     if not (request.user == loot_pool.fleet.fleet_commander or request.user.has_perm("aapayout.approve_payouts")):
-        messages.error(request, "You don't have permission to verify payments for this fleet")
+        messages.error(request, "You don't have permission to verify payments for this payout")
         return redirect("aapayout:payout_list", pool_id=pool_id)
 
     # Check that there are pending payouts
@@ -1111,7 +1132,10 @@ def verify_payments(request, pool_id):
         # Get FC's main character ID
         fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
         if not fc_character:
-            messages.error(request, "You need to set a main character in your profile to verify payments.")
+            messages.error(
+                request,
+                "You need to set a main character in your profile to verify payments.",
+            )
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
         # Get token for the specific FC character
@@ -1143,7 +1167,8 @@ def verify_payments(request, pool_id):
         )
 
         messages.success(
-            request, f"Payment verification started for {pending_count} pending payouts. " "This may take a moment..."
+            request,
+            f"Payment verification started for {pending_count} pending payouts. " "This may take a moment...",
         )
 
         # Redirect to results page with task ID
@@ -1431,6 +1456,40 @@ def participant_update_status(request, pk):
 
         if "excluded_from_payout" in data:
             excluded_value = bool(data["excluded_from_payout"])
+
+            # Validation: Prevent all participants from being excluded
+            if excluded_value:
+                # Count how many unique players (by main character) are NOT excluded
+                # Standard Library
+                from collections import defaultdict
+
+                main_char_exclusion = defaultdict(list)
+
+                for p in fleet_participants:
+                    p_main = get_main_character_for_participant(p)
+                    main_char_exclusion[p_main.id].append(p)
+
+                # Check if this exclusion would leave no participants eligible for payout
+                non_excluded_count = 0
+                for main_id, participants in main_char_exclusion.items():
+                    # Check if this main character would be excluded
+                    if main_id == main_char.id:
+                        # This is the one being excluded - don't count it
+                        continue
+                    else:
+                        # Check if any of this main's participants are excluded
+                        if not any(p.excluded_from_payout for p in participants):
+                            non_excluded_count += 1
+
+                if non_excluded_count == 0:
+                    return JsonResponse(
+                        {
+                            "success": False,
+                            "error": "Cannot exclude all participants from payout. At least one participant must remain eligible.",
+                        },
+                        status=400,
+                    )
+
             for p in participants_to_update:
                 p.excluded_from_payout = excluded_value
             update_fields.append("excluded_from_payout")
@@ -1449,7 +1508,10 @@ def participant_update_status(request, pk):
         payouts_recalculated = 0
         if participant.fleet.loot_pools.exists():
             loot_pool = participant.fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
@@ -1459,7 +1521,7 @@ def participant_update_status(request, pk):
         return JsonResponse(
             {
                 "success": True,
-                "is_scout": participants_to_update[0].is_scout if participants_to_update else False,
+                "is_scout": (participants_to_update[0].is_scout if participants_to_update else False),
                 "excluded_from_payout": (
                     participants_to_update[0].excluded_from_payout if participants_to_update else False
                 ),
@@ -1498,7 +1560,10 @@ def update_scout_bonus(request, pool_id):
 
         # Validate percentage (0-100)
         if new_percentage < 0 or new_percentage > 100:
-            return JsonResponse({"success": False, "error": "Percentage must be between 0 and 100"}, status=400)
+            return JsonResponse(
+                {"success": False, "error": "Percentage must be between 0 and 100"},
+                status=400,
+            )
 
         # Update loot pool scout bonus percentage
         loot_pool.scout_bonus_percentage = new_percentage
@@ -1508,7 +1573,10 @@ def update_scout_bonus(request, pool_id):
 
         # Auto-recalculate payouts if loot pool is approved or valued
         payouts_recalculated = 0
-        if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+        if loot_pool.status in [
+            constants.LOOT_STATUS_APPROVED,
+            constants.LOOT_STATUS_VALUED,
+        ]:
             payouts_recalculated = create_payouts(loot_pool)
             logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
 
@@ -1521,7 +1589,7 @@ def update_scout_bonus(request, pool_id):
         )
 
     except Exception as e:
-        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}: {e}")
+        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 
@@ -1554,12 +1622,12 @@ def fleet_import(request, pk):
 
     # Check edit permission
     if not fleet.can_edit(request.user):
-        messages.error(request, "You do not have permission to edit this fleet.")
+        messages.error(request, "You do not have permission to edit this payout.")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if ESI fleet import is enabled
     if not app_settings.AAPAYOUT_ESI_FLEET_IMPORT_ENABLED:
-        messages.error(request, "ESI fleet import is disabled.")
+        messages.error(request, "ESI payout import is disabled.")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
@@ -1572,7 +1640,8 @@ def fleet_import(request, pk):
             fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
             if not fc_character:
                 messages.error(
-                    request, "Please select an FC character from the dropdown in the navigation bar before importing."
+                    request,
+                    "Please select an FC character from the dropdown in the navigation bar before importing.",
                 )
                 return redirect("aapayout:fleet_detail", pk=fleet.pk)
             fc_character_id = fc_character.character_id
@@ -1603,7 +1672,10 @@ def fleet_import(request, pk):
 
         except Exception as e:
             logger.error(f"Failed to get ESI token for character {fc_character_id}: {e}")
-            messages.error(request, "Failed to get your ESI token. Please try adding your character again.")
+            messages.error(
+                request,
+                "Failed to get your ESI token. Please try adding your character again.",
+            )
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         logger.info(f"Using ESI token for character {fc_character_id} ({fc_character_name})")
@@ -1613,15 +1685,15 @@ def fleet_import(request, pk):
         esi_fleet_id, fleet_role, check_error = esi_fleet_service.get_character_fleet_id(fc_character_id, token)
 
         if check_error or not esi_fleet_id:
-            error_msg = check_error or "You are not currently in a fleet in EVE Online."
-            messages.error(request, f"{error_msg} Please join a fleet and try again.")
+            error_msg = check_error or "You are not currently in a payout in EVE Online."
+            messages.error(request, f"{error_msg} Please join a payout and try again.")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         # Validate fleet role - must be fleet commander to import members
         if fleet_role != "fleet_commander":
             messages.error(
                 request,
-                f"You must be the Fleet Commander (Fleet Boss) to import fleet members. "
+                f"You must be the Fleet Commander (Fleet Boss) to import payout members. "
                 f"Your current role is '{fleet_role}'. "
                 f"Please ask the FC to promote you to Fleet Boss or use their character to import.",
             )
@@ -1633,7 +1705,7 @@ def fleet_import(request, pk):
         member_data, error = esi_fleet_service.import_fleet_composition(esi_fleet_id, token)
 
         if error:
-            messages.error(request, f"Failed to import fleet: {error}")
+            messages.error(request, f"Failed to import payout: {error}")
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
         # Create ESI import record
@@ -1715,20 +1787,26 @@ def fleet_import(request, pk):
             request,
             f"Successfully imported {characters_added} new participants "
             f"({len(unique_players_set)} unique players). "
-            f"Skipped {characters_skipped} already in fleet.",
+            f"Skipped {characters_skipped} already in payout.",
         )
 
         # Auto-recalculate payouts if loot exists
         if fleet.loot_pools.exists():
             loot_pool = fleet.loot_pools.first()
-            if loot_pool.status in [constants.LOOT_STATUS_APPROVED, constants.LOOT_STATUS_VALUED]:
+            if loot_pool.status in [
+                constants.LOOT_STATUS_APPROVED,
+                constants.LOOT_STATUS_VALUED,
+            ]:
                 # AA Payout
                 from aapayout.helpers import create_payouts
 
                 payouts_created = create_payouts(loot_pool)
                 logger.info(f"Auto-regenerated {payouts_created} payouts after ESI fleet import")
                 if payouts_created > 0:
-                    messages.info(request, f"Payouts recalculated: {payouts_created} payouts created/updated")
+                    messages.info(
+                        request,
+                        f"Payouts recalculated: {payouts_created} payouts created/updated",
+                    )
 
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
@@ -1797,7 +1875,7 @@ def express_mode_start(request, pool_id):
 
     # Check permissions
     if not (request.user.has_perm("aapayout.approve_payouts") or loot_pool.fleet.fleet_commander == request.user):
-        messages.error(request, "You do not have permission to make payments for this fleet.")
+        messages.error(request, "You do not have permission to make payments for this payout.")
         return redirect("aapayout:payout_list", pool_id=loot_pool.pk)
 
     # Check if Express Mode is enabled
@@ -1871,7 +1949,10 @@ def express_mode_open_window(request, payout_id):
 
         if not token:
             return JsonResponse(
-                {"success": False, "error": "You need an ESI token with UI window access. Please add your character."},
+                {
+                    "success": False,
+                    "error": "You need an ESI token with UI window access. Please add your character.",
+                },
                 status=400,
             )
 
@@ -1879,7 +1960,10 @@ def express_mode_open_window(request, payout_id):
         success, error = esi_ui_service.open_character_window(payout.recipient.id, token)
 
         if not success:
-            return JsonResponse({"success": False, "error": f"Failed to open window: {error}"}, status=500)
+            return JsonResponse(
+                {"success": False, "error": f"Failed to open window: {error}"},
+                status=500,
+            )
 
         return JsonResponse(
             {
@@ -1933,7 +2017,7 @@ def mark_payout_verified(request, payout_id):
                 "success": True,
                 "payout_id": payout_id,
                 "verified": True,
-                "verified_at": payout.verified_at.isoformat() if payout.verified_at else None,
+                "verified_at": (payout.verified_at.isoformat() if payout.verified_at else None),
             }
         )
     except Exception as e:
@@ -1981,3 +2065,52 @@ def express_mode_mark_paid(request, payout_id):
     except Exception as e:
         logger.error(f"Failed to mark payout {payout_id} as paid: {e}")
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+# ============================================================================
+# ESI OAuth Redirect Views
+# ============================================================================
+
+
+@login_required
+@token_required(scopes="esi-fleets.read_fleet.v1", new=True)
+def add_esi_fleet_scope(request, _token):
+    """
+    View to initiate ESI OAuth flow for fleet read scope.
+
+    This view requires the esi-fleets.read_fleet.v1 scope with new=True,
+    which forces the OAuth flow even if the user has other tokens.
+
+    After successful OAuth, redirect back to dashboard.
+
+    Args:
+        request: HTTP request
+        _token: Token instance (unused, handled by decorator)
+    """
+    messages.success(
+        request,
+        "ESI fleet read scope added successfully! You can now use ESI fleet import.",
+    )
+    return redirect("aapayout:dashboard")
+
+
+@login_required
+@token_required(scopes="esi-wallet.read_character_journal.v1", new=True)
+def add_esi_wallet_scope(request, _token):
+    """
+    View to initiate ESI OAuth flow for wallet journal scope.
+
+    This view requires the esi-wallet.read_character_journal.v1 scope with new=True,
+    which forces the OAuth flow even if the user has other tokens.
+
+    After successful OAuth, redirect back to dashboard.
+
+    Args:
+        request: HTTP request
+        _token: Token instance (unused, handled by decorator)
+    """
+    messages.success(
+        request,
+        "ESI wallet journal scope added successfully! You can now use automatic payment verification.",
+    )
+    return redirect("aapayout:dashboard")
