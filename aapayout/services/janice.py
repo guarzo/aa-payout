@@ -7,6 +7,7 @@ Documentation: https://janice.e-351.com/api/rest/docs/index.html
 
 # Standard Library
 import logging
+import re
 from decimal import Decimal
 from typing import Dict
 
@@ -23,6 +24,48 @@ from aapayout import app_settings
 logger = logging.getLogger(__name__)
 
 JANICE_API_URL = "https://janice.e-351.com/api/rest/v2"
+
+
+def normalize_loot_text(loot_text: str) -> str:
+    """
+    Normalize loot text to ensure proper formatting for Janice API.
+
+    EVE client copy format uses tabs between item name and quantity (e.g., "Orca\t2").
+    Users may manually type space-separated input (e.g., "Orca 2").
+    This function converts space-separated format to tab-separated.
+
+    Args:
+        loot_text: Raw loot text (may be space or tab separated)
+
+    Returns:
+        Normalized loot text with tab separators
+    """
+    lines = []
+    for line in loot_text.strip().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+
+        # If line already has a tab, it's already in EVE format - keep as-is
+        if "\t" in line:
+            lines.append(line)
+            continue
+
+        # Try to extract item name and quantity from space-separated format
+        # Pattern: "Item Name 123" or "Item Name 1,234" or "Item Name 1.234"
+        # The quantity is always at the end and is numeric (possibly with , or . separators)
+        match = re.match(r"^(.+?)\s+(\d[\d,\.]*)\s*$", line)
+        if match:
+            item_name = match.group(1).strip()
+            quantity = match.group(2).replace(",", "").replace(".", "")
+            lines.append(f"{item_name}\t{quantity}")
+            logger.debug(f"[Janice] Normalized '{line}' -> '{item_name}\\t{quantity}'")
+        else:
+            # No quantity found, assume quantity of 1
+            lines.append(f"{line}\t1")
+            logger.debug(f"[Janice] No quantity found in '{line}', defaulting to 1")
+
+    return "\n".join(lines)
 
 
 class JaniceAPIError(Exception):
@@ -54,8 +97,12 @@ class JaniceService:
         if not app_settings.AAPAYOUT_JANICE_API_KEY:
             raise JaniceAPIError("Janice API key not configured. " "Please set AAPAYOUT_JANICE_API_KEY in settings.")
 
-        # Check cache first (cache by hash of loot text)
-        cache_key = f"janice_appraisal_{hash(loot_text.strip())}"
+        # Normalize loot text to ensure proper tab-separated format
+        normalized_text = normalize_loot_text(loot_text)
+        logger.debug(f"[Janice] Normalized loot text:\n{normalized_text}")
+
+        # Check cache first (cache by hash of normalized loot text)
+        cache_key = f"janice_appraisal_{hash(normalized_text)}"
         cached = cache.get(cache_key)
         if cached:
             logger.info("Returning cached Janice appraisal")
@@ -71,18 +118,18 @@ class JaniceService:
 
         try:
             logger.info(
-                f"[Janice] Calling Janice API for {len(loot_text.splitlines())} lines "
+                f"[Janice] Calling Janice API for {len(normalized_text.splitlines())} lines "
                 f"(market: {app_settings.AAPAYOUT_JANICE_MARKET}, "
                 f"price_type: {app_settings.AAPAYOUT_JANICE_PRICE_TYPE})"
             )
             logger.debug(f"[Janice] API URL: {url}")
-            logger.debug(f"[Janice] Loot text preview: {loot_text[:200]}")
+            logger.debug(f"[Janice] Normalized loot text preview: {normalized_text[:200]}")
 
             response = requests.post(
                 url,
                 headers=headers,
                 params=params,
-                data=loot_text.encode("utf-8"),
+                data=normalized_text.encode("utf-8"),
                 timeout=app_settings.AAPAYOUT_JANICE_TIMEOUT,
             )
 
