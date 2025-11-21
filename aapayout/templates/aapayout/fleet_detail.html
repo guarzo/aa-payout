@@ -682,6 +682,7 @@
                 </div>
                 <form method="post" action="{% url 'aapayout:loot_create' fleet.pk %}">
                     {% csrf_token %}
+                    <input type="hidden" name="pricing_method" value="janice_buy">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="raw_loot_text" class="form-label">
