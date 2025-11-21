@@ -24,7 +24,7 @@ class JaniceServiceTest(TestCase):
         self.settings_patcher = patch.multiple(
             app_settings,
             AAPAYOUT_JANICE_API_KEY="test-api-key",
-            AAPAYOUT_JANICE_MARKET="jita",
+            AAPAYOUT_JANICE_MARKET=2,  # Integer market ID (2=Jita)
             AAPAYOUT_JANICE_PRICE_TYPE="buy",
             AAPAYOUT_JANICE_TIMEOUT=30,
             AAPAYOUT_JANICE_CACHE_HOURS=1,
@@ -74,7 +74,7 @@ class JaniceServiceTest(TestCase):
 
         self.assertIn("pricer", args[0])
         self.assertEqual(kwargs["headers"]["X-ApiKey"], "test-api-key")
-        self.assertEqual(kwargs["params"]["market"], "jita")
+        self.assertEqual(kwargs["params"]["market"], 2)  # Integer market ID
         self.assertEqual(kwargs["data"], loot_text.encode("utf-8"))
 
     @patch("aapayout.services.janice.requests.post")

@@ -778,12 +778,18 @@ def loot_create(request, fleet_id):
 
             return redirect("aapayout:fleet_detail", pk=fleet.pk)
         else:
+            # Form validation failed - redirect back with error messages
             logger.warning(f"Loot pool form validation failed for fleet {fleet.id}: {form.errors}")
-    else:
-        form = LootPoolCreateForm()
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == "__all__":
+                        messages.error(request, error)
+                    else:
+                        messages.error(request, f"{field}: {error}")
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    context = {"form": form, "fleet": fleet}
-    return render(request, "aapayout/loot_create.html", context)
+    # GET requests redirect to fleet detail (modal is on that page)
+    return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
 
 @login_required

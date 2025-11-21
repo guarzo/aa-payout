@@ -77,11 +77,8 @@ Add your Janice API key to your `local.py` settings file:
 ```python
 # Janice API Configuration (REQUIRED)
 AAPAYOUT_JANICE_API_KEY = "your-api-key-here"  # Get this from https://janice.e-351.com
-AAPAYOUT_JANICE_MARKET = "jita"         # Market name: "jita", "amarr", "perimeter", "dodixie", "rens", "hek"
+AAPAYOUT_JANICE_MARKET = 2              # Market ID: 2=Jita, 1=Amarr, 3=Dodixie, 4=Rens, 5=Hek
 AAPAYOUT_JANICE_PRICE_TYPE = "buy"      # Price type: buy or sell
-
-# Note: Integer market IDs (e.g., AAPAYOUT_JANICE_MARKET = 2) are deprecated.
-# Please use string market names instead.
 
 # Payout Configuration
 AAPAYOUT_CORP_SHARE_PERCENTAGE = 10     # Percentage of loot value to corporation

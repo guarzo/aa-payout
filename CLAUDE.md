@@ -407,7 +407,6 @@ def task_name(model_id):
 
 ### 2025-11-13: Comprehensive Codebase Audit & Bugfixes
 - ✅ **Discovered:** Phase 2 was already fully implemented (documentation was outdated)
-- ✅ **Fixed:** Janice API market parameter bug (integer→string conversion)
 - ✅ **Created:** `IMPLEMENTATION_STATUS_REPORT.md` - Complete feature audit
 - ✅ **Updated:** CLAUDE.md to reflect Phase 2 completion
 - ✅ **Verified:** All Phase 2 features present and functional:
@@ -421,9 +420,11 @@ def task_name(model_id):
 - ✅ **Confirmed:** 100+ tests covering both phases
 - ✅ **Status:** Production-ready, 90% deployment ready
 
-**Critical Fix Applied:**
-- `app_settings.py` line 9: Changed `AAPAYOUT_JANICE_MARKET` from integer `2` to string `"jita"`
-- This fixes quantity handling in loot valuation
+### 2025-11-21: Janice API Market Parameter Fix
+- ✅ **Fixed:** Janice API requires integer market IDs, NOT string names
+- The Janice API `/pricer` endpoint expects `market=2` (integer), not `market=jita` (string)
+- Reverted `AAPAYOUT_JANICE_MARKET` default back to integer `2` (Jita)
+- Removed incorrect deprecation warning and string conversion logic
 
 **Outstanding Items:**
 1. Run full test suite in proper Django environment

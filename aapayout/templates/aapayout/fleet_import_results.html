@@ -120,10 +120,10 @@
                         </li>
                         <li class="mb-2">
                             <strong>{% translate "Add loot" %}:</strong>
-                            <a href="{% url 'aapayout:loot_create' fleet.pk %}">
-                                {% translate "Create a loot pool" %}
+                            <a href="{% url 'aapayout:fleet_detail' fleet.pk %}">
+                                {% translate "Go to the payout page" %}
                             </a>
-                            {% translate "and paste the loot for valuation." %}
+                            {% translate "and click 'Add Loot' to paste loot for valuation." %}
                         </li>
                         <li>
                             <strong>{% translate "Calculate payouts" %}:</strong>
