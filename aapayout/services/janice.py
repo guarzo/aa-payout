@@ -101,6 +101,23 @@ class JaniceService:
         normalized_text = normalize_loot_text(loot_text)
         logger.debug(f"[Janice] Normalized loot text:\n{normalized_text}")
 
+        # Parse quantities from the normalized input (API doesn't return quantities)
+        input_quantities = {}
+        for line in normalized_text.strip().splitlines():
+            if "\t" in line:
+                parts = line.split("\t", 1)
+                item_name = parts[0].strip()
+                try:
+                    quantity = int(parts[1].strip()) if len(parts) > 1 else 1
+                except ValueError:
+                    quantity = 1
+                # Store by lowercase name for case-insensitive matching
+                input_quantities[item_name.lower()] = {
+                    "original_name": item_name,
+                    "quantity": quantity,
+                }
+        logger.info(f"[Janice] Parsed {len(input_quantities)} items with quantities from input")
+
         # Check cache first (cache by hash of normalized loot text)
         cache_key = f"janice_appraisal_{hash(normalized_text)}"
         cached = cache.get(cache_key)
@@ -122,8 +139,8 @@ class JaniceService:
                 f"(market: {app_settings.AAPAYOUT_JANICE_MARKET}, "
                 f"price_type: {app_settings.AAPAYOUT_JANICE_PRICE_TYPE})"
             )
-            logger.debug(f"[Janice] API URL: {url}")
-            logger.debug(f"[Janice] Normalized loot text preview: {normalized_text[:200]}")
+            logger.info(f"[Janice] API URL: {url}")
+            logger.info(f"[Janice] Sending loot text: {repr(normalized_text[:500])}")
 
             response = requests.post(
                 url,
@@ -165,7 +182,7 @@ class JaniceService:
 
             # Log first few items for debugging (helps identify quantity issues)
             if isinstance(items_data, list) and len(items_data) > 0:
-                logger.debug(f"[Janice] Sample response items (first 3): {items_data[:3]}")
+                logger.info(f"[Janice] Raw API response (first 3 items): {items_data[:3]}")
 
             if not isinstance(items_data, list):
                 logger.error(f"[Janice] Unexpected response format: {type(items_data)}")
@@ -183,17 +200,20 @@ class JaniceService:
                     type_id = item["itemType"]["eid"]
                     name = item["itemType"]["name"]
 
-                    # Get quantity with explicit validation
-                    quantity = item.get("quantity")
-                    if quantity is None:
-                        logger.warning(
-                            f"[Janice] Item '{name}' (type_id={type_id}) has no 'quantity' field in response, "
-                            f"defaulting to 1. This may indicate an API issue."
-                        )
+                    # Look up quantity from our parsed input (API doesn't return quantities)
+                    # Match by lowercase name for case-insensitive matching
+                    input_data = input_quantities.get(name.lower())
+                    if input_data:
+                        quantity = input_data["quantity"]
+                    else:
+                        # Item wasn't in our input - this shouldn't happen normally
+                        logger.warning(f"[Janice] Item '{name}' from API response not found in input, defaulting to 1")
                         quantity = 1
 
                     unit_price = Decimal(str(item["immediatePrices"][price_key]))
                     item_total_value = quantity * unit_price
+
+                    logger.debug(f"[Janice] Item '{name}': qty={quantity}, unit={unit_price}, total={item_total_value}")
 
                     processed_items.append(
                         {

@@ -39,6 +39,7 @@ class JaniceServiceTest(TestCase):
     def test_appraise_success(self, mock_post):
         """Test successful appraisal"""
         # Mock response matching actual Janice API format
+        # Note: Janice API does NOT return quantity - we parse it from input
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
@@ -47,7 +48,7 @@ class JaniceServiceTest(TestCase):
                     "eid": 46676,
                     "name": "Compressed Arkonor",
                 },
-                "quantity": 1000,
+                # No "quantity" field - real API doesn't return this
                 "immediatePrices": {
                     "buyPrice": 5000.50,
                     "sellPrice": 5500.00,
@@ -56,7 +57,7 @@ class JaniceServiceTest(TestCase):
         ]
         mock_post.return_value = mock_response
 
-        # Test appraisal
+        # Test appraisal - quantity 1000 comes from input, not API response
         loot_text = "Compressed Arkonor\t1000"
         result = JaniceService.appraise(loot_text)
 
@@ -80,13 +81,12 @@ class JaniceServiceTest(TestCase):
     @patch("aapayout.services.janice.requests.post")
     def test_appraise_caching(self, mock_post):
         """Test that results are cached"""
-        # Mock response
+        # Mock response - no quantity field (real API doesn't return it)
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {
                 "itemType": {"eid": 46676, "name": "Compressed Arkonor"},
-                "quantity": 1000,
                 "immediatePrices": {"buyPrice": 5000.50, "sellPrice": 5500.00},
             }
         ]
@@ -154,23 +154,20 @@ class JaniceServiceTest(TestCase):
     @patch("aapayout.services.janice.requests.post")
     def test_appraise_multiple_items(self, mock_post):
         """Test appraisal with multiple items"""
-        # Mock response
+        # Mock response - no quantity fields (real API doesn't return them)
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {
                 "itemType": {"eid": 46676, "name": "Compressed Arkonor"},
-                "quantity": 1000,
                 "immediatePrices": {"buyPrice": 5000.50, "sellPrice": 5500.00},
             },
             {
                 "itemType": {"eid": 46678, "name": "Compressed Bistot"},
-                "quantity": 500,
                 "immediatePrices": {"buyPrice": 3500.25, "sellPrice": 3800.00},
             },
             {
                 "itemType": {"eid": 12005, "name": "Capital Armor Plates"},
-                "quantity": 10,
                 "immediatePrices": {"buyPrice": 125000.00, "sellPrice": 130000.00},
             },
         ]
@@ -210,13 +207,12 @@ Capital Armor Plates\t10"""
     @patch("aapayout.services.janice.requests.post")
     def test_appraise_special_characters(self, mock_post):
         """Test appraisal with special characters in item names"""
-        # Mock response
+        # Mock response - no quantity field (real API doesn't return it)
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {
                 "itemType": {"eid": 33470, "name": "'Augmented' Ogre"},
-                "quantity": 5,
                 "immediatePrices": {"buyPrice": 50000000.00, "sellPrice": 52000000.00},
             }
         ]
