@@ -33,7 +33,6 @@ urlpatterns = [
     path("loot/<int:pk>/", views.loot_detail, name="loot_detail"),
     path("loot/<int:pk>/edit/", views.loot_edit, name="loot_edit"),
     path("loot/<int:pk>/reappraise/", views.loot_reappraise, name="loot_reappraise"),
-    path("loot/<int:pool_id>/items/<int:item_id>/edit/", views.loot_edit_item, name="loot_edit_item"),
     path("loot/<int:pk>/approve/", views.loot_approve, name="loot_approve"),
     path("loot/<int:pool_id>/regenerate-payouts/", views.regenerate_payouts, name="regenerate_payouts"),
     # Payout Management

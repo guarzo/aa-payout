@@ -163,9 +163,6 @@
                         {% endif %}
 
                         <div class="d-flex flex-wrap gap-2">
-                            <a href="{% url 'aapayout:loot_detail' loot_pool.pk %}" class="btn btn-sm btn-info">
-                                <i class="fas fa-eye"></i> {% translate "View Details" %}
-                            </a>
                             {% if can_edit %}
                             <a href="{% url 'aapayout:loot_edit' loot_pool.pk %}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-edit"></i> {% translate "Edit Loot" %}
@@ -225,93 +222,29 @@
         </div>
     </div>
 
-    <!-- Payout Math Summary -->
+    <!-- Payout Summary -->
     {% if payout_summary %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card border-primary">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-calculator"></i> {% translate "Payout Calculation Summary" %}</h5>
+                    <h5 class="mb-0"><i class="fas fa-calculator"></i> {% translate "Payout Summary" %}</h5>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <!-- Column 1: Loot & Corp Share -->
-                        <div class="col-md-4">
-                            <h6 class="text-primary"><i class="fas fa-treasure-chest"></i> {% translate "Loot Value" %}</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>{% translate "Total Loot" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.total_loot|isk_format_full }}</strong></td>
-                                </tr>
-                                <tr class="table-warning">
-                                    <td>{% translate "Corp Share" %} ({{ payout_summary.corp_share_pct|floatformat:0 }}%):</td>
-                                    <td class="text-end"><strong>{{ payout_summary.corp_share|isk_format_full }}</strong></td>
-                                </tr>
-                                <tr class="table-success">
-                                    <td>{% translate "Participant Pool" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.participant_pool|isk_format_full }}</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-
-                        <!-- Column 2: Participants & Base Share -->
-                        <div class="col-md-4">
-                            <h6 class="text-primary"><i class="fas fa-users"></i> {% translate "Participants" %}</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td>{% translate "Eligible Participants" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.eligible_count }}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><i class="fas fa-binoculars"></i> {% translate "Scouts" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.scout_count }}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>{% translate "Regular" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.regular_count }}</strong></td>
-                                </tr>
-                                <tr class="table-info">
-                                    <td>{% translate "Base Share" %} (each):</td>
-                                    <td class="text-end"><strong>{{ payout_summary.base_share|isk_format_full }}</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-
-                        <!-- Column 3: Scout Bonus & Final Totals -->
-                        <div class="col-md-4">
-                            <h6 class="text-primary"><i class="fas fa-gift"></i> {% translate "Scout Bonus & Totals" %}</h6>
-                            <table class="table table-sm">
-                                <tr>
-                                    <td><i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %} ({{ payout_summary.scout_bonus_pct|floatformat:0 }}%):</td>
-                                    <td class="text-end"><strong>+{{ payout_summary.scout_bonus|isk_format_full }}</strong></td>
-                                </tr>
-                                <tr class="table-info">
-                                    <td>{% translate "Scout Gets" %}:</td>
-                                    <td class="text-end"><strong>{{ payout_summary.base_share|add:payout_summary.scout_bonus|isk_format_full }}</strong></td>
-                                </tr>
-                                <tr>
-                                    <td>{% translate "Total Distributed" %}:</td>
-                                    <td class="text-end">{{ payout_summary.total_payouts|isk_format_full }}</td>
-                                </tr>
-                                <tr>
-                                    <td>{% translate "Rounding Remainder" %}:</td>
-                                    <td class="text-end">{{ payout_summary.remainder|isk_format_full }}</td>
-                                </tr>
-                                <tr class="table-warning">
-                                    <td><strong>{% translate "Corp Final Total" %}:</strong></td>
-                                    <td class="text-end"><strong>{{ payout_summary.corp_final|isk_format_full }}</strong></td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="alert alert-info mt-3 mb-0">
-                        <small>
-                            <i class="fas fa-info-circle"></i>
-                            <strong>{% translate "How it works:" %}</strong>
-                            {% translate "Corporation gets" %} {{ payout_summary.corp_share_pct|floatformat:0 }}% {% translate "first. Remaining ISK split evenly among" %} {{ payout_summary.eligible_count }} {% translate "participant(s). Scouts receive" %} {{ payout_summary.scout_bonus_pct|floatformat:0 }}% {% translate "bonus. Rounding remainder goes to corp." %}
-                        </small>
-                    </div>
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td>{% translate "Participant Pool" %}:</td>
+                            <td class="text-end"><strong>{{ payout_summary.total_payouts|isk_format_full }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>{% translate "Corp Share" %}:</td>
+                            <td class="text-end"><strong>{{ payout_summary.corp_final|isk_format_full }}</strong></td>
+                        </tr>
+                        <tr class="table-primary">
+                            <td><strong>{% translate "Total" %}:</strong></td>
+                            <td class="text-end"><strong>{{ payout_summary.total_loot|isk_format_full }}</strong></td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>

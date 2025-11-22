@@ -226,7 +226,7 @@ Available permissions (defined in models.py General class):
 - `aapayout/templates/aapayout/dashboard.html` - Main dashboard
 - Fleet templates: `fleet_list.html`, `fleet_create.html`, `fleet_detail.html`, `fleet_edit.html`
 - Participant templates: `participant_add.html`, `participant_edit.html`
-- Loot templates: `loot_create.html`, `loot_detail.html`, `loot_edit_item.html`, `loot_approve.html`
+- Loot templates: `loot_create.html`, `loot_detail.html`, `loot_approve.html`
 - Payout templates: `payout_list.html`, `payout_mark_paid.html`, `payout_history.html`
 
 ### Static Files (Phase 1 - COMPLETE)

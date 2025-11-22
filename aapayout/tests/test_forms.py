@@ -15,7 +15,6 @@ from aapayout import constants
 from aapayout.forms import (
     FleetCreateForm,
     FleetEditForm,
-    LootItemEditForm,
     LootPoolApproveForm,
     LootPoolCreateForm,
     ParticipantAddForm,
@@ -234,41 +233,6 @@ class LootPoolCreateFormTest(TestCase):
         form = LootPoolCreateForm(data=form_data)
         self.assertFalse(form.is_valid())
         self.assertIn("raw_loot_text", form.errors)
-
-
-class LootItemEditFormTest(TestCase):
-    """Test LootItemEditForm"""
-
-    def test_valid_form(self):
-        """Test form with valid data"""
-        form_data = {
-            "unit_price": Decimal("5000.00"),
-            "notes": "Manual override due to market fluctuation",
-        }
-
-        form = LootItemEditForm(data=form_data)
-        self.assertTrue(form.is_valid())
-
-    def test_negative_price(self):
-        """Test validation for negative price"""
-        form_data = {
-            "unit_price": Decimal("-1000.00"),
-            "notes": "Test",
-        }
-
-        form = LootItemEditForm(data=form_data)
-        self.assertFalse(form.is_valid())
-        self.assertIn("unit_price", form.errors)
-
-    def test_zero_price(self):
-        """Test that zero price is allowed"""
-        form_data = {
-            "unit_price": Decimal("0.00"),
-            "notes": "Worthless item",
-        }
-
-        form = LootItemEditForm(data=form_data)
-        self.assertTrue(form.is_valid())
 
 
 class LootPoolApproveFormTest(TestCase):

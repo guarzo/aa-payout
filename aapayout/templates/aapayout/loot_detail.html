@@ -105,11 +105,6 @@
                                     <th class="text-end">{% translate "Quantity" %}</th>
                                     <th class="text-end">{% translate "Unit Price" %}</th>
                                     <th class="text-end">{% translate "Total Value" %}</th>
-                                    <th>{% translate "Price Source" %}</th>
-                                    <th>{% translate "Manual Override" %}</th>
-                                    {% if can_edit %}
-                                        <th>{% translate "Actions" %}</th>
-                                    {% endif %}
                                 </tr>
                             </thead>
                             <tbody>
@@ -119,26 +114,6 @@
                                     <td class="text-end">{{ item.quantity|intcomma }}</td>
                                     <td class="text-end">{{ item.unit_price|isk_format_full }}</td>
                                     <td class="text-end"><strong>{{ item.total_value|isk_format_full }}</strong></td>
-                                    <td>
-                                        <span class="badge bg-secondary">{{ item.get_price_source_display }}</span>
-                                    </td>
-                                    <td>
-                                        {% if item.manual_override %}
-                                            <span class="badge bg-warning text-dark">
-                                                <i class="fas fa-exclamation-triangle"></i> {% translate "Manual" %}
-                                            </span>
-                                        {% else %}
-                                            —
-                                        {% endif %}
-                                    </td>
-                                    {% if can_edit %}
-                                    <td>
-                                        <a href="{% url 'aapayout:loot_edit_item' loot_pool.pk item.pk %}"
-                                           class="btn btn-sm btn-warning" title="{% translate 'Edit Price' %}">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                    </td>
-                                    {% endif %}
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -146,7 +121,6 @@
                                 <tr class="table-active">
                                     <th colspan="3" class="text-end">{% translate "Grand Total" %}:</th>
                                     <th class="text-end">{{ loot_pool.total_value|isk_format_full }}</th>
-                                    <th colspan="{% if can_edit %}3{% else %}2{% endif %}"></th>
                                 </tr>
                             </tfoot>
                         </table>

@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 
 # AA Payout
 from aapayout import constants
-from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool
+from aapayout.models import Fleet, FleetParticipant, LootPool
 
 
 class FleetCreateForm(forms.ModelForm):
@@ -229,39 +229,6 @@ class LootPoolEditForm(forms.ModelForm):
         if not loot_text or not loot_text.strip():
             raise ValidationError("Loot text cannot be empty")
         return loot_text.strip()
-
-
-class LootItemEditForm(forms.ModelForm):
-    """Form for editing individual loot item prices"""
-
-    class Meta:
-        model = LootItem
-        fields = ["unit_price", "notes"]
-        widgets = {
-            "unit_price": forms.NumberInput(
-                attrs={
-                    "class": "form-control",
-                    "min": "0",
-                    "step": "0.01",
-                }
-            ),
-            "notes": forms.Textarea(
-                attrs={
-                    "class": "form-control",
-                    "rows": 2,
-                    "placeholder": "Reason for manual override (optional)",
-                }
-            ),
-        }
-        help_texts = {
-            "unit_price": "Price per unit in ISK",
-        }
-
-    def clean_unit_price(self):
-        price = self.cleaned_data.get("unit_price")
-        if price < 0:
-            raise ValidationError("Price cannot be negative")
-        return price
 
 
 class LootPoolApproveForm(forms.Form):

@@ -28,7 +28,6 @@ from aapayout import constants
 from aapayout.forms import (
     FleetCreateForm,
     FleetEditForm,
-    LootItemEditForm,
     LootPoolApproveForm,
     LootPoolCreateForm,
     LootPoolEditForm,
@@ -43,7 +42,7 @@ from aapayout.helpers import (
     deduplicate_participants,
     reappraise_loot_pool,
 )
-from aapayout.models import Fleet, FleetParticipant, LootItem, LootPool, Payout
+from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
 from aapayout.tasks import appraise_loot_pool
 
 logger = logging.getLogger(__name__)
@@ -923,38 +922,6 @@ def loot_detail(request, pk):
     }
 
     return render(request, "aapayout/loot_detail.html", context)
-
-
-@login_required
-@permission_required("aapayout.basic_access")
-def loot_edit_item(request, pool_id, item_id):
-    """Edit a single loot item's price"""
-    loot_pool = get_object_or_404(LootPool, pk=pool_id)
-    loot_item = get_object_or_404(LootItem, pk=item_id, loot_pool=loot_pool)
-
-    # Check permissions
-    if not loot_pool.fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this loot pool")
-        return redirect("aapayout:loot_detail", pk=loot_pool.pk)
-
-    if request.method == "POST":
-        form = LootItemEditForm(request.POST, instance=loot_item)
-        if form.is_valid():
-            item = form.save(commit=False)
-            item.manual_override = True
-            item.price_source = constants.PRICE_SOURCE_MANUAL
-            item.save()
-
-            # Recalculate loot pool totals
-            loot_pool.calculate_totals()
-
-            messages.success(request, f"Updated price for {loot_item.name}")
-            return redirect("aapayout:loot_detail", pk=loot_pool.pk)
-    else:
-        form = LootItemEditForm(instance=loot_item)
-
-    context = {"form": form, "loot_item": loot_item, "loot_pool": loot_pool}
-    return render(request, "aapayout/loot_edit_item.html", context)
 
 
 @login_required
