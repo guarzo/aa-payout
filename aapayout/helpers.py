@@ -326,6 +326,78 @@ def format_isk(amount: Decimal) -> str:
     return f"{amount:,.2f}"
 
 
+def format_isk_abbreviated(amount: Decimal) -> str:
+    """
+    Format ISK amount in abbreviated format for display.
+
+    Formats large ISK values with K/M/B/T suffixes for better readability.
+
+    Examples:
+        500 -> "500 ISK"
+        1,500 -> "1.5K ISK"
+        1,500,000 -> "1.5M ISK"
+        1,500,000,000 -> "1.5B ISK"
+        1,500,000,000,000 -> "1.5T ISK"
+
+    Args:
+        amount: ISK amount as Decimal, int, or float
+
+    Returns:
+        Formatted string with K/M/B/T suffix and "ISK"
+    """
+    if amount is None:
+        return "0 ISK"
+
+    # Convert to Decimal for consistent handling
+    try:
+        if isinstance(amount, (int, float)):
+            value = Decimal(str(amount))
+        elif isinstance(amount, Decimal):
+            value = amount
+        else:
+            return f"{amount} ISK"
+    except (ValueError, TypeError):
+        return f"{amount} ISK"
+
+    # Handle negative values
+    is_negative = value < 0
+    value = abs(value)
+
+    # Determine the appropriate suffix and divisor
+    if value >= Decimal("1000000000000"):  # 1 trillion+
+        divisor = Decimal("1000000000000")
+        suffix = "T"
+    elif value >= Decimal("1000000000"):  # 1 billion+
+        divisor = Decimal("1000000000")
+        suffix = "B"
+    elif value >= Decimal("1000000"):  # 1 million+
+        divisor = Decimal("1000000")
+        suffix = "M"
+    elif value >= Decimal("1000"):  # 1 thousand+
+        divisor = Decimal("1000")
+        suffix = "K"
+    else:
+        # Less than 1,000 - show as integer
+        result = str(int(value))
+        if is_negative:
+            result = f"-{result}"
+        return f"{result} ISK"
+
+    # Calculate the formatted value
+    formatted_amount = value / divisor
+
+    # Format with 1 decimal place, but drop .0 if it's a round number
+    if formatted_amount == int(formatted_amount):
+        result = f"{int(formatted_amount)}{suffix}"
+    else:
+        result = f"{formatted_amount:.1f}{suffix}"
+
+    if is_negative:
+        result = f"-{result}"
+
+    return f"{result} ISK"
+
+
 def search_characters(query: str, limit: int = 20):
     """
     Search for EVE characters by name

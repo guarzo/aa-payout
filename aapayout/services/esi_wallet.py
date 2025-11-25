@@ -33,7 +33,7 @@ class ESIWalletService:
 
         Args:
             character_id: EVE character ID
-            token: ESI token with esi-wallet.read_character_journal.v1 scope
+            token: ESI token with esi-wallet.read_character_wallet.v1 scope
             max_pages: Maximum number of pages to fetch (250 entries per page)
 
         Returns:
@@ -52,7 +52,7 @@ class ESIWalletService:
             'tax': 0.0
         }
         """
-        required_scope = "esi-wallet.read_character_journal.v1"
+        required_scope = "esi-wallet.read_character_wallet.v1"
 
         # Validate token has required scope
         if not token.has_scope(required_scope):

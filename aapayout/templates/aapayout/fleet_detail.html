@@ -5,12 +5,18 @@
 
 {% block details %}
 <div class="container-fluid">
-    <div class="row mb-4">
+    <!-- Header Section -->
+    <div class="row mb-3">
         <div class="col-md-8">
             <h2>{{ fleet.name }}</h2>
-            <p class="text-muted">
+            <p class="text-muted mb-0">
                 <i class="fas fa-user"></i> {{ fleet.fleet_commander.username }}
                 | <i class="fas fa-calendar"></i> {{ fleet.fleet_time|date:"Y-m-d H:i" }}
+                {% if fleet.battle_report %}
+                | <a href="{{ fleet.battle_report }}" target="_blank" class="text-muted">
+                    <i class="fas fa-external-link-alt"></i> {% translate "Battle Report" %}
+                </a>
+                {% endif %}
             </p>
         </div>
         <div class="col-md-4 text-end">
@@ -26,99 +32,147 @@
         </div>
     </div>
 
-    <!-- Payout Info Card -->
+    <!-- Workflow Progress Indicator -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-12">
+            <div class="workflow-progress">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="workflow-step {% if True %}completed{% endif %}">
+                        <div class="step-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <span class="step-label">{% translate "Created" %}</span>
+                    </div>
+                    <div class="step-connector {% if loot_pools %}completed{% endif %}"></div>
+                    <div class="workflow-step {% if loot_pools %}completed{% elif participants %}active{% else %}pending{% endif %}">
+                        <div class="step-icon">
+                            {% if loot_pools %}
+                            <i class="fas fa-check-circle"></i>
+                            {% else %}
+                            <i class="fas fa-circle"></i>
+                            {% endif %}
+                        </div>
+                        <span class="step-label">{% translate "Loot Valued" %}</span>
+                    </div>
+                    <div class="step-connector {% if payout_map %}completed{% endif %}"></div>
+                    <div class="workflow-step {% if payout_map %}completed{% elif loot_pools %}active{% else %}pending{% endif %}">
+                        <div class="step-icon">
+                            {% if payout_map %}
+                            <i class="fas fa-check-circle"></i>
+                            {% else %}
+                            <i class="fas fa-circle"></i>
+                            {% endif %}
+                        </div>
+                        <span class="step-label">{% translate "Payouts Ready" %}</span>
+                    </div>
+                    <div class="step-connector {% if fleet.finalized %}completed{% endif %}"></div>
+                    <div class="workflow-step {% if fleet.finalized %}completed{% else %}pending{% endif %}">
+                        <div class="step-icon">
+                            {% if fleet.finalized %}
+                            <i class="fas fa-check-circle"></i>
+                            {% else %}
+                            <i class="fas fa-circle"></i>
+                            {% endif %}
+                        </div>
+                        <span class="step-label">{% translate "Finalized" %}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content: Fleet Details + Payout Calculator -->
+    <div class="row mb-4">
+        <!-- Fleet Details (Left Column - Collapsible) -->
+        <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
-                    <h5>{% translate "Payout Information" %}</h5>
+                    <h5 class="mb-0">{% translate "Fleet Details" %}</h5>
                 </div>
                 <div class="card-body">
                     <form method="post" action="{% url 'aapayout:fleet_edit' fleet.pk %}" id="fleet-edit-form">
                         {% csrf_token %}
-                        <table class="table table-sm">
-                            <tr>
-                                <th>{% translate "Payout Name" %}:</th>
-                                <td>
-                                    {% if can_edit %}
-                                    <input type="text" name="name" value="{{ fleet.name }}"
-                                           class="form-control form-control-sm">
-                                    {% else %}
-                                    {{ fleet.name }}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Date" %}:</th>
-                                <td>
-                                    {% if can_edit %}
-                                    <input type="datetime-local" name="fleet_time"
-                                           value="{{ fleet.fleet_time|date:'Y-m-d\TH:i' }}"
-                                           class="form-control form-control-sm">
-                                    {% else %}
-                                    {{ fleet.fleet_time|date:"Y-m-d H:i" }}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Battle Report" %}:</th>
-                                <td>
-                                    {% if can_edit %}
-                                    <input type="url" name="battle_report"
-                                           value="{{ fleet.battle_report|default:'' }}"
-                                           class="form-control form-control-sm"
-                                           placeholder="https://">
-                                    {% else %}
-                                    {% if fleet.battle_report %}
-                                        <a href="{{ fleet.battle_report }}" target="_blank">{{ fleet.battle_report }}</a>
-                                    {% else %}
-                                        <span class="text-muted">—</span>
-                                    {% endif %}
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Status" %}:</th>
-                                <td>
-                                    {% if fleet.status == 'draft' %}
-                                        <span class="badge bg-secondary">{{ fleet.get_status_display }}</span>
-                                    {% elif fleet.status == 'active' %}
-                                        <span class="badge bg-primary">{{ fleet.get_status_display }}</span>
-                                    {% elif fleet.status == 'completed' %}
-                                        <span class="badge bg-success">{{ fleet.get_status_display }}</span>
-                                    {% elif fleet.status == 'paid' %}
-                                        <span class="badge bg-info">{{ fleet.get_status_display }}</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Participants" %}:</th>
-                                <td>{{ participants.count }}</td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Total Loot Value" %}:</th>
-                                <td><strong>{{ fleet.get_total_loot_value|isk_format_full }}</strong></td>
-                            </tr>
-                            <tr>
-                                <th>{% translate "Created" %}:</th>
-                                <td>{{ fleet.created_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        </table>
-                        <div class="mt-3">
-                            <strong>{% translate "Notes" %}:</strong>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">{% translate "Payout Name" %}</label>
                             {% if can_edit %}
-                            <textarea name="notes" class="form-control mt-2" rows="3">{{ fleet.notes|default:'' }}</textarea>
+                            <input type="text" name="name" value="{{ fleet.name }}"
+                                   class="form-control form-control-sm">
                             {% else %}
-                            {% if fleet.notes %}
-                                <p>{{ fleet.notes|linebreaks }}</p>
+                            <p class="mb-0">{{ fleet.name }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">{% translate "Date" %}</label>
+                            {% if can_edit %}
+                            <input type="datetime-local" name="fleet_time"
+                                   value="{{ fleet.fleet_time|date:'Y-m-d\TH:i' }}"
+                                   class="form-control form-control-sm">
                             {% else %}
-                                <p class="text-muted">—</p>
+                            <p class="mb-0">{{ fleet.fleet_time|date:"Y-m-d H:i" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">{% translate "Battle Report" %}</label>
+                            {% if can_edit %}
+                            <input type="url" name="battle_report"
+                                   value="{{ fleet.battle_report|default:'' }}"
+                                   class="form-control form-control-sm"
+                                   placeholder="https://zkillboard.com/...">
+                            {% else %}
+                            {% if fleet.battle_report %}
+                                <a href="{{ fleet.battle_report }}" target="_blank">{{ fleet.battle_report|truncatechars:40 }}</a>
+                            {% else %}
+                                <span class="text-muted">—</span>
                             {% endif %}
                             {% endif %}
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">{% translate "Status" %}</label>
+                            <div>
+                                {% if fleet.status == 'draft' %}
+                                    <span class="badge bg-secondary">{{ fleet.get_status_display }}</span>
+                                {% elif fleet.status == 'active' %}
+                                    <span class="badge bg-primary">{{ fleet.get_status_display }}</span>
+                                {% elif fleet.status == 'completed' %}
+                                    <span class="badge bg-success">{{ fleet.get_status_display }}</span>
+                                {% elif fleet.status == 'paid' %}
+                                    <span class="badge bg-info">{{ fleet.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Collapsible Notes Section -->
+                        <div class="accordion" id="notesAccordion">
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header" id="notesHeading">
+                                    <button class="accordion-button collapsed p-2 bg-transparent" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#notesCollapse"
+                                            aria-expanded="false" aria-controls="notesCollapse">
+                                        <i class="fas fa-sticky-note me-2"></i>
+                                        {% translate "Notes" %}
+                                        {% if fleet.notes %}<span class="badge bg-secondary ms-2">{% translate "Has notes" %}</span>{% endif %}
+                                    </button>
+                                </h2>
+                                <div id="notesCollapse" class="accordion-collapse collapse"
+                                     aria-labelledby="notesHeading" data-bs-parent="#notesAccordion">
+                                    <div class="accordion-body p-2">
+                                        {% if can_edit %}
+                                        <textarea name="notes" class="form-control form-control-sm" rows="3">{{ fleet.notes|default:'' }}</textarea>
+                                        {% else %}
+                                        {% if fleet.notes %}
+                                            <p class="mb-0">{{ fleet.notes|linebreaks }}</p>
+                                        {% else %}
+                                            <p class="text-muted mb-0">{% translate "No notes" %}</p>
+                                        {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {% if can_edit %}
                         <div class="mt-3">
-                            <button type="submit" class="btn btn-success btn-sm">
+                            <button type="submit" class="btn btn-success btn-sm w-100">
                                 <i class="fas fa-save"></i> {% translate "Save Changes" %}
                             </button>
                         </div>
@@ -128,23 +182,89 @@
             </div>
         </div>
 
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>{% translate "Loot" %}</h5>
+        <!-- Payout Calculator (Right Column - Primary Focus) -->
+        <div class="col-md-8">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-calculator"></i> {% translate "Payout Calculator" %}</h5>
+                        {% if fleet.finalized %}
+                        <span class="badge bg-success" title="{% translate 'Finalized at' %} {{ fleet.finalized_at|date:'Y-m-d H:i' }} {% translate 'by' %} {{ fleet.finalized_by.username }}">
+                            <i class="fas fa-check-circle"></i> {% translate "Finalized" %}
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
                 <div class="card-body">
                     {% if loot_pools %}
                         {% with loot_pool=loot_pools.first %}
-                        <p class="mb-2">
-                            <strong>{{ loot_pool.items.count }} {% translate "items" %}</strong> {% translate "valued at" %}
-                            <strong class="text-primary">{{ loot_pool.total_value|isk_format_full }}</strong>
-                        </p>
+                        <!-- Loot Value Display -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <span class="text-muted small">{% translate "Total Loot Value" %}</span>
+                                        <h3 class="mb-0 text-primary">{{ loot_pool.total_value|isk_format_full }}</h3>
+                                    </div>
+                                    <span class="badge bg-secondary">{{ loot_pool.items.count }} {% translate "items" %}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <span class="text-muted small">{% translate "Participants" %}</span>
+                                <h4 class="mb-0">{{ unique_player_count }} {% translate "players" %}
+                                    {% if participants|length != unique_player_count %}
+                                    <small class="text-muted">({{ participants|length }} {% translate "characters" %})</small>
+                                    {% endif %}
+                                </h4>
+                            </div>
+                        </div>
 
+                        <!-- Enhanced Payout Breakdown -->
+                        {% if payout_summary %}
+                        <div class="payout-breakdown bg-light rounded p-3 mb-3">
+                            <table class="table table-sm mb-0">
+                                <tr>
+                                    <td>{% translate "Total Loot Value" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.total_loot|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td><small>{% translate "Corp Share" %} ({{ payout_summary.corp_share_pct|floatformat:0 }}%):</small></td>
+                                    <td class="text-end"><small>-{{ payout_summary.corp_share|isk_format_full }}</small></td>
+                                </tr>
+                                <tr>
+                                    <td>{% translate "Participant Pool" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.participant_pool|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td colspan="2">
+                                        <small class="text-muted">
+                                            {{ payout_summary.eligible_count }} {% translate "players" %}
+                                            ({{ payout_summary.scout_count }} {% translate "scouts" %}, {{ payout_summary.regular_count }} {% translate "regular" %})
+                                            × {{ payout_summary.base_share|isk_format_full }} {% translate "base" %}
+                                        </small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>{% translate "Total Distributed" %}:</td>
+                                    <td class="text-end"><strong>{{ payout_summary.total_payouts|isk_format_full }}</strong></td>
+                                </tr>
+                                <tr class="text-muted">
+                                    <td><small>{% translate "Rounding Remainder" %}:</small></td>
+                                    <td class="text-end"><small>+{{ payout_summary.remainder|isk_format_full }} {% translate "to corp" %}</small></td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td><strong>{% translate "Final Corp Share" %}:</strong></td>
+                                    <td class="text-end"><strong>{{ payout_summary.corp_final|isk_format_full }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+                        {% endif %}
+
+                        <!-- Scout Bonus Slider (Moved from Loot section) -->
                         {% if can_edit %}
-                        <div class="mb-3 p-3 bg-light rounded">
+                        <div class="scout-bonus-control mb-3 p-3 bg-light rounded">
                             <label for="scout-bonus-slider" class="form-label">
-                                <i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %}:
+                                <i class="fas fa-binoculars text-primary"></i> {% translate "Scout Bonus" %}:
                                 <strong><span id="scout-bonus-value">{{ loot_pool.scout_bonus_percentage|floatformat:0 }}</span>%</strong>
                             </label>
                             <input type="range" class="form-range" id="scout-bonus-slider"
@@ -156,100 +276,84 @@
                                 <span>50%</span>
                                 <span>100%</span>
                             </div>
-                            <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i> {% translate "Adjust scout bonus percentage - payouts will update automatically" %}
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> {% translate "Scouts receive this bonus on top of base share. Payouts update automatically." %}
                             </small>
                         </div>
                         {% endif %}
 
-                        <div class="d-flex flex-wrap gap-2">
+                        <!-- Consolidated Action Buttons -->
+                        <div class="action-buttons d-flex flex-wrap gap-2">
                             {% if can_edit %}
-                            <a href="{% url 'aapayout:loot_edit' loot_pool.pk %}" class="btn btn-sm btn-primary">
-                                <i class="fas fa-edit"></i> {% translate "Edit Loot" %}
-                            </a>
-                            <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="btn btn-sm btn-warning">
-                                <i class="fas fa-sync"></i> {% translate "Reappraise" %}
-                            </a>
-                            {% if loot_pool.payouts.exists %}
-                            <form method="post" action="{% url 'aapayout:regenerate_payouts' loot_pool.pk %}" style="display: inline;">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-secondary"
-                                        title="{% translate 'Manually recalculate all payouts based on current fleet composition' %}">
-                                    <i class="fas fa-calculator"></i> {% translate "Recalculate Payouts" %}
+                            <!-- Primary Actions Dropdown -->
+                            <div class="btn-group">
+                                <a href="{% url 'aapayout:loot_edit' loot_pool.pk %}" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> {% translate "Edit Loot" %}
+                                </a>
+                                <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
                                 </button>
-                            </form>
-                            {% if not fleet.finalized %}
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a href="{% url 'aapayout:loot_reappraise' loot_pool.pk %}" class="dropdown-item">
+                                            <i class="fas fa-sync"></i> {% translate "Reappraise" %}
+                                        </a>
+                                    </li>
+                                    {% if loot_pool.payouts.exists %}
+                                    <li>
+                                        <form method="post" action="{% url 'aapayout:regenerate_payouts' loot_pool.pk %}">
+                                            {% csrf_token %}
+                                            <button type="submit" class="dropdown-item">
+                                                <i class="fas fa-calculator"></i> {% translate "Recalculate Payouts" %}
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </div>
+
+                            {% if loot_pool.payouts.exists and not fleet.finalized %}
+                            <!-- Verification & Finalization -->
                             <form method="post" action="{% url 'aapayout:fleet_verify_payouts' fleet.pk %}" style="display: inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-info"
+                                <button type="submit" class="btn btn-info"
                                         title="{% translate 'Check ESI wallet for completed payments' %}">
-                                    <i class="fas fa-check-double"></i> {% translate "Verify Payouts" %}
+                                    <i class="fas fa-check-double"></i> {% translate "Verify" %}
                                 </button>
                             </form>
                             <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" style="display: inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-success"
+                                <button type="submit" class="btn btn-success"
                                         onclick="return confirm('{% translate "Finalize this payout and verify all payments via ESI wallet? This action cannot be undone." %}')"
                                         title="{% translate 'Finalize payout and verify payments via ESI wallet journal' %}">
-                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize Payout" %}
+                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize" %}
                                 </button>
                             </form>
-                            {% endif %}
-                            {% endif %}
-                            {% if fleet.finalized %}
-                            <span class="badge bg-success" title="{% translate 'Finalized at' %} {{ fleet.finalized_at|date:'Y-m-d H:i' }} {% translate 'by' %} {{ fleet.finalized_by.username }}">
-                                <i class="fas fa-check-circle"></i> {% translate "Finalized" %}
-                            </span>
                             {% endif %}
                             {% endif %}
                         </div>
                         {% endwith %}
                     {% else %}
-                        <p class="text-muted">{% translate "No loot added yet" %}</p>
-                        {% if can_edit %}
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLootModal">
-                            <i class="fas fa-plus"></i> {% translate "Add Loot" %}
-                        </button>
-                        {% if participants.count == 0 %}
-                        <small class="text-muted d-block mt-2">
-                            <i class="fas fa-info-circle"></i> {% translate "Tip: Payouts will be calculated automatically whether you add participants before or after loot" %}
-                        </small>
-                        {% endif %}
-                        {% endif %}
+                        <!-- No Loot State -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-3">{% translate "No loot added yet" %}</p>
+                            {% if can_edit %}
+                            <button class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#addLootModal">
+                                <i class="fas fa-plus"></i> {% translate "Add Loot" %}
+                            </button>
+                            {% if participants.count == 0 %}
+                            <p class="text-muted small mt-3">
+                                <i class="fas fa-lightbulb"></i> {% translate "Tip: You can add participants before or after loot - payouts are calculated automatically either way." %}
+                            </p>
+                            {% endif %}
+                            {% endif %}
+                        </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Payout Summary -->
-    {% if payout_summary %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-primary">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-calculator"></i> {% translate "Payout Summary" %}</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm mb-0">
-                        <tr>
-                            <td>{% translate "Participant Pool" %}:</td>
-                            <td class="text-end"><strong>{{ payout_summary.total_payouts|isk_format_full }}</strong></td>
-                        </tr>
-                        <tr>
-                            <td>{% translate "Corp Share" %}:</td>
-                            <td class="text-end"><strong>{{ payout_summary.corp_final|isk_format_full }}</strong></td>
-                        </tr>
-                        <tr class="table-primary">
-                            <td><strong>{% translate "Total" %}:</strong></td>
-                            <td class="text-end"><strong>{{ payout_summary.total_loot|isk_format_full }}</strong></td>
-                        </tr>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- ESI Wallet Scope Warning -->
     {% if wallet_scope_status.needs_verification and not wallet_scope_status.has_wallet_scope %}
@@ -261,25 +365,20 @@
                     {% translate "To finalize this payout and automatically verify payments, you need to add an ESI token with wallet journal access." %}
                 </p>
                 <p class="small mb-2">
-                    <strong>{% translate "Required scope:" %}</strong> <code>esi-wallet.read_character_journal.v1</code>
-                </p>
-                <p class="small mb-3">
-                    {% translate "Without this scope, you must manually verify all payments before finalizing." %}
+                    <strong>{% translate "Required scope:" %}</strong> <code>esi-wallet.read_character_wallet.v1</code>
                 </p>
                 <a href="{% url 'aapayout:add_esi_wallet_scope' %}"
                    class="btn btn-warning btn-sm"
-                   title="{% translate 'Add ESI token for' %} {{ wallet_scope_status.fc_character_name }}. {% translate 'Required scope:' %} esi-wallet.read_character_journal.v1">
+                   title="{% translate 'Add ESI token for' %} {{ wallet_scope_status.fc_character_name }}">
                     <i class="fas fa-key"></i> {% translate "Add ESI Token for" %} {{ wallet_scope_status.fc_character_name }}
                 </a>
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">
-                    {% translate "Dismiss" %}
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- User Guidance Messages -->
+    <!-- Contextual Help Messages -->
     {% if loot_pools %}
         {% with loot_pool=loot_pools.first %}
             {% if fleet.finalized %}
@@ -287,12 +386,10 @@
                     <div class="col-12">
                         <div class="alert alert-success">
                             <h6><i class="fas fa-check-circle"></i> {% translate "Payout Finalized" %}</h6>
-                            <p class="mb-2">
-                                {% translate "This payout was finalized by" %} <strong>{{ fleet.finalized_by.username }}</strong>
+                            <p class="mb-0">
+                                {% translate "Finalized by" %} <strong>{{ fleet.finalized_by.username }}</strong>
                                 {% translate "on" %} {{ fleet.finalized_at|date:"Y-m-d H:i" }}.
-                            </p>
-                            <p class="small mb-0">
-                                {% translate "Wallet verification has been run to automatically verify payments. Check the 'Verified' badges in the Participants table below to see verification status." %}
+                                {% translate "Check the 'Verified' badges below to see verification status." %}
                             </p>
                         </div>
                     </div>
@@ -301,20 +398,21 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-info">
-                            <h6><i class="fas fa-info-circle"></i> {% translate "Paying Out ISK" %}</h6>
-                            <p class="mb-2">{% translate "To pay participants, use the action buttons in the Participants table below:" %}</p>
-                            <ul class="small mb-0">
-                                <li><strong>{% translate "Copy Name" %}:</strong> {% translate "Copy character name to clipboard" %}</li>
-                                <li><strong>{% translate "Copy Amount" %}:</strong> {% translate "Copy ISK amount (whole number, no decimals)" %}</li>
-                                <li><strong>{% translate "Open Window" %}:</strong> {% translate "Open character window in EVE client (requires ESI)" %}</li>
-                            </ul>
-                            <p class="small text-muted mb-2 mt-2">
-                                <strong>{% translate "Note:" %}</strong> {% translate "Payouts are automatically recalculated when you add, remove, or change participants." %}
-                            </p>
-                            <p class="small mb-0 mt-2">
-                                <strong>{% translate "Finalize Payout:" %}</strong>
-                                {% translate "When you're done making payments in EVE, click 'Finalize Payout' above to automatically verify all payments via ESI wallet journal." %}
-                            </p>
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle fa-lg me-3 mt-1"></i>
+                                <div>
+                                    <h6 class="mb-2">{% translate "Ready to Pay" %}</h6>
+                                    <p class="mb-2">{% translate "Use the action buttons in the Participants table to pay each player:" %}</p>
+                                    <ul class="small mb-2">
+                                        <li><i class="fas fa-user"></i> {% translate "Copy character name" %}</li>
+                                        <li><i class="fas fa-coins"></i> {% translate "Copy ISK amount" %}</li>
+                                        <li><i class="fas fa-external-link-alt"></i> {% translate "Open in EVE client" %}</li>
+                                    </ul>
+                                    <p class="small mb-0 text-muted">
+                                        {% translate "When done, click 'Finalize' to verify payments via ESI wallet." %}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -322,9 +420,9 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-warning">
-                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Loot Below Minimum Threshold" %}</h6>
+                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Below Minimum Threshold" %}</h6>
                             <p class="mb-0">
-                                {% translate "The loot value results in individual shares below 100M ISK per participant. As per payout policy, all ISK from this payout will go to the corporation. No participant payouts will be distributed." %}
+                                {% translate "Individual shares are below the minimum threshold. All ISK will go to the corporation." %}
                             </p>
                         </div>
                     </div>
@@ -333,8 +431,8 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-warning">
-                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "No Payouts Generated" %}</h6>
-                            <p class="mb-0">{% translate "Add participants below to generate payouts. Payouts will be calculated automatically." %}
+                            <h6><i class="fas fa-users"></i> {% translate "Add Participants" %}</h6>
+                            <p class="mb-0">{% translate "Loot valued! Now add participants to generate payouts." %}</p>
                         </div>
                     </div>
                 </div>
@@ -348,37 +446,38 @@
             <div class="card">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{% translate "Participants" %}</h5>
+                        <h5 class="mb-0">
+                            {% translate "Participants" %}
+                            <small class="text-muted ms-2">
+                                ({{ unique_player_count }} {% translate "players" %}{% if participants|length != unique_player_count %}, {{ participants|length }} {% translate "characters" %}{% endif %})
+                            </small>
+                        </h5>
                         {% if can_edit %}
-                            <div>
+                            <div class="btn-group">
                                 {% if esi_status.enabled %}
                                     {% if not esi_status.fc_character_id %}
-                                        {# No FC character selected #}
-                                        <button class="btn btn-sm btn-secondary me-2" disabled
+                                        <button class="btn btn-sm btn-secondary" disabled
                                                 title="{% translate 'Select an FC character from the dropdown in the navigation bar' %}">
-                                            <i class="fas fa-user-slash"></i> {% translate "Select FC Character" %}
+                                            <i class="fas fa-user-slash"></i> {% translate "Select FC" %}
                                         </button>
                                     {% elif not esi_status.has_scope %}
-                                        {# FC character selected but no ESI token #}
                                         <a href="{% url 'aapayout:add_esi_fleet_scope' %}"
-                                           class="btn btn-sm btn-warning me-2"
-                                           title="{% translate 'Add ESI token for' %} {{ esi_status.fc_character_name }}. {% translate 'Required scope:' %} esi-fleets.read_fleet.v1">
+                                           class="btn btn-sm btn-warning"
+                                           title="{% translate 'Add ESI token for' %} {{ esi_status.fc_character_name }}">
                                             <i class="fas fa-key"></i> {% translate "Add ESI Token" %}
                                         </a>
                                     {% elif esi_status.can_import %}
-                                        {# Everything ready - show enabled import button #}
                                         <form method="post" action="{% url 'aapayout:fleet_import' fleet.pk %}" style="display: inline;">
                                             {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-success me-2"
+                                            <button type="submit" class="btn btn-sm btn-success"
                                                     title="{% translate 'Import current fleet from EVE Online' %}">
-                                                <i class="fas fa-download"></i> {% translate "Import ESI Fleet" %}
+                                                <i class="fas fa-download"></i> {% translate "Import ESI" %}
                                             </button>
                                         </form>
                                     {% else %}
-                                        {# Fallback - show disabled button #}
-                                        <button type="button" class="btn btn-sm btn-secondary me-2" disabled
+                                        <button type="button" class="btn btn-sm btn-secondary" disabled
                                                 title="{{ esi_status.message }}">
-                                            <i class="fas fa-ban"></i> {% translate "Import Unavailable" %}
+                                            <i class="fas fa-ban"></i> {% translate "Unavailable" %}
                                         </button>
                                     {% endif %}
                                 {% endif %}
@@ -389,18 +488,17 @@
                         {% endif %}
                     </div>
                     {% if can_edit and esi_status.enabled %}
-                        {# Show helpful hints based on current state #}
                         {% if not esi_status.fc_character_id %}
                             <small class="text-muted d-block mt-2">
                                 <i class="fas fa-info-circle"></i> {% translate "Select your FC character from the dropdown in the top navigation bar to enable ESI fleet import" %}
                             </small>
                         {% elif not esi_status.has_scope %}
                             <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i> {% translate "Click 'Add ESI Token' above to add your character. When prompted, make sure to grant the" %} <code>esi-fleets.read_fleet.v1</code> {% translate "scope for" %} {{ esi_status.fc_character_name }}
+                                <i class="fas fa-info-circle"></i> {% translate "Click 'Add ESI Token' above to add your character with" %} <code>esi-fleets.read_fleet.v1</code> {% translate "scope" %}
                             </small>
                         {% elif esi_status.can_import %}
                             <small class="text-muted d-block mt-2">
-                                <i class="fas fa-info-circle"></i> {% translate "Join a fleet in EVE Online, then click 'Import ESI Fleet' to automatically add all members" %}
+                                <i class="fas fa-info-circle"></i> {% translate "Join a fleet in EVE Online, then click 'Import ESI' to automatically add all members" %}
                             </small>
                         {% endif %}
                     {% endif %}
@@ -408,25 +506,32 @@
                 <div class="card-body">
                     {% if participants %}
                     <div class="table-responsive">
-                        <table class="table table-striped">
+                        <table class="table table-striped participant-table">
                             <thead>
                                 <tr>
-                                    <th>{% translate "Main Character" %}</th>
-                                    <th>{% translate "Characters" %}</th>
-                                    <th>{% translate "Status" %}</th>
+                                    <!-- Identity Group -->
+                                    <th style="width: 25%" class="border-end-0">{% translate "Player" %}</th>
+                                    <th style="width: 20%" class="border-start-0">{% translate "Characters" %}</th>
+                                    <!-- Status & Payout Group -->
+                                    <th style="width: 8%" class="text-center">{% translate "Status" %}</th>
                                     {% if payout_map %}
-                                        <th class="text-end">{% translate "Payout Amount" %}</th>
+                                        <th style="width: 15%" class="text-end">{% translate "Payout" %}</th>
                                     {% endif %}
                                     {% if can_edit %}
-                                        <th class="text-center">
-                                            <i class="fas fa-binoculars" title="{% translate 'Scout' %}"></i>
-                                            {% translate "Scout" %}
+                                        <!-- Controls Group -->
+                                        <th style="width: 7%" class="text-center controls-header"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="{% translate 'Mark as Scout - receives bonus payout' %}">
+                                            <i class="fas fa-binoculars text-info"></i>
+                                            <span class="d-none d-lg-inline ms-1 small text-muted">{% translate "Scout" %}</span>
                                         </th>
-                                        <th class="text-center">
-                                            <i class="fas fa-ban" title="{% translate 'Exclude from Payout' %}"></i>
-                                            {% translate "Exclude" %}
+                                        <th style="width: 7%" class="text-center controls-header"
+                                            data-bs-toggle="tooltip" data-bs-placement="top"
+                                            title="{% translate 'Exclude from payout - player receives nothing' %}">
+                                            <i class="fas fa-ban text-danger"></i>
+                                            <span class="d-none d-lg-inline ms-1 small text-muted">{% translate "Exclude" %}</span>
                                         </th>
-                                        <th>{% translate "Actions" %}</th>
+                                        <th style="width: 18%" class="text-center">{% translate "Actions" %}</th>
                                     {% endif %}
                                 </tr>
                             </thead>
@@ -442,10 +547,10 @@
                                     </td>
                                     <td>
                                         {% if group.participants|length > 1 %}
-                                            <span class="badge bg-secondary me-1">{{ group.participants|length }} {% translate "characters" %}</span>
-                                            {% for p in group.participants %}
-                                                <span class="small text-muted">{{ p.character.name }}{% if not forloop.last %}, {% endif %}</span>
-                                            {% endfor %}
+                                            <span class="badge bg-secondary me-1">{{ group.participants|length }}</span>
+                                            <span class="small text-muted">
+                                                {% for p in group.participants %}{{ p.character.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                            </span>
                                         {% else %}
                                             {{ first_participant.character.name }}
                                         {% endif %}
@@ -460,11 +565,13 @@
                                     {% if payout_map %}
                                         <td class="text-end">
                                             {% if main_char_id in payout_map %}
-                                                <strong class="copy-on-click" data-copy-text="{{ payout_map|get_item:main_char_id }}" style="cursor: pointer;" title="{% translate 'Click to copy amount (no decimals)' %}">
+                                                <strong class="copy-on-click" data-copy-text="{{ payout_map|get_item:main_char_id }}" style="cursor: pointer;" title="{% translate 'Click to copy amount' %}">
                                                     {{ payout_map|get_item:main_char_id|isk_format_full }}
                                                 </strong>
                                                 {% if group.is_scout %}
-                                                    <span class="badge bg-success ms-1">{% translate "Scout" %}</span>
+                                                    <span class="badge bg-info ms-1" title="{% translate 'Scout bonus applied' %}">
+                                                        <i class="fas fa-binoculars"></i>
+                                                    </span>
                                                 {% endif %}
                                             {% else %}
                                                 <span class="text-muted">—</span>
@@ -485,39 +592,39 @@
                                     <td>
                                         {% if main_char_id in existing_payouts %}
                                             {% with payout_obj=existing_payouts|get_item:main_char_id %}
-                                            <div class="d-flex align-items-center gap-2">
+                                            <div class="d-flex align-items-center gap-1">
                                                 <div class="btn-group btn-group-sm" role="group">
                                                     <button class="btn btn-outline-primary copy-name-btn"
                                                             data-character-name="{{ main_char.name }}"
-                                                            title="{% translate 'Copy character name' %}">
+                                                            title="{% translate 'Copy name' %}">
                                                         <i class="fas fa-user"></i>
                                                     </button>
                                                     <button class="btn btn-outline-primary copy-amount-btn"
                                                             data-amount="{{ payout_map|get_item:main_char_id }}"
-                                                            title="{% translate 'Copy ISK amount (no decimals)' %}">
+                                                            title="{% translate 'Copy ISK' %}">
                                                         <i class="fas fa-coins"></i>
                                                     </button>
                                                     <button class="btn btn-outline-info open-window-btn"
                                                             data-payout-id="{{ payout_obj.pk }}"
                                                             data-character-id="{{ main_char_id }}"
-                                                            title="{% translate 'Open character window in EVE' %}">
+                                                            title="{% translate 'Open in EVE' %}">
                                                         <i class="fas fa-external-link-alt"></i>
                                                     </button>
                                                     {% if not payout_obj.verified and not fleet.finalized %}
                                                     <button class="btn btn-outline-success mark-verified-btn"
                                                             data-payout-id="{{ payout_obj.pk }}"
-                                                            title="{% translate 'Mark as verified (manual override)' %}">
+                                                            title="{% translate 'Mark verified' %}">
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                     {% endif %}
                                                 </div>
                                                 {% if payout_obj.verified %}
-                                                    <span class="badge bg-success" title="{% translate 'Verified at' %} {{ payout_obj.verified_at|date:'Y-m-d H:i' }}">
-                                                        <i class="fas fa-check-circle"></i> {% translate "Verified" %}
+                                                    <span class="badge bg-success" title="{% translate 'Verified' %} {{ payout_obj.verified_at|date:'Y-m-d H:i' }}">
+                                                        <i class="fas fa-check-circle"></i>
                                                     </span>
                                                 {% else %}
-                                                    <span class="badge bg-secondary" title="{% translate 'Not yet verified' %}">
-                                                        <i class="fas fa-clock"></i> {% translate "Pending" %}
+                                                    <span class="badge bg-secondary" title="{% translate 'Pending' %}">
+                                                        <i class="fas fa-clock"></i>
                                                     </span>
                                                 {% endif %}
                                             </div>
@@ -540,12 +647,16 @@
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-muted">{% translate "No participants added yet" %}</p>
-                    {% if can_edit %}
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addParticipantModal">
-                        <i class="fas fa-plus"></i> {% translate "Add First Participant" %}
-                    </button>
-                    {% endif %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">{% translate "No participants added yet" %}</p>
+                        {% if can_edit %}
+                        <p class="text-muted small mt-2">
+                            <i class="fas fa-info-circle"></i>
+                            {% translate "Click 'Add Manual' or 'Import ESI' above to add participants" %}
+                        </p>
+                        {% endif %}
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -586,7 +697,7 @@
                                 <input type="checkbox" class="form-check-input" id="id_is_scout" name="is_scout">
                                 <label class="form-check-label" for="id_is_scout">
                                     <i class="fas fa-binoculars text-primary"></i>
-                                    {% translate "Mark as Scout (receives +10% bonus)" %}
+                                    {% translate "Mark as Scout (receives bonus)" %}
                                 </label>
                                 <small class="form-text text-muted d-block">
                                     {% translate "Scouts receive bonus payout percentage" %}
@@ -678,6 +789,12 @@ document.addEventListener('DOMContentLoaded', function() {
             scoutValueModal.textContent = this.value;
         });
     }
+
+    // Initialize Bootstrap tooltips for table headers
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
 });
 </script>
 

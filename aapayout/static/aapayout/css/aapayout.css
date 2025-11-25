@@ -379,3 +379,328 @@ pre.loot-raw-text {
 .highlight-self {
     background-color: #cfe2ff;
 }
+
+/* ========================================
+   Workflow Progress Indicator
+   ======================================== */
+
+.workflow-progress {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.workflow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+}
+
+.workflow-step .step-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.workflow-step.completed .step-icon {
+    color: #198754;
+}
+
+.workflow-step.active .step-icon {
+    color: #0d6efd;
+    animation: pulse 2s infinite;
+}
+
+.workflow-step.pending .step-icon {
+    color: #adb5bd;
+}
+
+.workflow-step .step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6c757d;
+    text-align: center;
+}
+
+.workflow-step.completed .step-label {
+    color: #198754;
+}
+
+.workflow-step.active .step-label {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.step-connector {
+    flex: 1;
+    height: 3px;
+    background-color: #dee2e6;
+    margin: 0 0.5rem;
+    margin-top: -1rem;
+    border-radius: 2px;
+    transition: background-color 0.3s ease;
+}
+
+.step-connector.completed {
+    background-color: #198754;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* ========================================
+   Payout Calculator Card
+   ======================================== */
+
+.payout-breakdown {
+    border: 1px solid #dee2e6;
+}
+
+.payout-breakdown table {
+    background: transparent;
+}
+
+.payout-breakdown .table > :not(caption) > * > * {
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0.5rem 0.75rem;
+}
+
+.payout-breakdown .table-primary > * {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.payout-breakdown .table-light > * {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Scout Bonus Control */
+.scout-bonus-control {
+    border: 1px solid #dee2e6;
+}
+
+.scout-bonus-control .form-range::-webkit-slider-thumb {
+    background: #0d6efd;
+}
+
+.scout-bonus-control .form-range::-moz-range-thumb {
+    background: #0d6efd;
+}
+
+/* Action Buttons Group */
+.action-buttons .btn {
+    transition: all 0.2s ease;
+}
+
+.action-buttons .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ========================================
+   Fleet Details Card (Left Column)
+   ======================================== */
+
+.accordion-button.bg-transparent {
+    background-color: transparent !important;
+    box-shadow: none;
+    padding: 0.5rem 0;
+    font-weight: 500;
+}
+
+.accordion-button.bg-transparent:not(.collapsed) {
+    color: #0d6efd;
+}
+
+.accordion-button.bg-transparent::after {
+    width: 1rem;
+    height: 1rem;
+    background-size: 1rem;
+}
+
+/* ========================================
+   Participant Table Improvements
+   ======================================== */
+
+.participant-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.participant-table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.participant-table thead th[title],
+.participant-table thead th.controls-header {
+    cursor: help;
+}
+
+.participant-table thead th.controls-header {
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.participant-table tbody td {
+    vertical-align: middle;
+}
+
+/* Visual grouping for related columns */
+.participant-table thead th.border-end-0 {
+    border-right: none;
+}
+
+.participant-table thead th.border-start-0 {
+    border-left: none;
+}
+
+.table .btn-group-sm .btn {
+    padding: 0.2rem 0.4rem;
+}
+
+/* Copy on click feedback */
+.copy-on-click {
+    transition: background-color 0.2s ease;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.copy-on-click:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.copy-on-click.copied {
+    background-color: rgba(25, 135, 84, 0.2);
+}
+
+/* Scout badge styling */
+.badge.bg-info i.fa-binoculars {
+    font-size: 0.7rem;
+}
+
+/* Participant row hover enhancement */
+.participant-table tbody tr:hover:not(.table-secondary) {
+    background-color: rgba(13, 110, 253, 0.04);
+}
+
+/* Excluded participant styling */
+.participant-table tbody tr.table-secondary {
+    opacity: 0.7;
+}
+
+.participant-table tbody tr.table-secondary td {
+    text-decoration: line-through;
+    text-decoration-color: rgba(0, 0, 0, 0.3);
+}
+
+.participant-table tbody tr.table-secondary td:last-child,
+.participant-table tbody tr.table-secondary td .form-check-input {
+    text-decoration: none;
+}
+
+/* Checkbox styling in table */
+.participant-table .form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    cursor: pointer;
+}
+
+.participant-table .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.participant-table .scout-checkbox:checked {
+    background-color: #0dcaf0;
+    border-color: #0dcaf0;
+}
+
+.participant-table .exclude-checkbox:checked {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* ========================================
+   Empty State Styling
+   ======================================== */
+
+.card-body .fa-3x {
+    opacity: 0.5;
+}
+
+.card-body .text-center p {
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ========================================
+   Responsive Adjustments for New Layout
+   ======================================== */
+
+@media (max-width: 768px) {
+    .workflow-progress {
+        padding: 0.75rem 1rem;
+    }
+
+    .workflow-step {
+        min-width: 60px;
+    }
+
+    .workflow-step .step-icon {
+        width: 24px;
+        height: 24px;
+        font-size: 0.875rem;
+    }
+
+    .workflow-step .step-label {
+        font-size: 0.65rem;
+    }
+
+    .step-connector {
+        margin: 0 0.25rem;
+        margin-top: -0.75rem;
+    }
+
+    .payout-breakdown {
+        padding: 0.75rem !important;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-buttons .btn-group,
+    .action-buttons form {
+        width: 100%;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+    }
+
+    /* Stack columns on mobile */
+    .col-md-4,
+    .col-md-8 {
+        margin-bottom: 1rem;
+    }
+}

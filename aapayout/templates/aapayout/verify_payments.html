@@ -8,7 +8,7 @@
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2>{% trans "Verify Payments via ESI" %}</h2>
+            <h2>{% trans "Verify Payments" %}</h2>
             <a href="{% url 'aapayout:payout_list' loot_pool.pk %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> {% trans "Back to Payouts" %}
             </a>
@@ -29,7 +29,7 @@
                     <i class="fas fa-info-circle"></i>
                     <strong>{% trans "How it works:" %}</strong>
                     <ul class="mb-0 mt-2">
-                        <li>{% trans "The system will check your ESI wallet journal for ISK transfers" %}</li>
+                        <li>{% trans "The system will check your wallet journal for ISK transfers" %}</li>
                         <li>{% trans "Pending payouts that match journal entries will be automatically marked as paid" %}</li>
                         <li>{% trans "Matching is based on amount, recipient, and timestamp" %}</li>
                         <li>{% trans "Any unmatched payouts can be manually verified afterward" %}</li>
@@ -83,16 +83,6 @@
                         </small>
                     </div>
 
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>{% trans "Requirements:" %}</strong>
-                        <ul class="mb-0 mt-2">
-                            <li>{% trans "You must have an ESI token linked with wallet journal access" %}</li>
-                            <li>{% trans "Required scope:" %} <code>esi-wallet.read_character_journal.v1</code></li>
-                            <li>{% trans "Verification may take a few moments to complete" %}</li>
-                        </ul>
-                    </div>
-
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-check-double"></i> {% trans "Start Verification" %}
@@ -111,22 +101,7 @@
                 </h6>
             </div>
             <div class="card-body">
-                <h6>{% trans "What is ESI?" %}</h6>
-                <p class="small">
-                    {% trans "ESI (EVE Swagger Interface) is CCP's official API for accessing EVE Online data. It allows this app to check your wallet journal for payment verification." %}
-                </p>
-
-                <h6 class="mt-3">{% trans "Why do I need wallet access?" %}</h6>
-                <p class="small">
-                    {% trans "To verify payments, the system needs to read your character's wallet journal to find the ISK transfers you made." %}
-                </p>
-
-                <h6 class="mt-3">{% trans "Is this secure?" %}</h6>
-                <p class="small">
-                    {% trans "Yes! ESI uses OAuth2 authentication and only requests the specific permissions needed. Your wallet journal is only used for payment matching." %}
-                </p>
-
-                <h6 class="mt-3">{% trans "What if verification fails?" %}</h6>
+                <h6>{% trans "What if verification fails?" %}</h6>
                 <p class="small">
                     {% trans "You can always manually mark payouts as paid using the \"Mark Paid\" button on the payout list." %}
                 </p>

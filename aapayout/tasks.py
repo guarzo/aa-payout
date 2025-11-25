@@ -388,7 +388,7 @@ def verify_payments_async(loot_pool_id: int, user_id: int, time_window_hours: in
                 user=user,
                 character_id=fc_character.character_id,  # Token must match the FC character
             )
-            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_scopes("esi-wallet.read_character_wallet.v1")
             .require_valid()
             .first()
         )
@@ -495,7 +495,7 @@ def verify_fleet_payments(fleet_id: int, user_id: int, time_window_hours: int = 
                 user=user,
                 character_id=fc_character.character_id,
             )
-            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_scopes("esi-wallet.read_character_wallet.v1")
             .require_valid()
             .first()
         )
@@ -504,7 +504,7 @@ def verify_fleet_payments(fleet_id: int, user_id: int, time_window_hours: int = 
             error_msg = (
                 f"No valid ESI token found for FC character {fc_character.character_name} "
                 f"with wallet journal scope. Please link your FC character's ESI token "
-                f"with scope 'esi-wallet.read_character_journal.v1' in the Alliance Auth dashboard."
+                f"with scope 'esi-wallet.read_character_wallet.v1' in the Alliance Auth dashboard."
             )
             logger.warning(error_msg)
             return {

@@ -38,13 +38,14 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">{% translate "Your Pending Payouts" %}</h5>
+                    <h5 class="mb-0">{% if can_view_all %}{% translate "Pending Payouts" %}{% else %}{% translate "Your Pending Payouts" %}{% endif %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
+                                    {% if can_view_all %}<th>{% translate "Recipient" %}</th>{% endif %}
                                     <th>{% translate "Payout Session" %}</th>
                                     <th>{% translate "Loot Pool" %}</th>
                                     <th class="text-end">{% translate "Amount" %}</th>
@@ -54,6 +55,9 @@
                             <tbody>
                                 {% for payout in pending_payouts %}
                                 <tr>
+                                    {% if can_view_all %}
+                                    <td>{{ payout.recipient.name }}</td>
+                                    {% endif %}
                                     <td>
                                         <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
                                             {{ payout.loot_pool.fleet.name }}
@@ -152,7 +156,7 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">{% translate "All Payouts" %}</h5>
+                    <h5 class="mb-0">{% if can_view_all %}{% translate "All Payouts" %}{% else %}{% translate "Your Payouts" %}{% endif %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -160,6 +164,7 @@
                             <thead>
                                 <tr>
                                     <th>{% translate "Date" %}</th>
+                                    {% if can_view_all %}<th>{% translate "Recipient" %}</th>{% endif %}
                                     <th>{% translate "Payout Session" %}</th>
                                     <th>{% translate "Loot Pool" %}</th>
                                     <th class="text-end">{% translate "Amount" %}</th>
@@ -170,6 +175,9 @@
                                 {% for payout in all_payouts %}
                                 <tr>
                                     <td><small>{{ payout.created_at|date:"Y-m-d H:i" }}</small></td>
+                                    {% if can_view_all %}
+                                    <td>{{ payout.recipient.name }}</td>
+                                    {% endif %}
                                     <td>
                                         <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
                                             {{ payout.loot_pool.fleet.name }}
@@ -187,7 +195,7 @@
                                         {% elif payout.status == 'paid' %}
                                             <span class="badge bg-success">{{ payout.get_status_display }}</span>
                                             {% if payout.verified %}
-                                                <span class="badge bg-info" title="{% translate 'Verified via ESI' %}">
+                                                <span class="badge bg-info" title="{% translate 'Verified' %}">
                                                     <i class="fas fa-shield-alt"></i>
                                                 </span>
                                             {% endif %}
