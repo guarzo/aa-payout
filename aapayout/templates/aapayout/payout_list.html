@@ -25,6 +25,89 @@
         </div>
     </div>
 
+    <!-- Payout Breakdown -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> {% translate "Payout Breakdown" %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Left column: Source breakdown -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% translate "ISK Distribution" %}</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>{% translate "Total Loot Value" %}</strong></td>
+                                        <td class="text-end"><strong>{{ total_loot|isk_format_full }}</strong></td>
+                                    </tr>
+                                    <tr class="text-muted">
+                                        <td><i class="fas fa-minus"></i> {% translate "Corp Share" %} ({{ corp_share_pct|floatformat:0 }}%)</td>
+                                        <td class="text-end">{{ corp_share|isk_format_full }}</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td><strong>{% translate "Participant Pool" %}</strong></td>
+                                        <td class="text-end"><strong>{{ participant_pool|isk_format_full }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Right column: Payout breakdown -->
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">{% translate "Payouts" %} ({% translate "Scout Bonus" %}: {{ scout_bonus_pct|floatformat:0 }}%)</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tbody>
+                                    {% if scout_count > 0 %}
+                                    <tr class="table-success">
+                                        <td><i class="fas fa-binoculars"></i> {% translate "Scouts" %} ({{ scout_count }})</td>
+                                        <td class="text-end">{{ scout_total|isk_format_full }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if regular_count > 0 %}
+                                    <tr>
+                                        <td><i class="fas fa-users"></i> {% translate "Regular" %} ({{ regular_count }})</td>
+                                        <td class="text-end">{{ regular_total|isk_format_full }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr class="border-top">
+                                        <td><strong>{% translate "Total Distributed" %}</strong></td>
+                                        <td class="text-end"><strong>{{ total_amount|isk_format_full }}</strong></td>
+                                    </tr>
+                                    {% if remainder > 0 %}
+                                    <tr class="text-muted">
+                                        <td><i class="fas fa-plus"></i> {% translate "Rounding to Corp" %}</td>
+                                        <td class="text-end">{{ remainder|isk_format_full }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr class="border-top table-secondary">
+                                        <td><strong><i class="fas fa-building"></i> {% translate "Corp Final" %}</strong></td>
+                                        <td class="text-end"><strong>{{ corp_final|isk_format_full }}</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- Verification row -->
+                    <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted">
+                                    <i class="fas fa-check-circle"></i>
+                                    {% translate "Verification" %}:
+                                    {{ total_amount|isk_format_full }} ({% translate "distributed" %}) + {{ corp_final|isk_format_full }} ({% translate "corp" %}) =
+                                    <strong>{{ total_loot|isk_format_full }}</strong>
+                                </span>
+                                <span class="badge bg-success"><i class="fas fa-check"></i> {% translate "Balanced" %}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Summary Cards -->
     <div class="row mb-4">
         <div class="col-md-3">

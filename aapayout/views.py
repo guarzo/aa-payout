@@ -4,6 +4,7 @@ Views for AA-Payout
 
 # Standard Library
 import logging
+from decimal import ROUND_DOWN
 
 # Django
 from django.contrib import messages
@@ -1024,6 +1025,29 @@ def payout_list(request, pool_id):
     paid_amount = sum(p.amount for p in payouts.filter(status=constants.PAYOUT_STATUS_PAID)) or Decimal("0.00")
     total_amount = sum(p.amount for p in payouts) or Decimal("0.00")
 
+    # Calculate payout breakdown for display
+    # Total loot value
+    total_loot = loot_pool.total_value
+
+    # Corp share (based on corp_share_percentage)
+    corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
+    corp_share = (total_loot * corp_share_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+    # Participant pool (before payouts)
+    participant_pool = total_loot - corp_share
+
+    # Remainder (goes to corp)
+    remainder = participant_pool - total_amount
+    corp_final = corp_share + remainder
+
+    # Count scouts and regulars
+    scout_count = payouts.filter(is_scout_payout=True).count()
+    regular_count = payouts.filter(is_scout_payout=False).count()
+
+    # Calculate scout and regular totals
+    scout_total = sum(p.amount for p in payouts.filter(is_scout_payout=True)) or Decimal("0.00")
+    regular_total = sum(p.amount for p in payouts.filter(is_scout_payout=False)) or Decimal("0.00")
+
     # Check if user can mark payouts as paid
     can_mark_paid = request.user.has_perm("aapayout.approve_payouts") or loot_pool.fleet.fleet_commander == request.user
 
@@ -1036,6 +1060,18 @@ def payout_list(request, pool_id):
         "paid_amount": paid_amount,
         "total_amount": total_amount,
         "can_mark_paid": can_mark_paid,
+        # Breakdown fields
+        "total_loot": total_loot,
+        "corp_share_pct": corp_share_pct,
+        "corp_share": corp_share,
+        "participant_pool": participant_pool,
+        "remainder": remainder,
+        "corp_final": corp_final,
+        "scout_count": scout_count,
+        "regular_count": regular_count,
+        "scout_total": scout_total,
+        "regular_total": regular_total,
+        "scout_bonus_pct": loot_pool.scout_bonus_percentage or Decimal("10.00"),
     }
     return render(request, "aapayout/payout_list.html", context)
 

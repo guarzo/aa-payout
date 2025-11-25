@@ -5,7 +5,7 @@ Phase 2: Week 5 - Scout Bonus Calculation
 """
 
 # Standard Library
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from unittest.mock import patch
 
 # Django
@@ -100,6 +100,7 @@ class ScoutBonusCalculationTests(TestCase):
         self.assertEqual(len(payouts), 2)
 
         # Each gets base share only (no scout bonus)
+        # With no scouts, it's a simple even split
         expected_base = Decimal("45000000.00")  # (100M - 10M corp) / 2
 
         for payout in payouts:
@@ -108,8 +109,17 @@ class ScoutBonusCalculationTests(TestCase):
             self.assertEqual(payout["scout_bonus"], Decimal("0.00"))
             self.assertFalse(payout["is_scout"])
 
+        # Verify total doesn't exceed participant pool
+        total_distributed = sum(p["amount"] for p in payouts)
+        participant_pool = Decimal("90000000.00")  # 100M - 10M corp
+        self.assertLessEqual(total_distributed, participant_pool)
+
     def test_calculate_payouts_all_scouts(self):
-        """Test payout calculation with all scouts"""
+        """Test payout calculation with all scouts
+
+        When all participants are scouts, they all get the same share since
+        the weighted calculation results in equal shares (no regulars to compare against).
+        """
         # Create participants (all scouts)
         FleetParticipant.objects.create(
             fleet=self.fleet,
@@ -139,19 +149,37 @@ class ScoutBonusCalculationTests(TestCase):
         # Assertions
         self.assertEqual(len(payouts), 2)
 
-        # Base share and scout bonus
-        expected_base = Decimal("45000000.00")  # (100M - 10M corp) / 2
-        expected_scout_bonus = Decimal("4500000.00")  # 10% of base
-        expected_total = expected_base + expected_scout_bonus
+        # With all scouts (2 scouts, 0 regular):
+        # - Scout weight = 1.1 (10% bonus)
+        # - Total shares = 2 * 1.1 = 2.2
+        # - Value per share = 90M / 2.2 = 40,909,090.90...
+        # - Base share (1.0 share) = 40,909,090.90 (rounded down)
+        # - Scout share (1.1 shares) = 45,000,000.00 (rounded down from 45,000,000.00)
+        # - Scout bonus = 45M - 40.9M = 4,090,909.10
+        participant_pool = Decimal("90000000.00")  # 100M - 10M corp
+        total_shares = Decimal("2.2")  # 2 scouts * 1.1 weight
+        value_per_share = participant_pool / total_shares
+        expected_base = value_per_share.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        scout_weight = Decimal("1.10")
+        expected_scout_share = (value_per_share * scout_weight).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        expected_scout_bonus = expected_scout_share - expected_base
 
         for payout in payouts:
             self.assertEqual(payout["base_share"], expected_base)
             self.assertEqual(payout["scout_bonus"], expected_scout_bonus)
-            self.assertEqual(payout["amount"], expected_total)
+            self.assertEqual(payout["amount"], expected_scout_share)
             self.assertTrue(payout["is_scout"])
 
+        # Verify total doesn't exceed participant pool
+        total_distributed = sum(p["amount"] for p in payouts)
+        self.assertLessEqual(total_distributed, participant_pool)
+
     def test_calculate_payouts_mixed_scouts_and_regular(self):
-        """Test payout calculation with mix of scouts and regular participants"""
+        """Test payout calculation with mix of scouts and regular participants
+
+        This is the key test demonstrating that scout bonuses redistribute
+        from a fixed pool rather than adding additional ISK.
+        """
         # Create participants (2 scouts, 2 regular)
         FleetParticipant.objects.create(
             fleet=self.fleet,
@@ -191,9 +219,19 @@ class ScoutBonusCalculationTests(TestCase):
         # Assertions
         self.assertEqual(len(payouts), 4)
 
-        # Base share (same for everyone)
-        expected_base = Decimal("22500000.00")  # (100M - 10M corp) / 4
-        expected_scout_bonus = Decimal("2250000.00")  # 10% of base
+        # With 2 scouts (1.1 weight each) and 2 regular (1.0 weight each):
+        # - Total shares = 2*1.1 + 2*1.0 = 4.2
+        # - Participant pool = 90M
+        # - Value per share = 90M / 4.2 = 21,428,571.42...
+        # - Base share (1.0 share) = 21,428,571.42 (rounded down)
+        # - Scout share (1.1 shares) = 23,571,428.57 (rounded down)
+        participant_pool = Decimal("90000000.00")
+        total_shares = Decimal("4.2")  # 2*1.1 + 2*1.0
+        value_per_share = participant_pool / total_shares
+        expected_base = value_per_share.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        scout_weight = Decimal("1.10")
+        expected_scout_share = (value_per_share * scout_weight).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        expected_scout_bonus = expected_scout_share - expected_base
 
         scout_count = 0
         regular_count = 0
@@ -203,7 +241,7 @@ class ScoutBonusCalculationTests(TestCase):
 
             if payout["is_scout"]:
                 self.assertEqual(payout["scout_bonus"], expected_scout_bonus)
-                self.assertEqual(payout["amount"], expected_base + expected_scout_bonus)
+                self.assertEqual(payout["amount"], expected_scout_share)
                 scout_count += 1
             else:
                 self.assertEqual(payout["scout_bonus"], Decimal("0.00"))
@@ -213,8 +251,17 @@ class ScoutBonusCalculationTests(TestCase):
         self.assertEqual(scout_count, 2)
         self.assertEqual(regular_count, 2)
 
+        # CRITICAL: Verify total doesn't exceed participant pool
+        total_distributed = sum(p["amount"] for p in payouts)
+        self.assertLessEqual(total_distributed, participant_pool)
+
     def test_calculate_payouts_single_scout(self):
-        """Test payout calculation with single scout participant"""
+        """Test payout calculation with single scout participant
+
+        When there's only one participant (a scout), they get the entire participant pool.
+        Since there are no regular participants to compare against, the calculation
+        is effectively: all pool to single scout.
+        """
         # Create one scout
         FleetParticipant.objects.create(
             fleet=self.fleet,
@@ -239,16 +286,28 @@ class ScoutBonusCalculationTests(TestCase):
         # Assertions
         self.assertEqual(len(payouts), 1)
 
-        # Scout gets base + bonus
-        expected_base = Decimal("90000000.00")  # (100M - 10M corp) / 1
-        expected_scout_bonus = Decimal("9000000.00")  # 10% of base
-        expected_total = expected_base + expected_scout_bonus
+        # With 1 scout (1.1 weight):
+        # - Total shares = 1.1
+        # - Participant pool = 90M
+        # - Value per share = 90M / 1.1 = 81,818,181.81...
+        # - Base share = 81,818,181.81 (rounded down)
+        # - Scout share (1.1 shares) = 90M (rounded down from full calculation)
+        participant_pool = Decimal("90000000.00")
+        total_shares = Decimal("1.1")
+        value_per_share = participant_pool / total_shares
+        expected_base = value_per_share.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        scout_weight = Decimal("1.10")
+        expected_scout_share = (value_per_share * scout_weight).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        expected_scout_bonus = expected_scout_share - expected_base
 
         payout = payouts[0]
         self.assertEqual(payout["base_share"], expected_base)
         self.assertEqual(payout["scout_bonus"], expected_scout_bonus)
-        self.assertEqual(payout["amount"], expected_total)
+        self.assertEqual(payout["amount"], expected_scout_share)
         self.assertTrue(payout["is_scout"])
+
+        # Verify total doesn't exceed participant pool
+        self.assertLessEqual(payout["amount"], participant_pool)
 
     def test_calculate_payouts_rounding(self):
         """Test payout calculation with rounding edge cases"""
@@ -337,38 +396,57 @@ class ScoutBonusCalculationTests(TestCase):
         self.assertFalse(regular_payout.is_scout_payout)
 
     def test_scout_bonus_percentage_configurable(self):
-        """Test that scout bonus percentage is configurable"""
-        # Create one scout
+        """Test that scout bonus percentage is configurable via loot pool"""
+        # Create one scout and one regular participant
         FleetParticipant.objects.create(
             fleet=self.fleet,
             character=self.char2,
             is_scout=True,
         )
+        FleetParticipant.objects.create(
+            fleet=self.fleet,
+            character=self.char1,
+            is_scout=False,
+        )
 
-        # Create loot pool
+        # Create loot pool with 20% scout bonus
         loot_pool = LootPool.objects.create(
             fleet=self.fleet,
             name="Test Loot",
             pricing_method=constants.PRICE_SOURCE_JANICE,
             corp_share_percentage=Decimal("10.00"),
+            scout_bonus_percentage=Decimal("20.00"),  # 20% instead of default 10%
             status=constants.LOOT_STATUS_VALUED,
             total_value=Decimal("100000000.00"),
             valued_at=timezone.now(),
         )
 
-        # Calculate payouts with default 10% bonus
+        # Calculate payouts with 20% bonus
         payouts = calculate_payouts(loot_pool)
+        self.assertEqual(len(payouts), 2)
 
-        # Default 10% scout bonus
-        expected_base = Decimal("90000000.00")
-        expected_bonus = Decimal("9000000.00")  # 10%
+        # With 1 scout (1.2 weight) and 1 regular (1.0 weight):
+        # - Total shares = 1.2 + 1.0 = 2.2
+        # - Participant pool = 90M
+        # - Value per share = 90M / 2.2 = 40,909,090.90...
+        # - Base share = 40,909,090.90 (rounded down)
+        # - Scout share (1.2 shares) = 49,090,909.09 (rounded down)
+        participant_pool = Decimal("90000000.00")
+        total_shares = Decimal("2.2")  # 1*1.2 + 1*1.0
+        value_per_share = participant_pool / total_shares
+        expected_base = value_per_share.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        scout_weight = Decimal("1.20")  # 1.0 + 20%
+        expected_scout_share = (value_per_share * scout_weight).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        expected_scout_bonus = expected_scout_share - expected_base
 
-        self.assertEqual(payouts[0]["scout_bonus"], expected_bonus)
+        # Find scout payout
+        scout_payout = [p for p in payouts if p["is_scout"]][0]
+        self.assertEqual(scout_payout["scout_bonus"], expected_scout_bonus)
+        self.assertEqual(scout_payout["amount"], expected_scout_share)
 
-        # Verify using configured percentage
-        scout_bonus_pct = Decimal(str(app_settings.AAPAYOUT_SCOUT_BONUS_PERCENTAGE))
-        calculated_bonus = (expected_base * scout_bonus_pct / Decimal("100")).quantize(Decimal("0.01"))
-        self.assertEqual(calculated_bonus, expected_bonus)
+        # Verify total doesn't exceed participant pool
+        total_distributed = sum(p["amount"] for p in payouts)
+        self.assertLessEqual(total_distributed, participant_pool)
 
     def test_excluded_participants_no_scout_bonus(self):
         """Test that excluded participants don't receive scout bonus"""
