@@ -35,8 +35,7 @@ AAPAYOUT_ESI_CACHE_HOURS = getattr(settings, "AAPAYOUT_ESI_CACHE_HOURS", 1)
 AAPAYOUT_ESI_SCOPES = [
     "esi-ui.open_window.v1",  # Open character windows (Express Mode)
     "esi-fleets.read_fleet.v1",  # Import fleet composition
-    "esi-wallet.read_character_wallet.v1",  # Check FC wallet balance (optional)
-    "esi-wallet.read_character_journal.v1",  # Verify payments post-transfer
+    "esi-wallet.read_character_wallet.v1",  # Check FC wallet balance & verify payments
     "esi-mail.send_mail.v1",  # Send payout notifications (optional)
 ]
 

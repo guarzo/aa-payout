@@ -41,6 +41,7 @@ from aapayout.helpers import (
     calculate_payouts,
     create_payouts,
     deduplicate_participants,
+    format_isk_abbreviated,
     reappraise_loot_pool,
 )
 from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
@@ -98,10 +99,25 @@ def dashboard(request):
     """
     # Get user's pending payouts
     main_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+    can_view_all = request.user.has_perm("aapayout.view_all_payouts")
 
     pending_payouts = []
     all_payouts = []
-    if main_character:
+
+    if can_view_all:
+        # Users with view_all_payouts permission see all payouts
+        pending_payouts = Payout.objects.filter(
+            status=constants.PAYOUT_STATUS_PENDING,
+        ).select_related("loot_pool", "loot_pool__fleet", "recipient")[:10]
+
+        # Get all payouts (last 20)
+        all_payouts = (
+            Payout.objects.all()
+            .select_related("loot_pool", "loot_pool__fleet", "recipient")
+            .order_by("-created_at")[:20]
+        )
+    elif main_character:
+        # Regular users only see their own payouts
         pending_payouts = Payout.objects.filter(
             recipient__id=main_character.character_id,
             status=constants.PAYOUT_STATUS_PENDING,
@@ -131,6 +147,7 @@ def dashboard(request):
         "total_pending": total_pending,
         "total_paid": total_paid,
         "recent_fleets": recent_fleets,
+        "can_view_all": can_view_all,
     }
 
     return render(request, "aapayout/dashboard.html", context)
@@ -313,7 +330,7 @@ def fleet_detail(request, pk):
                     user=request.user,
                     character_id=fc_character.character_id,
                 )
-                .require_scopes("esi-wallet.read_character_journal.v1")
+                .require_scopes("esi-wallet.read_character_wallet.v1")
                 .require_valid()
                 .first()
             )
@@ -329,6 +346,7 @@ def fleet_detail(request, pk):
         "fleet": fleet,
         "participants": updated_participants,
         "participant_groups": participant_groups,  # Deduplicated groups for display
+        "unique_player_count": len(participant_groups),  # Unique players (main characters)
         "loot_pools": loot_pools,
         "total_loot_value": total_loot_value,
         "can_edit": fleet.can_edit(request.user),
@@ -428,7 +446,7 @@ def fleet_finalize(request, pk):
                 user=request.user,
                 character_id=fc_character.character_id,
             )
-            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_scopes("esi-wallet.read_character_wallet.v1")
             .require_valid()
             .first()
         )
@@ -443,7 +461,7 @@ def fleet_finalize(request, pk):
             "<strong>You must either:</strong><br>"
             "1. <a href='/authentication/dashboard/' class='alert-link'>"
             "<strong>Add an ESI token for {}</strong></a> "
-            "with scope <code>esi-wallet.read_character_journal.v1</code> to enable automatic verification, OR<br>"
+            "with scope <code>esi-wallet.read_character_wallet.v1</code> to enable automatic verification, OR<br>"
             "2. Manually verify all payments first (click the green checkmark on each payment).",
             pending_payouts,
             "s" if pending_payouts != 1 else "",
@@ -545,7 +563,7 @@ def fleet_verify_payouts(request, pk):
             user=request.user,
             character_id=fc_character.character_id,
         )
-        .require_scopes("esi-wallet.read_character_journal.v1")
+        .require_scopes("esi-wallet.read_character_wallet.v1")
         .require_valid()
         .first()
     )
@@ -554,7 +572,7 @@ def fleet_verify_payouts(request, pk):
         messages.error(
             request,
             f"No ESI token found for {fc_character.character_name} with wallet journal scope. "
-            f"Please add an ESI token with scope 'esi-wallet.read_character_journal.v1'.",
+            f"Please add an ESI token with scope 'esi-wallet.read_character_wallet.v1'.",
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
@@ -763,10 +781,11 @@ def loot_create(request, fleet_id):
             result = appraise_loot_pool(loot_pool.id)
 
             if result.get("success"):
+                total_value_formatted = format_isk_abbreviated(result.get("total_value", 0))
                 messages.success(
                     request,
                     f"Loot pool created and valued successfully! "
-                    f"{result.get('items_created')} items valued at {result.get('total_value'):,.2f} ISK. "
+                    f"{result.get('items_created')} items valued at {total_value_formatted}. "
                     f"{result.get('payouts_created')} payouts created.",
                 )
             else:
@@ -1154,7 +1173,7 @@ def verify_payments(request, pool_id):
                 user=request.user,
                 character_id=fc_character.character_id,  # Token must match the FC character
             )
-            .require_scopes("esi-wallet.read_character_journal.v1")
+            .require_scopes("esi-wallet.read_character_wallet.v1")
             .require_valid()
             .first()
         )
@@ -1163,7 +1182,7 @@ def verify_payments(request, pool_id):
             messages.error(
                 request,
                 "You need to link your main character's ESI token with wallet journal access. "
-                "Please add the 'esi-wallet.read_character_journal.v1' scope for your main character.",
+                "Please add the 'esi-wallet.read_character_wallet.v1' scope for your main character.",
             )
             return redirect("aapayout:payout_list", pool_id=pool_id)
 
@@ -2104,12 +2123,12 @@ def add_esi_fleet_scope(request, _token):
 
 
 @login_required
-@token_required(scopes="esi-wallet.read_character_journal.v1", new=True)
+@token_required(scopes="esi-wallet.read_character_wallet.v1", new=True)
 def add_esi_wallet_scope(request, _token):
     """
     View to initiate ESI OAuth flow for wallet journal scope.
 
-    This view requires the esi-wallet.read_character_journal.v1 scope with new=True,
+    This view requires the esi-wallet.read_character_wallet.v1 scope with new=True,
     which forces the OAuth flow even if the user has other tokens.
 
     After successful OAuth, redirect back to dashboard.

@@ -37,7 +37,7 @@ Before installing this plugin, you need:
 3. **ESI Token** (Optional but recommended): For advanced features, organizers need ESI tokens with these scopes:
    - `esi-fleets.read_fleet.v1` - Import fleet composition
    - `esi-ui.open_window.v1` - Express Mode payment interface
-   - `esi-wallet.read_character_journal.v1` - Payment verification
+   - `esi-wallet.read_character_wallet.v1` - Payment verification
 
 ## Installation
 
@@ -309,7 +309,7 @@ AAPAYOUT_AUTO_VERIFY_AFTER_PAYMENT = True     # Auto-verify after Express Mode
 ### Payment Verification Issues
 
 **Problem**: Payments not being verified
-- **Solution**: Ensure you have ESI token with `esi-wallet.read_character_journal.v1` scope
+- **Solution**: Ensure you have ESI token with `esi-wallet.read_character_wallet.v1` scope
 - **Solution**: Verify you made the payment from the correct character
 - **Solution**: Check the payment was made within the time window (default 24 hours)
 - **Solution**: Ensure payment amount matches exactly (within 0.01 ISK)
