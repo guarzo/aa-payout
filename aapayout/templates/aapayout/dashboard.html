@@ -187,7 +187,7 @@
                                         {% elif payout.status == 'paid' %}
                                             <span class="badge bg-success">{{ payout.get_status_display }}</span>
                                             {% if payout.verified %}
-                                                <span class="badge bg-info" title="{% translate 'Verified via ESI' %}">
+                                                <span class="badge bg-info" title="{% translate 'Verified' %}">
                                                     <i class="fas fa-shield-alt"></i>
                                                 </span>
                                             {% endif %}

@@ -7,7 +7,7 @@
     <div class="row mb-4">
         <div class="col-md-8 mx-auto">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>{% translate "ESI Fleet Import Results" %}</h2>
+                <h2>{% translate "Fleet Import Results" %}</h2>
                 <div>
                     <a href="{% url 'aapayout:fleet_detail' fleet.pk %}" class="btn btn-primary">
                         <i class="fas fa-arrow-left"></i> {% translate "Back to Payout" %}
@@ -64,7 +64,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th>{% translate "ESI Fleet ID" %}:</th>
+                            <th>{% translate "Fleet ID" %}:</th>
                             <td><code>{{ esi_import.esi_fleet_id }}</code></td>
                         </tr>
                         <tr>
@@ -88,7 +88,7 @@
                 <div class="card-body">
                     <p>
                         {% blocktranslate with total=esi_import.characters_found unique=esi_import.unique_players %}
-                        The import found {{ total }} characters in the ESI fleet, but identified {{ unique }} unique players.
+                        The import found {{ total }} characters in the fleet, but identified {{ unique }} unique players.
                         {% endblocktranslate %}
                     </p>
                     <p class="mb-0">
