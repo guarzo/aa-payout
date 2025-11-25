@@ -108,7 +108,9 @@ def dashboard(request):
         # Users with view_all_payouts permission see all payouts
         pending_payouts = Payout.objects.filter(
             status=constants.PAYOUT_STATUS_PENDING,
-        ).select_related("loot_pool", "loot_pool__fleet", "recipient")[:10]
+        ).select_related(
+            "loot_pool", "loot_pool__fleet", "recipient"
+        )[:10]
 
         # Get all payouts (last 20)
         all_payouts = (
