@@ -17,7 +17,7 @@
             <div class="card border-primary">
                 <div class="card-body">
                     <h5 class="card-title">{% translate "Pending Payouts" %}</h5>
-                    <p class="card-text display-6">{{ pending_payouts|length }}</p>
+                    <p class="card-text display-6">{{ pending_loot_pools|length }}</p>
                     <p class="text-muted">{{ total_pending|isk_format_full }}</p>
                 </div>
             </div>
@@ -32,8 +32,8 @@
         </div>
     </div>
 
-    <!-- Pending Payouts Table -->
-    {% if pending_payouts %}
+    <!-- Pending Payouts Table (one line per fleet/loot pool) -->
+    {% if pending_loot_pools %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -45,32 +45,34 @@
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    {% if can_view_all %}<th>{% translate "Recipient" %}</th>{% endif %}
-                                    <th>{% translate "Payout Session" %}</th>
-                                    <th>{% translate "Loot Pool" %}</th>
+                                    <th>{% translate "Fleet" %}</th>
+                                    <th>{% translate "Date" %}</th>
+                                    {% if can_view_all %}<th>{% translate "FC" %}</th>{% endif %}
+                                    <th class="text-center">{% translate "Pending" %}</th>
                                     <th class="text-end">{% translate "Amount" %}</th>
-                                    <th>{% translate "Status" %}</th>
+                                    <th>{% translate "Actions" %}</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for payout in pending_payouts %}
+                                {% for pool in pending_loot_pools %}
                                 <tr>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' pool.fleet.pk %}">
+                                            {{ pool.fleet.name }}
+                                        </a>
+                                    </td>
+                                    <td><small>{{ pool.created_at|date:"Y-m-d H:i" }}</small></td>
                                     {% if can_view_all %}
-                                    <td>{{ payout.recipient.name }}</td>
+                                    <td>{{ pool.fleet.fleet_commander.username }}</td>
                                     {% endif %}
-                                    <td>
-                                        <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
-                                            {{ payout.loot_pool.fleet.name }}
-                                        </a>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning">{{ pool.pending_count }} {% translate "pending" %}</span>
                                     </td>
+                                    <td class="text-end">{{ pool.pending_amount|isk_format_full }}</td>
                                     <td>
-                                        <a href="{% url 'aapayout:loot_detail' payout.loot_pool.pk %}">
-                                            {{ payout.loot_pool.name }}
+                                        <a href="{% url 'aapayout:fleet_detail' pool.fleet.pk %}" class="btn btn-sm btn-primary">
+                                            {% translate "View" %}
                                         </a>
-                                    </td>
-                                    <td class="text-end">{{ payout.amount|isk_format_full }}</td>
-                                    <td>
-                                        <span class="badge bg-warning">{{ payout.get_status_display }}</span>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -91,9 +93,9 @@
     </div>
     {% endif %}
 
-    <!-- Recent Payout Sessions -->
+    <!-- Recent Payout Sessions (FC's fleets) -->
     {% if recent_fleets %}
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
@@ -150,56 +152,47 @@
     </div>
     {% endif %}
 
-    <!-- All Payouts Table -->
-    {% if all_payouts %}
+    <!-- Recent Loot Pools Table (one line per fleet) -->
+    {% if recent_loot_pools %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">{% if can_view_all %}{% translate "All Payouts" %}{% else %}{% translate "Your Payouts" %}{% endif %}</h5>
+                    <h5 class="mb-0">{% if can_view_all %}{% translate "Recent Payouts" %}{% else %}{% translate "Your Recent Payouts" %}{% endif %}</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-striped">
                             <thead>
                                 <tr>
+                                    <th>{% translate "Fleet" %}</th>
                                     <th>{% translate "Date" %}</th>
-                                    {% if can_view_all %}<th>{% translate "Recipient" %}</th>{% endif %}
-                                    <th>{% translate "Payout Session" %}</th>
-                                    <th>{% translate "Loot Pool" %}</th>
-                                    <th class="text-end">{% translate "Amount" %}</th>
-                                    <th>{% translate "Status" %}</th>
+                                    {% if can_view_all %}<th>{% translate "FC" %}</th>{% endif %}
+                                    <th class="text-center">{% translate "Payouts" %}</th>
+                                    <th class="text-end">{% translate "Total Value" %}</th>
+                                    <th class="text-end">{% translate "Paid" %}</th>
+                                    <th>{% translate "Actions" %}</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for payout in all_payouts %}
+                                {% for pool in recent_loot_pools %}
                                 <tr>
-                                    <td><small>{{ payout.created_at|date:"Y-m-d H:i" }}</small></td>
+                                    <td>
+                                        <a href="{% url 'aapayout:fleet_detail' pool.fleet.pk %}">
+                                            {{ pool.fleet.name }}
+                                        </a>
+                                    </td>
+                                    <td><small>{{ pool.created_at|date:"Y-m-d H:i" }}</small></td>
                                     {% if can_view_all %}
-                                    <td>{{ payout.recipient.name }}</td>
+                                    <td>{{ pool.fleet.fleet_commander.username }}</td>
                                     {% endif %}
+                                    <td class="text-center">{{ pool.total_payouts }}</td>
+                                    <td class="text-end">{{ pool.total_value|isk_format_full }}</td>
+                                    <td class="text-end text-success">{{ pool.paid_amount|isk_format_full }}</td>
                                     <td>
-                                        <a href="{% url 'aapayout:fleet_detail' payout.loot_pool.fleet.pk %}">
-                                            {{ payout.loot_pool.fleet.name }}
+                                        <a href="{% url 'aapayout:fleet_detail' pool.fleet.pk %}" class="btn btn-sm btn-info">
+                                            {% translate "View" %}
                                         </a>
-                                    </td>
-                                    <td>
-                                        <a href="{% url 'aapayout:loot_detail' payout.loot_pool.pk %}">
-                                            {{ payout.loot_pool.name }}
-                                        </a>
-                                    </td>
-                                    <td class="text-end">{{ payout.amount|isk_format_full }}</td>
-                                    <td>
-                                        {% if payout.status == 'pending' %}
-                                            <span class="badge bg-warning">{{ payout.get_status_display }}</span>
-                                        {% elif payout.status == 'paid' %}
-                                            <span class="badge bg-success">{{ payout.get_status_display }}</span>
-                                            {% if payout.verified %}
-                                                <span class="badge bg-info" title="{% translate 'Verified' %}">
-                                                    <i class="fas fa-shield-alt"></i>
-                                                </span>
-                                            {% endif %}
-                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -207,7 +200,7 @@
                         </table>
                     </div>
                     <div class="text-center mt-3">
-                        <small class="text-muted">{% translate "Showing last 20 payouts" %}</small>
+                        <small class="text-muted">{% translate "Showing last 10 payout sessions" %}</small>
                     </div>
                 </div>
             </div>
@@ -215,7 +208,7 @@
     </div>
     {% endif %}
 
-    {% if not pending_payouts and not recent_fleets and not all_payouts %}
+    {% if not pending_loot_pools and not recent_fleets and not recent_loot_pools %}
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">

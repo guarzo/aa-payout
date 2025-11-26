@@ -2,6 +2,9 @@
 App Models
 """
 
+# Standard Library
+from decimal import Decimal
+
 # Django
 from django.contrib.auth.models import User
 from django.db import models
@@ -211,11 +214,11 @@ class LootPool(models.Model):
         default=0,
         help_text="Total participant share amount in ISK",
     )
-    scout_bonus_percentage = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
-        default=10,
-        help_text="Scout bonus percentage (default: 10%)",
+    scout_shares = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        default=Decimal("1.5"),
+        help_text="Number of shares scouts receive (1-5, step 0.5)",
     )
     janice_appraisal_code = models.CharField(max_length=50, blank=True, help_text="Janice appraisal code for linking")
     valued_at = models.DateTimeField(null=True, blank=True, help_text="Time when loot was valued")

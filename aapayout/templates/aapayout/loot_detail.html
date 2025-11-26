@@ -60,20 +60,20 @@
                     <hr>
                     <div class="mb-0">
                         <label for="scout-bonus-slider-detail" class="form-label">
-                            <i class="fas fa-binoculars"></i> {% translate "Scout Bonus" %}:
-                            <strong><span id="scout-bonus-value-detail">{{ loot_pool.scout_bonus_percentage|floatformat:0 }}</span>%</strong>
+                            <i class="fas fa-binoculars"></i> {% translate "Scout Shares" %}:
+                            <strong><span id="scout-bonus-value-detail">{{ loot_pool.scout_shares|floatformat:1 }}</span></strong>
                         </label>
                         <input type="range" class="form-range" id="scout-bonus-slider-detail"
-                               min="0" max="100" step="10"
-                               value="{{ loot_pool.scout_bonus_percentage|floatformat:0 }}"
+                               min="1" max="5" step="0.5"
+                               value="{{ loot_pool.scout_shares|floatformat:1 }}"
                                data-loot-pool-id="{{ loot_pool.pk }}">
                         <div class="d-flex justify-content-between text-muted small">
-                            <span>0%</span>
-                            <span>50%</span>
-                            <span>100%</span>
+                            <span>1</span>
+                            <span>3</span>
+                            <span>5</span>
                         </div>
                         <small class="text-muted d-block mt-2">
-                            <i class="fas fa-info-circle"></i> {% translate "Adjust scout bonus - payouts will update automatically" %}
+                            <i class="fas fa-info-circle"></i> {% translate "Scouts receive this many shares (regular = 1 share)" %}
                         </small>
                     </div>
                     {% endif %}

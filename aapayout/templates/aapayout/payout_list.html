@@ -56,7 +56,7 @@
                         </div>
                         <!-- Right column: Payout breakdown -->
                         <div class="col-md-6">
-                            <h6 class="text-muted mb-3">{% translate "Payouts" %} ({% translate "Scout Bonus" %}: {{ scout_bonus_pct|floatformat:0 }}%)</h6>
+                            <h6 class="text-muted mb-3">{% translate "Payouts" %} ({% translate "Scout Shares" %}: {{ scout_shares|floatformat:1 }})</h6>
                             <table class="table table-sm table-borderless mb-0">
                                 <tbody>
                                     {% if scout_count > 0 %}

@@ -92,7 +92,7 @@ class ParticipantAddForm(forms.ModelForm):
         initial=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_is_scout"}),
         label="Mark as Scout",
-        help_text="Scouts receive +10% bonus payout",
+        help_text="Scouts receive extra shares (configured per loot pool)",
     )
 
     class Meta:
@@ -110,7 +110,7 @@ class ParticipantEditForm(forms.ModelForm):
         required=False,
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
         label="Mark as Scout",
-        help_text="Scouts receive +10% bonus payout",
+        help_text="Scouts receive extra shares (configured per loot pool)",
     )
 
     class Meta:
@@ -154,7 +154,7 @@ class LootPoolCreateForm(forms.ModelForm):
 
     class Meta:
         model = LootPool
-        fields = ["raw_loot_text", "pricing_method", "scout_bonus_percentage"]
+        fields = ["raw_loot_text", "pricing_method", "scout_shares"]
         widgets = {
             "raw_loot_text": forms.Textarea(
                 attrs={
@@ -167,20 +167,20 @@ class LootPoolCreateForm(forms.ModelForm):
                 }
             ),
             "pricing_method": forms.Select(attrs={"class": "form-select"}),
-            "scout_bonus_percentage": forms.NumberInput(
+            "scout_shares": forms.NumberInput(
                 attrs={
                     "class": "form-range",
                     "type": "range",
-                    "min": "0",
-                    "max": "100",
-                    "step": "10",
+                    "min": "1",
+                    "max": "5",
+                    "step": "0.5",
                     "id": "scout-bonus-slider-create",
                 }
             ),
         }
         help_texts = {
             "raw_loot_text": "Paste items directly from EVE client inventory",
-            "scout_bonus_percentage": "Percentage bonus for scouts (0-100%)",
+            "scout_shares": "Number of shares scouts receive (1-5, regular = 1 share)",
         }
 
     def clean_raw_loot_text(self):
@@ -195,7 +195,7 @@ class LootPoolEditForm(forms.ModelForm):
 
     class Meta:
         model = LootPool
-        fields = ["raw_loot_text", "pricing_method", "scout_bonus_percentage"]
+        fields = ["raw_loot_text", "pricing_method", "scout_shares"]
         widgets = {
             "raw_loot_text": forms.Textarea(
                 attrs={
@@ -208,20 +208,20 @@ class LootPoolEditForm(forms.ModelForm):
                 }
             ),
             "pricing_method": forms.Select(attrs={"class": "form-select"}),
-            "scout_bonus_percentage": forms.NumberInput(
+            "scout_shares": forms.NumberInput(
                 attrs={
                     "class": "form-range",
                     "type": "range",
-                    "min": "0",
-                    "max": "100",
-                    "step": "10",
+                    "min": "1",
+                    "max": "5",
+                    "step": "0.5",
                     "id": "scout-bonus-slider-edit",
                 }
             ),
         }
         help_texts = {
             "raw_loot_text": "Paste items directly from EVE client inventory",
-            "scout_bonus_percentage": "Percentage bonus for scouts (0-100%)",
+            "scout_shares": "Number of shares scouts receive (1-5, regular = 1 share)",
         }
 
     def clean_raw_loot_text(self):

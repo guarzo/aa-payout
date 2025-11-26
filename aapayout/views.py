@@ -96,56 +96,93 @@ def set_fc_character(request, character_id):
 def dashboard(request):
     """
     Main dashboard view
+
+    Shows one line per fleet/loot pool (not per individual payout).
+    For regular users: shows fleets where they have pending payouts.
+    For admins: shows all fleets with pending payouts.
     """
-    # Get user's pending payouts
+    # Standard Library
+    from decimal import Decimal
+
+    # Get user's main character
     main_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
     can_view_all = request.user.has_perm("aapayout.view_all_payouts")
 
-    pending_payouts = []
-    all_payouts = []
+    pending_loot_pools = []
+    recent_loot_pools = []
+    total_pending = Decimal("0.00")
+    total_paid = Decimal("0.00")
 
     if can_view_all:
-        # Users with view_all_payouts permission see all payouts
-        pending_payouts = Payout.objects.filter(
-            status=constants.PAYOUT_STATUS_PENDING,
-        ).select_related(
-            "loot_pool", "loot_pool__fleet", "recipient"
-        )[:10]
-
-        # Get all payouts (last 20)
-        all_payouts = (
-            Payout.objects.all()
-            .select_related("loot_pool", "loot_pool__fleet", "recipient")
-            .order_by("-created_at")[:20]
+        # Admins see all loot pools with pending payouts (one line per fleet)
+        pending_loot_pools = (
+            LootPool.objects.filter(payouts__status=constants.PAYOUT_STATUS_PENDING)
+            .select_related("fleet", "fleet__fleet_commander")
+            .distinct()
+            .order_by("-created_at")[:10]
         )
+
+        # Add aggregated payout info for each loot pool
+        for pool in pending_loot_pools:
+            pool.pending_count = pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING).count()
+            pool.pending_amount = sum(p.amount for p in pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING))
+            pool.paid_count = pool.payouts.filter(status=constants.PAYOUT_STATUS_PAID).count()
+            total_pending += pool.pending_amount
+
+        # Get recent loot pools (last 10)
+        recent_loot_pools = LootPool.objects.select_related("fleet", "fleet__fleet_commander").order_by("-created_at")[
+            :10
+        ]
+
+        for pool in recent_loot_pools:
+            pool.total_payouts = pool.payouts.count()
+            pool.paid_amount = sum(p.amount for p in pool.payouts.filter(status=constants.PAYOUT_STATUS_PAID))
+            total_paid += pool.paid_amount
+
     elif main_character:
-        # Regular users only see their own payouts
-        pending_payouts = Payout.objects.filter(
-            recipient__id=main_character.character_id,
-            status=constants.PAYOUT_STATUS_PENDING,
-        ).select_related("loot_pool", "loot_pool__fleet")[:10]
-
-        # Get all payouts (last 20)
-        all_payouts = (
-            Payout.objects.filter(
-                recipient__id=main_character.character_id,
+        # Regular users see loot pools where THEY have pending payouts
+        pending_loot_pools = (
+            LootPool.objects.filter(
+                payouts__recipient__id=main_character.character_id,
+                payouts__status=constants.PAYOUT_STATUS_PENDING,
             )
-            .select_related("loot_pool", "loot_pool__fleet")
-            .order_by("-created_at")[:20]
+            .select_related("fleet", "fleet__fleet_commander")
+            .distinct()
+            .order_by("-created_at")[:10]
         )
 
-    # Get recent fleets (if user is FC)
+        # Add user's payout info for each loot pool
+        for pool in pending_loot_pools:
+            user_pending = pool.payouts.filter(
+                recipient__id=main_character.character_id,
+                status=constants.PAYOUT_STATUS_PENDING,
+            )
+            pool.pending_count = user_pending.count()
+            pool.pending_amount = sum(p.amount for p in user_pending)
+            total_pending += pool.pending_amount
+
+        # Get recent loot pools where user has payouts
+        recent_loot_pools = (
+            LootPool.objects.filter(payouts__recipient__id=main_character.character_id)
+            .select_related("fleet", "fleet__fleet_commander")
+            .distinct()
+            .order_by("-created_at")[:10]
+        )
+
+        for pool in recent_loot_pools:
+            user_payouts = pool.payouts.filter(recipient__id=main_character.character_id)
+            pool.total_payouts = user_payouts.count()
+            pool.paid_amount = sum(p.amount for p in user_payouts.filter(status=constants.PAYOUT_STATUS_PAID))
+            total_paid += pool.paid_amount
+
+    # Get recent fleets created by user (if FC)
     recent_fleets = Fleet.objects.none()
     if request.user.has_perm("aapayout.create_fleet"):
         recent_fleets = Fleet.objects.filter(fleet_commander=request.user).order_by("-fleet_time")[:5]
 
-    # Calculate stats
-    total_pending = sum(p.amount for p in pending_payouts)
-    total_paid = sum(p.amount for p in all_payouts if p.status == constants.PAYOUT_STATUS_PAID)
-
     context = {
-        "pending_payouts": pending_payouts,
-        "all_payouts": all_payouts,
+        "pending_loot_pools": pending_loot_pools,
+        "recent_loot_pools": recent_loot_pools,
         "total_pending": total_pending,
         "total_paid": total_paid,
         "recent_fleets": recent_fleets,
@@ -1092,7 +1129,7 @@ def payout_list(request, pool_id):
         "regular_count": regular_count,
         "scout_total": scout_total,
         "regular_total": regular_total,
-        "scout_bonus_pct": loot_pool.scout_bonus_percentage or Decimal("10.00"),
+        "scout_shares": loot_pool.scout_shares or Decimal("1.5"),
     }
     return render(request, "aapayout/payout_list.html", context)
 
@@ -1570,9 +1607,9 @@ def participant_update_status(request, pk):
 @require_POST
 def update_scout_bonus(request, pool_id):
     """
-    AJAX endpoint to update scout bonus percentage for a loot pool
+    AJAX endpoint to update scout shares for a loot pool
 
-    Updates the scout bonus percentage and automatically recalculates payouts.
+    Updates the scout shares and automatically recalculates payouts.
     """
     # Standard Library
     import json
@@ -1586,20 +1623,20 @@ def update_scout_bonus(request, pool_id):
 
     try:
         data = json.loads(request.body)
-        new_percentage = Decimal(str(data.get("percentage", 10)))
+        new_shares = Decimal(str(data.get("shares", 1.5)))
 
-        # Validate percentage (0-100)
-        if new_percentage < 0 or new_percentage > 100:
+        # Validate shares (1-5, step 0.5)
+        if new_shares < 1 or new_shares > 5:
             return JsonResponse(
-                {"success": False, "error": "Percentage must be between 0 and 100"},
+                {"success": False, "error": "Shares must be between 1 and 5"},
                 status=400,
             )
 
-        # Update loot pool scout bonus percentage
-        loot_pool.scout_bonus_percentage = new_percentage
-        loot_pool.save(update_fields=["scout_bonus_percentage"])
+        # Update loot pool scout shares
+        loot_pool.scout_shares = new_shares
+        loot_pool.save(update_fields=["scout_shares"])
 
-        logger.info(f"Updated scout bonus to {new_percentage}% for loot pool {pool_id}")
+        logger.info(f"Updated scout shares to {new_shares} for loot pool {pool_id}")
 
         # Auto-recalculate payouts if loot pool is approved or valued
         payouts_recalculated = 0
@@ -1608,18 +1645,18 @@ def update_scout_bonus(request, pool_id):
             constants.LOOT_STATUS_VALUED,
         ]:
             payouts_recalculated = create_payouts(loot_pool)
-            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
+            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout shares update")
 
         return JsonResponse(
             {
                 "success": True,
-                "percentage": float(new_percentage),
+                "shares": float(new_shares),
                 "payouts_recalculated": payouts_recalculated,
             }
         )
 
     except Exception as e:
-        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}")
+        logger.exception(f"Failed to update scout shares for loot pool {pool_id}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 
@@ -1951,6 +1988,8 @@ def express_mode_open_window(request, payout_id):
     Uses ESI UI endpoint to open the character information window for a payout
     recipient in the EVE client.
 
+    The window opens in the EVE client of the FC's MAIN CHARACTER.
+
     Phase 2: Week 6 - Express Mode
     """
     # Alliance Auth
@@ -1967,10 +2006,23 @@ def express_mode_open_window(request, payout_id):
         return JsonResponse({"success": False, "error": "Permission denied"}, status=403)
 
     try:
-        # Get user's ESI token with required scope
+        # Get FC's main character (always use main character, not session FC)
+        fc_character = request.user.profile.main_character if hasattr(request.user, "profile") else None
+
+        if not fc_character:
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "No main character set. Please set your main character in Alliance Auth.",
+                },
+                status=400,
+            )
+
+        # Get ESI token for the FC's main character with required scope
         token = (
             Token.objects.filter(
                 user=request.user,
+                character_id=fc_character.character_id,  # Must match FC's main character
             )
             .require_scopes("esi-ui.open_window.v1")
             .require_valid()
@@ -1981,12 +2033,13 @@ def express_mode_open_window(request, payout_id):
             return JsonResponse(
                 {
                     "success": False,
-                    "error": "You need an ESI token with UI window access. Please add your character.",
+                    "error": f"No ESI token found for {fc_character.character_name} with UI window access. "
+                    f"Please add the 'esi-ui.open_window.v1' scope for your main character.",
                 },
                 status=400,
             )
 
-        # Open character window
+        # Open the recipient's info window in the FC's main character's EVE client
         success, error = esi_ui_service.open_character_window(payout.recipient.id, token)
 
         if not success:
