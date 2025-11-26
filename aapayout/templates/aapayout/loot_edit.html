@@ -7,7 +7,7 @@
         <div class="col-12">
             <h2>{% translate "Edit Loot for" %} {{ fleet.name }}</h2>
             <p class="text-muted">
-                {% translate "Update loot text, pricing method, or scout bonus. Loot will be re-appraised automatically." %}
+                {% translate "Update loot text, pricing method, or scout shares. Loot will be re-appraised automatically." %}
             </p>
         </div>
     </div>
@@ -39,21 +39,21 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="{{ form.scout_bonus_percentage.id_for_label }}" class="form-label">
-                                <i class="fas fa-binoculars"></i> {{ form.scout_bonus_percentage.label }}:
-                                <strong><span id="scout-bonus-value-edit">{{ loot_pool.scout_bonus_percentage|floatformat:0 }}</span>%</strong>
+                            <label for="{{ form.scout_shares.id_for_label }}" class="form-label">
+                                <i class="fas fa-binoculars"></i> {{ form.scout_shares.label }}:
+                                <strong><span id="scout-bonus-value-edit">{{ loot_pool.scout_shares|floatformat:1 }}</span></strong>
                             </label>
-                            {{ form.scout_bonus_percentage }}
+                            {{ form.scout_shares }}
                             <div class="d-flex justify-content-between text-muted small">
-                                <span>0%</span>
-                                <span>50%</span>
-                                <span>100%</span>
+                                <span>1</span>
+                                <span>3</span>
+                                <span>5</span>
                             </div>
-                            {% if form.scout_bonus_percentage.errors %}
-                                <div class="text-danger">{{ form.scout_bonus_percentage.errors }}</div>
+                            {% if form.scout_shares.errors %}
+                                <div class="text-danger">{{ form.scout_shares.errors }}</div>
                             {% endif %}
-                            {% if form.scout_bonus_percentage.help_text %}
-                                <small class="form-text text-muted">{{ form.scout_bonus_percentage.help_text }}</small>
+                            {% if form.scout_shares.help_text %}
+                                <small class="form-text text-muted">{{ form.scout_shares.help_text }}</small>
                             {% endif %}
                         </div>
 
@@ -92,7 +92,7 @@
                     <h6>{% translate "Editing Loot" %}</h6>
                     <ul class="small">
                         <li>{% translate "Update the loot text to add or remove items" %}</li>
-                        <li>{% translate "Adjust pricing method or scout bonus as needed" %}</li>
+                        <li>{% translate "Adjust pricing method or scout shares as needed" %}</li>
                         <li>{% translate "Click 'Save & Reappraise' to update" %}</li>
                     </ul>
                     <hr>

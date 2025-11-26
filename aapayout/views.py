@@ -1129,7 +1129,7 @@ def payout_list(request, pool_id):
         "regular_count": regular_count,
         "scout_total": scout_total,
         "regular_total": regular_total,
-        "scout_bonus_pct": loot_pool.scout_bonus_percentage or Decimal("10.00"),
+        "scout_shares": loot_pool.scout_shares or Decimal("1.5"),
     }
     return render(request, "aapayout/payout_list.html", context)
 
@@ -1607,9 +1607,9 @@ def participant_update_status(request, pk):
 @require_POST
 def update_scout_bonus(request, pool_id):
     """
-    AJAX endpoint to update scout bonus percentage for a loot pool
+    AJAX endpoint to update scout shares for a loot pool
 
-    Updates the scout bonus percentage and automatically recalculates payouts.
+    Updates the scout shares and automatically recalculates payouts.
     """
     # Standard Library
     import json
@@ -1623,20 +1623,20 @@ def update_scout_bonus(request, pool_id):
 
     try:
         data = json.loads(request.body)
-        new_percentage = Decimal(str(data.get("percentage", 10)))
+        new_shares = Decimal(str(data.get("shares", 1.5)))
 
-        # Validate percentage (0-100)
-        if new_percentage < 0 or new_percentage > 100:
+        # Validate shares (1-5, step 0.5)
+        if new_shares < 1 or new_shares > 5:
             return JsonResponse(
-                {"success": False, "error": "Percentage must be between 0 and 100"},
+                {"success": False, "error": "Shares must be between 1 and 5"},
                 status=400,
             )
 
-        # Update loot pool scout bonus percentage
-        loot_pool.scout_bonus_percentage = new_percentage
-        loot_pool.save(update_fields=["scout_bonus_percentage"])
+        # Update loot pool scout shares
+        loot_pool.scout_shares = new_shares
+        loot_pool.save(update_fields=["scout_shares"])
 
-        logger.info(f"Updated scout bonus to {new_percentage}% for loot pool {pool_id}")
+        logger.info(f"Updated scout shares to {new_shares} for loot pool {pool_id}")
 
         # Auto-recalculate payouts if loot pool is approved or valued
         payouts_recalculated = 0
@@ -1645,18 +1645,18 @@ def update_scout_bonus(request, pool_id):
             constants.LOOT_STATUS_VALUED,
         ]:
             payouts_recalculated = create_payouts(loot_pool)
-            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout bonus update")
+            logger.info(f"Auto-regenerated {payouts_recalculated} payouts after scout shares update")
 
         return JsonResponse(
             {
                 "success": True,
-                "percentage": float(new_percentage),
+                "shares": float(new_shares),
                 "payouts_recalculated": payouts_recalculated,
             }
         )
 
     except Exception as e:
-        logger.exception(f"Failed to update scout bonus for loot pool {pool_id}")
+        logger.exception(f"Failed to update scout shares for loot pool {pool_id}")
         return JsonResponse({"success": False, "error": str(e)}, status=400)
 
 

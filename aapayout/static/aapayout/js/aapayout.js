@@ -800,15 +800,15 @@ function initializeScoutBonusSlider() {
         // Update server when slider changes (with debounce)
         slider.addEventListener('change', function () {
             clearTimeout(updateTimer);
-            const newPercentage = this.value;
+            const newShares = this.value;
 
             // Show loading state
             if (valueDisplay) {
-                valueDisplay.textContent = newPercentage + ' (updating...)';
+                valueDisplay.textContent = newShares + ' (updating...)';
             }
 
             updateTimer = setTimeout(function () {
-                updateScoutBonus(lootPoolId, newPercentage, 'scout-bonus-value');
+                updateScoutBonus(lootPoolId, newShares, 'scout-bonus-value');
             }, 300);
         });
     }
@@ -843,15 +843,15 @@ function initializeScoutBonusSlider() {
         // Update server when slider changes (with debounce)
         sliderDetail.addEventListener('change', function () {
             clearTimeout(updateTimerDetail);
-            const newPercentage = this.value;
+            const newShares = this.value;
 
             // Show loading state
             if (valueDisplayDetail) {
-                valueDisplayDetail.textContent = newPercentage + ' (updating...)';
+                valueDisplayDetail.textContent = newShares + ' (updating...)';
             }
 
             updateTimerDetail = setTimeout(function () {
-                updateScoutBonus(lootPoolIdDetail, newPercentage, 'scout-bonus-value-detail');
+                updateScoutBonus(lootPoolIdDetail, newShares, 'scout-bonus-value-detail');
             }, 300);
         });
     }
@@ -873,21 +873,21 @@ function initializeScoutBonusSlider() {
         // Update server when slider changes (with debounce)
         sliderEdit.addEventListener('change', function () {
             clearTimeout(updateTimerEdit);
-            const newPercentage = this.value;
+            const newShares = this.value;
 
             // Show loading state
             if (valueDisplayEdit) {
-                valueDisplayEdit.textContent = newPercentage + ' (updating...)';
+                valueDisplayEdit.textContent = newShares + ' (updating...)';
             }
 
             updateTimerEdit = setTimeout(function () {
-                updateScoutBonus(lootPoolIdEdit, newPercentage, 'scout-bonus-value-edit');
+                updateScoutBonus(lootPoolIdEdit, newShares, 'scout-bonus-value-edit');
             }, 300);
         });
     }
 }
 
-function updateScoutBonus(lootPoolId, percentage, displayElementId) {
+function updateScoutBonus(lootPoolId, shares, displayElementId) {
     const csrftoken = getCookie('csrftoken');
     // Use provided displayElementId or fallback to default
     const elementId = displayElementId || 'scout-bonus-value';
@@ -899,11 +899,11 @@ function updateScoutBonus(lootPoolId, percentage, displayElementId) {
             'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ percentage: percentage }),
+        body: JSON.stringify({ shares: shares }),
     })
         .then(function (response) {
             if (!response.ok) {
-                throw new Error('Failed to update scout bonus');
+                throw new Error('Failed to update scout shares');
             }
             return response.json();
         })
@@ -911,9 +911,9 @@ function updateScoutBonus(lootPoolId, percentage, displayElementId) {
             if (data.success) {
                 // Update display
                 if (valueDisplay) {
-                    valueDisplay.textContent = percentage;
+                    valueDisplay.textContent = shares;
                 }
-                showSuccessToast('Scout bonus updated to ' + percentage + '%. Payouts recalculated.');
+                showSuccessToast('Scout shares updated to ' + shares + '. Payouts recalculated.');
 
                 // Reload page to show updated payouts
                 setTimeout(function () {
@@ -924,8 +924,8 @@ function updateScoutBonus(lootPoolId, percentage, displayElementId) {
             }
         })
         .catch(function (error) {
-            console.error('Error updating scout bonus:', error);
-            showErrorToast('Failed to update scout bonus: ' + error.message);
+            console.error('Error updating scout shares:', error);
+            showErrorToast('Failed to update scout shares: ' + error.message);
             // Reset display
             if (valueDisplay) {
                 // Derive slider ID from display element ID by replacing '-value' with '-slider'

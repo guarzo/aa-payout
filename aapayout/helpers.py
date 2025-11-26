@@ -19,26 +19,28 @@ logger = logging.getLogger(__name__)
 
 def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     """
-    Calculate payout distribution for a loot pool
+    Calculate payout distribution for a loot pool using share-based system.
 
     Calculation Order:
-    1. Scout percentage is deducted from total loot first (raw % of total)
-    2. Corporation tax is deducted from total loot (raw % of total)
-    3. Remaining ISK is split evenly among non-scout participants (main characters)
-    4. Scouts receive their scout share (the deducted scout percentage)
+    1. Corporation tax is deducted from total loot (raw % of total)
+    2. Calculate total shares: scouts get scout_shares each, regulars get 1 share each
+    3. Calculate per-share value from participant pool
+    4. Each participant receives shares × per-share value
     5. Individual shares round down to nearest 0.01 ISK
     6. Remainder from rounding goes to corporation
 
     Example:
         Total loot: 100M ISK
-        Scout percentage: 10% (1 scout)
         Corp tax: 10%
-        Regular participants: 2
+        Scouts: 1 (with 2 shares)
+        Regular participants: 2 (with 1 share each)
 
-        Scout share: 100M * 10% = 10M ISK (goes to the scout)
         Corp share: 100M * 10% = 10M ISK
-        Remaining pool: 100M - 10M - 10M = 80M ISK
-        Per regular participant: 80M / 2 = 40M ISK each
+        Participant pool: 100M - 10M = 90M ISK
+        Total shares: 2 + 1 + 1 = 4 shares
+        Per-share value: 90M / 4 = 22.5M ISK
+        Scout payout: 2 × 22.5M = 45M ISK
+        Regular payout: 1 × 22.5M = 22.5M ISK each
 
     Args:
         loot_pool: LootPool instance to calculate payouts for
@@ -87,38 +89,36 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
     scout_count = len(scout_players)
     regular_count = len(regular_players)
 
-    # Get percentages from loot pool
+    # Get settings from loot pool
     corp_share_percentage = loot_pool.corp_share_percentage or Decimal("0.00")
-    scout_bonus_percentage = loot_pool.scout_bonus_percentage or Decimal("10.00")
+    scout_shares = loot_pool.scout_shares or Decimal("1.5")
 
-    # Step 1: Calculate scout share (raw % of total, split among scouts)
-    # Only deduct scout share if there are actually scouts
-    total_scout_share = Decimal("0.00")
-    scout_share = Decimal("0.00")
-    if scout_count > 0:
-        total_scout_share = (total_value * scout_bonus_percentage / Decimal("100")).quantize(
-            Decimal("0.01"), rounding=ROUND_DOWN
-        )
-        # Each scout gets an equal portion of the total scout share
-        scout_share = (total_scout_share / scout_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-
-    # Step 2: Calculate corporation share (raw % of total)
+    # Step 1: Calculate corporation share (raw % of total)
     corp_share_amount = (total_value * corp_share_percentage / Decimal("100")).quantize(
         Decimal("0.01"), rounding=ROUND_DOWN
     )
 
-    # Step 3: Calculate remaining pool for regular participants
-    # Remaining = Total - Scout Share - Corp Share
-    remaining_pool = total_value - total_scout_share - corp_share_amount
+    # Step 2: Calculate participant pool
+    participant_pool = total_value - corp_share_amount
 
-    # Step 4: Split remaining pool evenly among regular (non-scout) participants
-    base_share = Decimal("0.00")
-    if regular_count > 0:
-        base_share = (remaining_pool / regular_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    # Step 3: Calculate total shares
+    # Scouts get scout_shares each, regulars get 1 share each
+    total_shares = (scout_count * scout_shares) + (regular_count * Decimal("1"))
+
+    if total_shares <= 0:
+        logger.warning(f"Fleet {loot_pool.fleet.id} has zero total shares")
+        return []
+
+    # Step 4: Calculate per-share value
+    per_share_value = (participant_pool / total_shares).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+    # Calculate individual payouts
+    base_share = per_share_value  # 1 share = per_share_value
+    scout_payout = (per_share_value * scout_shares).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
     # Check minimum per-participant threshold (default 100M ISK)
     minimum_per_participant = Decimal(str(app_settings.AAPAYOUT_MINIMUM_PER_PARTICIPANT))
-    min_share = scout_share if scout_count > 0 and regular_count == 0 else base_share
+    min_share = base_share  # Regular share is the minimum
     if min_share < minimum_per_participant and min_share > 0:
         logger.warning(
             f"Share per participant ({min_share:,.2f} ISK) is below minimum threshold "
@@ -140,8 +140,8 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
 
         # Calculate payout amount based on whether they're a scout
         if user_data["is_scout"]:
-            payout_amount = scout_share
-            payout_scout_bonus = scout_share  # Scout's entire share is the "bonus"
+            payout_amount = scout_payout
+            payout_scout_bonus = scout_payout - base_share  # Bonus is the extra shares
         else:
             payout_amount = base_share
             payout_scout_bonus = Decimal("0.00")
@@ -169,16 +169,15 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
             )
 
     # Remainder goes to corporation (includes rounding differences)
-    actual_scout_distributed = scout_share * scout_count
-    actual_regular_distributed = total_distributed - actual_scout_distributed
-    remainder = remaining_pool - actual_regular_distributed
+    remainder = participant_pool - total_distributed
     corp_final_share = corp_share_amount + remainder
 
     logger.info(
         f"Calculated payouts for {len(payouts)} unique players "
         f"from {participants.count()} participants "
-        f"(scout share: {scout_share:,.2f} ISK each, "
-        f"regular share: {base_share:,.2f} ISK each, "
+        f"(per-share: {per_share_value:,.2f} ISK, "
+        f"scout payout: {scout_payout:,.2f} ISK ({scout_shares} shares), "
+        f"regular payout: {base_share:,.2f} ISK (1 share), "
         f"scouts: {scout_count}, regulars: {regular_count}, "
         f"corp share: {corp_final_share:,.2f} ISK)"
     )
@@ -188,16 +187,16 @@ def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
 
 def calculate_payout_summary(loot_pool: LootPool, participant_groups: Dict) -> Dict:
     """
-    Calculate payout summary for display purposes.
+    Calculate payout summary for display purposes using share-based system.
 
     This extracts the summary calculation logic used in views to maintain DRY principles
     and ensure consistency with the main calculate_payouts function.
 
     Calculation Order (matching calculate_payouts):
-    1. Scout percentage is deducted from total loot first (raw % of total)
-    2. Corporation tax is deducted from total loot (raw % of total)
-    3. Remaining ISK is split evenly among non-scout participants
-    4. Scouts receive their scout share (the deducted scout percentage)
+    1. Corporation tax is deducted from total loot (raw % of total)
+    2. Calculate total shares: scouts get scout_shares each, regulars get 1 share each
+    3. Calculate per-share value from participant pool
+    4. Each participant receives shares × per-share value
 
     Args:
         loot_pool: LootPool instance with approved/paid status
@@ -209,14 +208,15 @@ def calculate_payout_summary(loot_pool: LootPool, participant_groups: Dict) -> D
             'total_loot': Decimal,
             'corp_share_pct': Decimal,
             'corp_share': Decimal,
-            'total_scout_share': Decimal,
             'participant_pool': Decimal,
             'eligible_count': int,
             'scout_count': int,
             'regular_count': int,
+            'total_shares': Decimal,
+            'per_share_value': Decimal,
             'base_share': Decimal,
             'scout_share': Decimal,
-            'scout_bonus_pct': Decimal,
+            'scout_shares': Decimal,
             'scout_bonus': Decimal,
             'total_payouts': Decimal,
             'remainder': Decimal,
@@ -225,58 +225,56 @@ def calculate_payout_summary(loot_pool: LootPool, participant_groups: Dict) -> D
     """
     total_value = loot_pool.total_value
     corp_share_pct = loot_pool.corp_share_percentage or Decimal("0.00")
-    scout_bonus_pct = loot_pool.scout_bonus_percentage or Decimal("10.00")
+    scout_shares = loot_pool.scout_shares or Decimal("1.5")
 
     # Count eligible participants
     eligible_count = len([g for g in participant_groups.values() if not g["excluded"]])
     scout_count = len([g for g in participant_groups.values() if g["is_scout"] and not g["excluded"]])
     regular_count = eligible_count - scout_count
 
-    # Step 1: Calculate total scout share (raw % of total, split among scouts)
-    # Only deduct scout share if there are actually scouts
-    total_scout_share = Decimal("0.00")
-    scout_share = Decimal("0.00")
-    if scout_count > 0:
-        total_scout_share = (total_value * scout_bonus_pct / Decimal("100")).quantize(
-            Decimal("0.01"), rounding=ROUND_DOWN
-        )
-        scout_share = (total_scout_share / scout_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
-
-    # Step 2: Corp share (raw % of total)
+    # Step 1: Corp share (raw % of total)
     corp_share = (total_value * corp_share_pct / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
-    # Step 3: Remaining pool for regular participants
-    # Remaining = Total - Scout Share - Corp Share
-    participant_pool = total_value - total_scout_share - corp_share
+    # Step 2: Participant pool
+    participant_pool = total_value - corp_share
 
-    # Step 4: Split remaining pool evenly among regular (non-scout) participants
+    # Step 3: Calculate total shares
+    total_shares_value = (scout_count * scout_shares) + (regular_count * Decimal("1"))
+
+    # Step 4: Calculate per-share value and individual payouts
+    per_share_value = Decimal("0.00")
     base_share = Decimal("0.00")
-    if regular_count > 0:
-        base_share = (participant_pool / regular_count).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+    scout_share = Decimal("0.00")
 
-    # Scout bonus is just the scout share (they get this instead of a regular share)
-    scout_bonus = scout_share
+    if total_shares_value > 0:
+        per_share_value = (participant_pool / total_shares_value).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        base_share = per_share_value  # 1 share
+        scout_share = (per_share_value * scout_shares).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+    # Scout bonus is the extra ISK from having more shares
+    scout_bonus = scout_share - base_share if scout_count > 0 else Decimal("0.00")
 
     # Total distributed
     total_payouts = sum(p.amount for p in loot_pool.payouts.all())
 
     # Remainder calculation
-    actual_regular_distributed = base_share * regular_count
-    remainder = participant_pool - actual_regular_distributed
+    actual_distributed = (base_share * regular_count) + (scout_share * scout_count)
+    remainder = participant_pool - actual_distributed
     corp_final = corp_share + remainder
 
     return {
         "total_loot": total_value,
         "corp_share_pct": corp_share_pct,
         "corp_share": corp_share,
-        "total_scout_share": total_scout_share,
         "participant_pool": participant_pool,
         "eligible_count": eligible_count,
         "scout_count": scout_count,
         "regular_count": regular_count,
+        "total_shares": total_shares_value,
+        "per_share_value": per_share_value,
         "base_share": base_share,
         "scout_share": scout_share,
-        "scout_bonus_pct": scout_bonus_pct,
+        "scout_shares": scout_shares,
         "scout_bonus": scout_bonus,
         "total_payouts": total_payouts,
         "remainder": remainder,

@@ -72,9 +72,9 @@
                     <div class="alert alert-info mb-3">
                         <strong>{% translate "Payout Structure" %}:</strong>
                         <ul class="mb-0 mt-2">
-                            <li>{% translate "Base Share" %}: <strong>{{ payout_preview.0.base_share|isk_format_full }}</strong></li>
-                            <li>{% translate "Scout Bonus" %}: <strong>+{{ payout_preview.0.scout_bonus|isk_format_full }}</strong> (+{{ loot_pool.scout_bonus_percentage|floatformat:0 }}%)</li>
-                            <li>{% translate "Scout Total" %}: <strong>{{ payout_preview.0.base_share|add:payout_preview.0.scout_bonus|isk_format_full }}</strong></li>
+                            <li>{% translate "Per Share Value" %}: <strong>{{ payout_preview.0.base_share|isk_format_full }}</strong></li>
+                            <li>{% translate "Regular (1 share)" %}: <strong>{{ payout_preview.0.base_share|isk_format_full }}</strong></li>
+                            <li>{% translate "Scout" %} ({{ loot_pool.scout_shares|floatformat:1 }} {% translate "shares" %}): <strong>{{ payout_preview.0.base_share|add:payout_preview.0.scout_bonus|isk_format_full }}</strong></li>
                         </ul>
                     </div>
                     {% endif %}
