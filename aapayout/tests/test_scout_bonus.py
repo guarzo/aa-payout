@@ -435,7 +435,7 @@ class ScoutSharesCalculationTests(TestCase):
         expected_scout_payout = (per_share_value * Decimal("3.0")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
         # Find scout payout
-        scout_payout = [p for p in payouts if p["is_scout"]][0]
+        scout_payout = next(p for p in payouts if p["is_scout"])
         self.assertEqual(scout_payout["amount"], expected_scout_payout)
 
         # Verify total doesn't exceed participant pool
@@ -520,8 +520,8 @@ class ScoutSharesCalculationTests(TestCase):
         expected_scout_payout = (per_share_value * Decimal("1.5")).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
         expected_regular_payout = per_share_value
 
-        scout_payout = [p for p in payouts if p["is_scout"]][0]
-        regular_payout = [p for p in payouts if not p["is_scout"]][0]
+        scout_payout = next(p for p in payouts if p["is_scout"])
+        regular_payout = next(p for p in payouts if not p["is_scout"])
 
         self.assertEqual(scout_payout["amount"], expected_scout_payout)
         self.assertEqual(regular_payout["amount"], expected_regular_payout)

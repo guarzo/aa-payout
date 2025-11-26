@@ -11,6 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -113,67 +114,79 @@ def dashboard(request):
     total_pending = Decimal("0.00")
     total_paid = Decimal("0.00")
 
+    # Define Q filters for payout statuses
+    pending_filter = Q(payouts__status=constants.PAYOUT_STATUS_PENDING)
+    paid_filter = Q(payouts__status=constants.PAYOUT_STATUS_PAID)
+
     if can_view_all:
         # Admins see all loot pools with pending payouts (one line per fleet)
-        pending_loot_pools = (
+        # Use database-level annotations to avoid N+1 queries
+        pending_loot_pools = list(
             LootPool.objects.filter(payouts__status=constants.PAYOUT_STATUS_PENDING)
             .select_related("fleet", "fleet__fleet_commander")
+            .annotate(
+                pending_count=Count("payouts", filter=pending_filter),
+                pending_amount=Coalesce(Sum("payouts__amount", filter=pending_filter), Decimal("0.00")),
+                paid_count=Count("payouts", filter=paid_filter),
+            )
             .distinct()
             .order_by("-created_at")[:10]
         )
 
-        # Add aggregated payout info for each loot pool
-        for pool in pending_loot_pools:
-            pool.pending_count = pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING).count()
-            pool.pending_amount = sum(p.amount for p in pool.payouts.filter(status=constants.PAYOUT_STATUS_PENDING))
-            pool.paid_count = pool.payouts.filter(status=constants.PAYOUT_STATUS_PAID).count()
-            total_pending += pool.pending_amount
+        # Sum pending amounts from annotated queryset (already sliced, so sum in Python)
+        total_pending = sum((pool.pending_amount for pool in pending_loot_pools), Decimal("0.00"))
 
-        # Get recent loot pools (last 10)
-        recent_loot_pools = LootPool.objects.select_related("fleet", "fleet__fleet_commander").order_by("-created_at")[
-            :10
-        ]
+        # Get recent loot pools (last 10) with annotations
+        recent_loot_pools = list(
+            LootPool.objects.select_related("fleet", "fleet__fleet_commander")
+            .annotate(
+                total_payouts=Count("payouts"),
+                paid_amount=Coalesce(Sum("payouts__amount", filter=paid_filter), Decimal("0.00")),
+            )
+            .order_by("-created_at")[:10]
+        )
 
-        for pool in recent_loot_pools:
-            pool.total_payouts = pool.payouts.count()
-            pool.paid_amount = sum(p.amount for p in pool.payouts.filter(status=constants.PAYOUT_STATUS_PAID))
-            total_paid += pool.paid_amount
+        # Sum paid amounts from annotated queryset
+        total_paid = sum((pool.paid_amount for pool in recent_loot_pools), Decimal("0.00"))
 
     elif main_character:
         # Regular users see loot pools where THEY have pending payouts
-        pending_loot_pools = (
+        # Define user-specific Q filters
+        user_filter = Q(payouts__recipient__id=main_character.character_id)
+        user_pending_filter = user_filter & pending_filter
+        user_paid_filter = user_filter & paid_filter
+
+        pending_loot_pools = list(
             LootPool.objects.filter(
                 payouts__recipient__id=main_character.character_id,
                 payouts__status=constants.PAYOUT_STATUS_PENDING,
             )
             .select_related("fleet", "fleet__fleet_commander")
+            .annotate(
+                pending_count=Count("payouts", filter=user_pending_filter),
+                pending_amount=Coalesce(Sum("payouts__amount", filter=user_pending_filter), Decimal("0.00")),
+            )
             .distinct()
             .order_by("-created_at")[:10]
         )
 
-        # Add user's payout info for each loot pool
-        for pool in pending_loot_pools:
-            user_pending = pool.payouts.filter(
-                recipient__id=main_character.character_id,
-                status=constants.PAYOUT_STATUS_PENDING,
-            )
-            pool.pending_count = user_pending.count()
-            pool.pending_amount = sum(p.amount for p in user_pending)
-            total_pending += pool.pending_amount
+        # Sum pending amounts from annotated queryset
+        total_pending = sum((pool.pending_amount for pool in pending_loot_pools), Decimal("0.00"))
 
-        # Get recent loot pools where user has payouts
-        recent_loot_pools = (
+        # Get recent loot pools where user has payouts with annotations
+        recent_loot_pools = list(
             LootPool.objects.filter(payouts__recipient__id=main_character.character_id)
             .select_related("fleet", "fleet__fleet_commander")
+            .annotate(
+                total_payouts=Count("payouts", filter=user_filter),
+                paid_amount=Coalesce(Sum("payouts__amount", filter=user_paid_filter), Decimal("0.00")),
+            )
             .distinct()
             .order_by("-created_at")[:10]
         )
 
-        for pool in recent_loot_pools:
-            user_payouts = pool.payouts.filter(recipient__id=main_character.character_id)
-            pool.total_payouts = user_payouts.count()
-            pool.paid_amount = sum(p.amount for p in user_payouts.filter(status=constants.PAYOUT_STATUS_PAID))
-            total_paid += pool.paid_amount
+        # Sum paid amounts from annotated queryset
+        total_paid = sum((pool.paid_amount for pool in recent_loot_pools), Decimal("0.00"))
 
     # Get recent fleets created by user (if FC)
     recent_fleets = Fleet.objects.none()
