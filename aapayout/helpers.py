@@ -254,12 +254,13 @@ def calculate_payout_summary(loot_pool: LootPool, participant_groups: Dict) -> D
     # Scout bonus is the extra ISK from having more shares
     scout_bonus = scout_share - base_share if scout_count > 0 else Decimal("0.00")
 
-    # Total distributed
+    # Total distributed (actual payouts from database)
     total_payouts = sum(p.amount for p in loot_pool.payouts.all())
 
-    # Remainder calculation
-    actual_distributed = (base_share * regular_count) + (scout_share * scout_count)
-    remainder = participant_pool - actual_distributed
+    # Remainder calculation based on actual payouts, not theoretical splits
+    # This ensures consistency when participants are skipped (minimum thresholds)
+    # or when rounding differences occur
+    remainder = total_value - corp_share - total_payouts
     corp_final = corp_share + remainder
 
     return {
