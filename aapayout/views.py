@@ -805,13 +805,14 @@ def loot_create(request, fleet_id):
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # Warn if Janice API key is not configured
+    # Block loot creation if Janice API key is not configured
     if not app_settings.AAPAYOUT_JANICE_API_KEY:
-        messages.warning(
+        messages.error(
             request,
             "Janice API key is not configured. Loot valuation will not work. "
             "Please contact your administrator to set AAPAYOUT_JANICE_API_KEY in settings.",
         )
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
         form = LootPoolCreateForm(request.POST)
@@ -830,7 +831,24 @@ def loot_create(request, fleet_id):
             # The Janice API is fast enough that async processing is not needed,
             # and sync provides immediate feedback to the user
             logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
-            result = appraise_loot_pool(loot_pool.id)
+            try:
+                result = appraise_loot_pool(loot_pool.id)
+            except Exception as e:
+                logger.exception(f"Unhandled exception during loot appraisal for pool {loot_pool.id}: {e}")
+                messages.error(
+                    request,
+                    f"An unexpected error occurred during loot valuation: {str(e)}. "
+                    "Please check the logs for details.",
+                )
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
+
+            if result is None:
+                logger.error(f"appraise_loot_pool returned None for loot pool {loot_pool.id}")
+                messages.error(
+                    request,
+                    "Loot valuation returned no result. Please check your Janice API configuration.",
+                )
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
             if result.get("success"):
                 total_value_formatted = format_isk_abbreviated(result.get("total_value", 0))
