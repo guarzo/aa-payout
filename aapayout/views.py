@@ -788,97 +788,100 @@ def participant_remove(request, pk):
 @permission_required("aapayout.basic_access")
 def loot_create(request, fleet_id):
     """Create a loot pool for a fleet"""
-    # AA Payout
-    from aapayout import app_settings
+    # Wrap entire view in try-except to capture any errors
+    try:
+        # AA Payout
+        from aapayout import app_settings
 
-    fleet = get_object_or_404(Fleet, pk=fleet_id)
+        fleet = get_object_or_404(Fleet, pk=fleet_id)
 
-    # Check permissions
-    if not fleet.can_edit(request.user):
-        messages.error(request, "You don't have permission to edit this payout")
-        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+        # Check permissions
+        if not fleet.can_edit(request.user):
+            messages.error(request, "You don't have permission to edit this payout")
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # Check if fleet already has a loot pool (only one allowed per fleet)
-    if fleet.loot_pools.exists():
-        messages.error(
-            request,
-            "This payout already has a loot pool. Only one loot pool is allowed per payout.",
-        )
-        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+        # Check if fleet already has a loot pool (only one allowed per fleet)
+        if fleet.loot_pools.exists():
+            messages.error(
+                request,
+                "This payout already has a loot pool. Only one loot pool is allowed per payout.",
+            )
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # Warn if Janice API key is not configured
-    if not app_settings.AAPAYOUT_JANICE_API_KEY:
-        messages.warning(
-            request,
-            "Janice API key is not configured. Loot valuation will not work. "
-            "Please contact your administrator to set AAPAYOUT_JANICE_API_KEY in settings.",
-        )
+        # Warn if Janice API key is not configured
+        if not app_settings.AAPAYOUT_JANICE_API_KEY:
+            messages.warning(
+                request,
+                "Janice API key is not configured. Loot valuation will not work. "
+                "Please contact your administrator to set AAPAYOUT_JANICE_API_KEY in settings.",
+            )
 
-    if request.method == "POST":
-        form = LootPoolCreateForm(request.POST)
-        if form.is_valid():
-            loot_pool = form.save(commit=False)
-            loot_pool.fleet = fleet
-            loot_pool.status = constants.LOOT_STATUS_DRAFT
+        if request.method == "POST":
+            form = LootPoolCreateForm(request.POST)
+            if form.is_valid():
+                loot_pool = form.save(commit=False)
+                loot_pool.fleet = fleet
+                loot_pool.status = constants.LOOT_STATUS_DRAFT
 
-            logger.info(f"Creating loot pool '{loot_pool.name}' for fleet {fleet.id}")
-            logger.info(f"Raw loot text length: {len(loot_pool.raw_loot_text) if loot_pool.raw_loot_text else 0} chars")
+                logger.info(f"Creating loot pool '{loot_pool.name}' for fleet {fleet.id}")
+                logger.info(f"Raw loot text length: {len(loot_pool.raw_loot_text) if loot_pool.raw_loot_text else 0} chars")
 
-            loot_pool.save()
-            logger.info(f"Loot pool {loot_pool.id} saved to database")
+                loot_pool.save()
+                logger.info(f"Loot pool {loot_pool.id} saved to database")
 
-            # Run appraisal synchronously
-            # The Janice API is fast enough that async processing is not needed,
-            # and sync provides immediate feedback to the user
-            logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
-            try:
+                # Run appraisal synchronously
+                logger.info(f"Running synchronous appraisal for loot pool {loot_pool.id}")
                 result = appraise_loot_pool(loot_pool.id)
-            except Exception as e:
-                logger.exception(f"Unhandled exception during loot appraisal for pool {loot_pool.id}: {e}")
-                messages.error(
-                    request,
-                    f"An unexpected error occurred during loot valuation: {str(e)}. "
-                    "Please check the logs for details.",
-                )
-                return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-            if result is None:
-                logger.error(f"appraise_loot_pool returned None for loot pool {loot_pool.id}")
-                messages.error(
-                    request,
-                    "Loot valuation returned no result. Please check your Janice API configuration.",
-                )
-                return redirect("aapayout:fleet_detail", pk=fleet.pk)
+                if result is None:
+                    logger.error(f"appraise_loot_pool returned None for loot pool {loot_pool.id}")
+                    messages.error(
+                        request,
+                        "Loot valuation returned no result. Please check your Janice API configuration.",
+                    )
+                    return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-            if result.get("success"):
-                total_value_formatted = format_isk_abbreviated(result.get("total_value", 0))
-                messages.success(
-                    request,
-                    f"Loot pool created and valued successfully! "
-                    f"{result.get('items_created')} items valued at {total_value_formatted}. "
-                    f"{result.get('payouts_created')} payouts created.",
-                )
+                if result.get("success"):
+                    total_value_formatted = format_isk_abbreviated(result.get("total_value", 0))
+                    messages.success(
+                        request,
+                        f"Loot pool created and valued successfully! "
+                        f"{result.get('items_created')} items valued at {total_value_formatted}. "
+                        f"{result.get('payouts_created')} payouts created.",
+                    )
+                else:
+                    messages.error(
+                        request,
+                        f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}",
+                    )
+                    messages.info(request, "You can retry valuation from the loot pool detail page.")
+
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
             else:
-                messages.error(
-                    request,
-                    f"Loot pool created but valuation failed: {result.get('error', 'Unknown error')}",
-                )
-                messages.info(request, "You can retry valuation from the loot pool detail page.")
+                # Form validation failed - redirect back with error messages
+                logger.warning(f"Loot pool form validation failed for fleet {fleet.id}: {form.errors}")
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        if field == "__all__":
+                            messages.error(request, error)
+                        else:
+                            messages.error(request, f"{field}: {error}")
+                return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-            return redirect("aapayout:fleet_detail", pk=fleet.pk)
-        else:
-            # Form validation failed - redirect back with error messages
-            logger.warning(f"Loot pool form validation failed for fleet {fleet.id}: {form.errors}")
-            for field, errors in form.errors.items():
-                for error in errors:
-                    if field == "__all__":
-                        messages.error(request, error)
-                    else:
-                        messages.error(request, f"{field}: {error}")
-            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+        # GET requests redirect to fleet detail (modal is on that page)
+        return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # GET requests redirect to fleet detail (modal is on that page)
-    return redirect("aapayout:fleet_detail", pk=fleet.pk)
+    except Exception as e:
+        import traceback
+        error_tb = traceback.format_exc()
+        logger.exception(f"Unhandled exception in loot_create for fleet {fleet_id}: {e}")
+        # Return error details directly in response for debugging
+        from django.http import HttpResponse
+        return HttpResponse(
+            f"<pre>Error in loot_create:\n\n{error_tb}</pre>",
+            status=500,
+            content_type="text/html"
+        )
 
 
 @login_required
