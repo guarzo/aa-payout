@@ -1,12 +1,12 @@
 """App Settings"""
 
-# Standard Library
-import logging
-
 # Django
 from django.conf import settings
 
-logger = logging.getLogger(__name__)
+# Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
+
+logger = get_extension_logger(__name__)
 
 # Janice API Configuration
 AAPAYOUT_JANICE_API_KEY = getattr(settings, "AAPAYOUT_JANICE_API_KEY", "")

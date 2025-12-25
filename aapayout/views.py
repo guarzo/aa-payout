@@ -3,7 +3,6 @@ Views for AA-Payout
 """
 
 # Standard Library
-import logging
 from decimal import ROUND_DOWN
 
 # Django
@@ -19,6 +18,8 @@ from django.utils.html import format_html
 from django.views.decorators.http import require_http_methods, require_POST
 
 # Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
+
 # ESI
 from esi.decorators import token_required
 
@@ -26,7 +27,7 @@ from esi.decorators import token_required
 from eveuniverse.models import EveEntity
 
 # AA Payout
-from aapayout import constants
+from aapayout import __title__, constants
 from aapayout.forms import (
     FleetCreateForm,
     FleetEditForm,
@@ -48,7 +49,7 @@ from aapayout.helpers import (
 from aapayout.models import Fleet, FleetParticipant, LootPool, Payout
 from aapayout.tasks import appraise_loot_pool
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 
 # ============================================================================
@@ -805,14 +806,13 @@ def loot_create(request, fleet_id):
         )
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
-    # Block loot creation if Janice API key is not configured
+    # Warn if Janice API key is not configured
     if not app_settings.AAPAYOUT_JANICE_API_KEY:
-        messages.error(
+        messages.warning(
             request,
             "Janice API key is not configured. Loot valuation will not work. "
             "Please contact your administrator to set AAPAYOUT_JANICE_API_KEY in settings.",
         )
-        return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     if request.method == "POST":
         form = LootPoolCreateForm(request.POST)
