@@ -477,6 +477,9 @@ def fleet_finalize(request, pk):
         messages.warning(request, "This payout has already been finalized")
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
+    # Check if this is a corp payout (all loot goes to corporation)
+    is_corp_payout = request.POST.get("corp_payout") == "true"
+
     # Check if there are any payouts and count verified/pending
     # AA Payout
     from aapayout.models import Payout
@@ -486,9 +489,28 @@ def fleet_finalize(request, pk):
     verified_payouts = all_payouts.filter(verified=True).count()
     pending_payouts = all_payouts.filter(verified=False).count()
 
+    # Handle corp payout case (no individual payouts)
     if total_payouts == 0:
-        messages.error(request, "Cannot finalize payout: no payouts found")
-        return redirect("aapayout:fleet_detail", pk=fleet.pk)
+        if is_corp_payout:
+            # Finalize as corp payout - all ISK goes to corporation
+            fleet.finalized = True
+            fleet.finalized_at = timezone.now()
+            fleet.finalized_by = request.user
+            fleet.save()
+
+            # Get total loot value for the message
+            loot_pool = fleet.loot_pools.first()
+            total_value = loot_pool.total_value if loot_pool else 0
+
+            messages.success(
+                request,
+                f"Payout '{fleet.name}' has been finalized as a corporation payout. "
+                f"Total of {total_value:,.2f} ISK goes to the corporation.",
+            )
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
+        else:
+            messages.error(request, "Cannot finalize payout: no payouts found")
+            return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     # Check if user has ESI token with wallet journal scope (pre-check for better UX)
     fc_character = request.user.profile.main_character

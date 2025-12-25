@@ -420,10 +420,22 @@
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-warning">
-                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Below Minimum Threshold" %}</h6>
-                            <p class="mb-0">
-                                {% translate "Individual shares are below the minimum threshold. All ISK will go to the corporation." %}
+                            <h6><i class="fas fa-building"></i> {% translate "Corp Payout" %}</h6>
+                            <p class="mb-2">
+                                {% translate "Individual shares are below the minimum threshold." %}
+                                {% translate "The full loot value of" %} <strong>{{ loot_pool.total_value|floatformat:2 }} ISK</strong>
+                                {% translate "should be donated to the corporation." %}
                             </p>
+                            {% if can_edit and not fleet.finalized %}
+                            <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="corp_payout" value="true">
+                                <button type="submit" class="btn btn-success"
+                                        onclick="return confirm('{% translate "Mark this as a corp payout and finalize? The full amount goes to the corporation." %}')">
+                                    <i class="fas fa-check"></i> {% translate "Finalize as Corp Payout" %}
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
