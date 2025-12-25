@@ -872,16 +872,9 @@ def loot_create(request, fleet_id):
         return redirect("aapayout:fleet_detail", pk=fleet.pk)
 
     except Exception as e:
-        import traceback
-        error_tb = traceback.format_exc()
         logger.exception(f"Unhandled exception in loot_create for fleet {fleet_id}: {e}")
-        # Return error details directly in response for debugging
-        from django.http import HttpResponse
-        return HttpResponse(
-            f"<pre>Error in loot_create:\n\n{error_tb}</pre>",
-            status=500,
-            content_type="text/html"
-        )
+        messages.error(request, f"An unexpected error occurred: {str(e)}")
+        return redirect("aapayout:fleet_detail", pk=fleet_id)
 
 
 @login_required
