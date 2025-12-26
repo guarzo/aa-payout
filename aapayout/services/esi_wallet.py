@@ -5,7 +5,6 @@ Handles ESI wallet journal integration for payment verification
 """
 
 # Standard Library
-import logging
 from datetime import timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
@@ -14,10 +13,11 @@ from typing import Dict, List, Optional, Tuple
 from django.utils import timezone
 
 # Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
 from esi.clients import EsiClientProvider
 from esi.models import Token
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 # Initialize ESI client
 esi = EsiClientProvider()

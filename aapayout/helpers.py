@@ -3,18 +3,20 @@ Helper functions for AA-Payout
 """
 
 # Standard Library
-import logging
 from decimal import ROUND_DOWN, Decimal
 from typing import Dict, List
 
 # Django
 from django.db import transaction
 
+# Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
+
 # AA Payout
 from aapayout import app_settings, constants
 from aapayout.models import LootItem, LootPool, Payout
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 
 def calculate_payouts(loot_pool: LootPool) -> List[Dict]:
