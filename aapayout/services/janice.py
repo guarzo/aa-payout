@@ -6,7 +6,6 @@ Documentation: https://janice.e-351.com/api/rest/docs/index.html
 """
 
 # Standard Library
-import logging
 import re
 from decimal import Decimal
 from typing import Dict
@@ -18,10 +17,13 @@ import requests
 from django.core.cache import cache
 from django.utils import timezone
 
+# Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
+
 # AA Payout
 from aapayout import app_settings
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 JANICE_API_URL = "https://janice.e-351.com/api/rest/v2"
 

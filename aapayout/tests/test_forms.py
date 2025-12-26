@@ -93,9 +93,6 @@ class ParticipantAddFormTest(TestCase):
         """Test form with valid data"""
         form_data = {
             "character_name": "Test Character",
-            "role": constants.ROLE_REGULAR,
-            "joined_at": timezone.now().strftime("%Y-%m-%dT%H:%M"),
-            "notes": "Test notes",
         }
 
         form = ParticipantAddForm(data=form_data)
@@ -103,10 +100,7 @@ class ParticipantAddFormTest(TestCase):
 
     def test_missing_character_name(self):
         """Test form with missing character name"""
-        form_data = {
-            "role": constants.ROLE_REGULAR,
-            "joined_at": timezone.now().strftime("%Y-%m-%dT%H:%M"),
-        }
+        form_data = {}
 
         form = ParticipantAddForm(data=form_data)
         self.assertFalse(form.is_valid())
@@ -116,7 +110,6 @@ class ParticipantAddFormTest(TestCase):
         """Test form with is_scout set to True"""
         form_data = {
             "character_name": "Scout Character",
-            "role": constants.ROLE_REGULAR,
             "is_scout": True,
         }
 
@@ -128,7 +121,6 @@ class ParticipantAddFormTest(TestCase):
         """Test form with is_scout set to False"""
         form_data = {
             "character_name": "Regular Character",
-            "role": constants.ROLE_REGULAR,
             "is_scout": False,
         }
 
@@ -140,7 +132,6 @@ class ParticipantAddFormTest(TestCase):
         """Test that is_scout field is optional"""
         form_data = {
             "character_name": "Test Character",
-            "role": constants.ROLE_REGULAR,
         }
 
         form = ParticipantAddForm(data=form_data)

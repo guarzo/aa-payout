@@ -1,13 +1,13 @@
 """App Tasks"""
 
-# Standard Library
-import logging
-
 # Third Party
 from celery import shared_task
 
 # Django
 from django.utils import timezone
+
+# Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
 
 # AA Payout
 from aapayout import constants
@@ -15,7 +15,7 @@ from aapayout.helpers import create_loot_items_from_appraisal
 from aapayout.models import LootPool
 from aapayout.services.janice import JaniceAPIError, JaniceService
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 
 @shared_task(bind=True)

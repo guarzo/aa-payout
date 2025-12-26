@@ -5,20 +5,20 @@ Handles ESI fleet composition imports
 """
 
 # Standard Library
-import logging
 from typing import Dict, List, Optional, Tuple
 
 # Third Party
 from bravado.exception import HTTPNotFound
 
 # Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
 from esi.clients import EsiClientProvider
 from esi.models import Token
 
 # Alliance Auth (External Libs)
 from eveuniverse.models import EveEntity
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 
 # Initialize ESI client
 esi = EsiClientProvider()
