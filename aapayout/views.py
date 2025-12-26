@@ -27,7 +27,7 @@ from esi.decorators import token_required
 from eveuniverse.models import EveEntity
 
 # AA Payout
-from aapayout import __title__, constants
+from aapayout import constants
 from aapayout.forms import (
     FleetCreateForm,
     FleetEditForm,
@@ -496,6 +496,7 @@ def fleet_finalize(request, pk):
             fleet.finalized = True
             fleet.finalized_at = timezone.now()
             fleet.finalized_by = request.user
+            fleet.status = constants.FLEET_STATUS_COMPLETED
             fleet.save()
 
             # Get total loot value for the message
@@ -549,6 +550,11 @@ def fleet_finalize(request, pk):
     fleet.finalized = True
     fleet.finalized_at = timezone.now()
     fleet.finalized_by = request.user
+    # Set status based on whether all payouts are verified
+    if pending_payouts == 0:
+        fleet.status = constants.FLEET_STATUS_PAID
+    else:
+        fleet.status = constants.FLEET_STATUS_COMPLETED
     fleet.save()
 
     # If all payouts already verified, just finalize without running verification
@@ -846,7 +852,9 @@ def loot_create(request, fleet_id):
                 loot_pool.status = constants.LOOT_STATUS_DRAFT
 
                 logger.info(f"Creating loot pool '{loot_pool.name}' for fleet {fleet.id}")
-                logger.info(f"Raw loot text length: {len(loot_pool.raw_loot_text) if loot_pool.raw_loot_text else 0} chars")
+                logger.info(
+                    f"Raw loot text length: {len(loot_pool.raw_loot_text) if loot_pool.raw_loot_text else 0} chars"
+                )
 
                 loot_pool.save()
                 logger.info(f"Loot pool {loot_pool.id} saved to database")
