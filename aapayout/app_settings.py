@@ -1,12 +1,12 @@
 """App Settings"""
 
-# Standard Library
-import logging
-
 # Django
 from django.conf import settings
 
-logger = logging.getLogger(__name__)
+# Alliance Auth
+from allianceauth.services.hooks import get_extension_logger
+
+logger = get_extension_logger(__name__)
 
 # Janice API Configuration
 AAPAYOUT_JANICE_API_KEY = getattr(settings, "AAPAYOUT_JANICE_API_KEY", "")
@@ -20,7 +20,7 @@ AAPAYOUT_JANICE_CACHE_HOURS = getattr(settings, "AAPAYOUT_JANICE_CACHE_HOURS", 1
 
 # Payout Configuration
 AAPAYOUT_CORP_SHARE_PERCENTAGE = getattr(settings, "AAPAYOUT_CORP_SHARE_PERCENTAGE", 10)
-AAPAYOUT_MINIMUM_PAYOUT = getattr(settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000000)
+AAPAYOUT_MINIMUM_PAYOUT = getattr(settings, "AAPAYOUT_MINIMUM_PAYOUT", 1000000)  # 1M ISK
 AAPAYOUT_MINIMUM_PER_PARTICIPANT = getattr(settings, "AAPAYOUT_MINIMUM_PER_PARTICIPANT", 100000000)  # 100M ISK
 AAPAYOUT_REQUIRE_APPROVAL = getattr(settings, "AAPAYOUT_REQUIRE_APPROVAL", True)
 

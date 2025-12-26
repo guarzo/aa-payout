@@ -97,10 +97,7 @@ class ParticipantAddForm(forms.ModelForm):
 
     class Meta:
         model = FleetParticipant
-        fields = ["role", "is_scout"]
-        widgets = {
-            "role": forms.Select(attrs={"class": "form-select"}),
-        }
+        fields = ["is_scout"]
 
 
 class ParticipantEditForm(forms.ModelForm):

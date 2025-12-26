@@ -416,18 +416,30 @@
                         </div>
                     </div>
                 </div>
-            {% elif loot_pool.payouts.count == 0 and participants.count > 0 %}
+            {% elif loot_pool.payouts.count == 0 and participants|length > 0 %}
                 <div class="row mb-4">
                     <div class="col-12">
-                        <div class="alert alert-warning">
-                            <h6><i class="fas fa-exclamation-triangle"></i> {% translate "Below Minimum Threshold" %}</h6>
-                            <p class="mb-0">
-                                {% translate "Individual shares are below the minimum threshold. All ISK will go to the corporation." %}
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> {% translate "Below Minimum Threshold" %}</h6>
+                            <p class="mb-2">
+                                {% translate "Individual shares are below the minimum threshold of 100M ISK per participant." %}
+                                {% translate "The full loot value of" %} <strong>{{ loot_pool.total_value|floatformat:2 }} ISK</strong>
+                                {% translate "goes to the corporation." %}
                             </p>
+                            {% if can_edit and not fleet.finalized %}
+                            <form method="post" action="{% url 'aapayout:fleet_finalize' fleet.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="corp_payout" value="true">
+                                <button type="submit" class="btn btn-success"
+                                        onclick="return confirm('{% translate "Finalize this fleet? All loot goes to the corporation." %}')">
+                                    <i class="fas fa-flag-checkered"></i> {% translate "Finalize" %}
+                                </button>
+                            </form>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-            {% elif loot_pool.payouts.count == 0 and participants.count == 0 %}
+            {% elif loot_pool.payouts.count == 0 and participants|length == 0 %}
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="alert alert-warning">
@@ -684,13 +696,6 @@
                             <div id="participant-suggestions" class="list-group position-absolute w-100"
                                  style="z-index: 9999; display: none; max-height: 300px; overflow-y: auto;"></div>
                             <small class="form-text text-muted">{% translate "Type to search for characters in Alliance Auth" %}</small>
-                        </div>
-                        <div class="mb-3">
-                            <label for="role" class="form-label">{% translate "Role" %}</label>
-                            <select name="role" id="role" class="form-select">
-                                <option value="regular">{% translate "Regular" %}</option>
-                                <option value="scout">{% translate "Scout" %}</option>
-                            </select>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
